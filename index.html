@@ -7,6 +7,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="BikerWeather" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512.png" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="application-name" content="BikerWeather" />
   <meta name="description" content="Sensación térmica real para motoristas. GPS + velocidad + tiempo." />
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
@@ -18,6 +23,17 @@
 <body>
 
 <div id="offline-banner" class="offline-banner">⚡ SIN CONEXIÓN — Datos en caché</div>
+
+<!-- Banner de instalación PWA -->
+<div id="install-banner" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);width:calc(100% - 20px);max-width:410px;background:#0c0c15;border:1px solid rgba(255,85,0,0.4);border-radius:8px;padding:12px 14px;z-index:300;align-items:center;gap:10px;box-shadow:0 0 20px rgba(255,85,0,0.15);">
+  <span style="font-size:1.4rem">🏍</span>
+  <div style="flex:1">
+    <div style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:0.9rem;color:#f0f0ff">Instalar BikerWeather</div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:#5a5a7a">Añadir a pantalla de inicio</div>
+  </div>
+  <button id="btn-install" style="background:#ff5500;border:none;border-radius:4px;color:#fff;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:0.85rem;padding:7px 14px;cursor:pointer;letter-spacing:0.05em">INSTALAR</button>
+  <button id="btn-install-close" style="background:none;border:none;color:#5a5a7a;font-size:1.1rem;cursor:pointer;padding:4px">✕</button>
+</div>
 <div id="toast-container"></div>
 
 <div id="app">
@@ -209,6 +225,28 @@
         <button id="btn-clear-route" class="btn" style="font-size:0.75rem;padding:6px 12px">✕ Limpiar ruta</button>
       </div>
 
+      <!-- PLANIFICADOR INTELIGENTE -->
+      <div class="panel-hdr" style="padding:10px 0 6px">
+        <span class="panel-hdr-lbl">🗓 PLANIFICADOR — ANTES DE SALIR</span>
+      </div>
+      <div class="input-card">
+        <p class="input-desc">Introduce origen, destino y hora de salida para ver la previsión exacta en cada punto de la ruta.</p>
+        <div class="input-row">
+          <input id="plan-origin" type="text" placeholder="Origen (o usa tu posición)" autocomplete="off" />
+          <button id="btn-plan-myloc" class="btn" style="padding:9px 10px;font-size:0.8rem" title="Usar mi posición">📍</button>
+        </div>
+        <div class="input-row">
+          <input id="plan-dest" type="text" placeholder="Destino" autocomplete="off" />
+        </div>
+        <div class="input-row">
+          <input id="plan-time" type="datetime-local" style="flex:1;background:var(--bg3);border:1px solid var(--border-mid);border-radius:var(--r2);color:var(--text);font-family:var(--font-mono);font-size:0.78rem;padding:9px 12px;outline:none;" />
+          <button id="btn-plan-go" class="btn btn-primary">CALCULAR</button>
+        </div>
+      </div>
+
+      <!-- Resultado planificador -->
+      <div id="plan-result" style="display:none;flex-direction:column;gap:8px;"></div>
+
       <!-- Velocidad para la ruta (manual) -->
       <div class="speed-panel">
         <div class="panel-hdr">
@@ -319,7 +357,20 @@
     </div><!-- /section-riding -->
 
     <!-- ════════════════════════════
-         TAB 4: GIROSCOPIO
+         TAB 4: HISTORIAL
+    ════════════════════════════ -->
+    <div id="section-history" class="section">
+      <div class="panel-hdr" style="padding:8px 0 6px">
+        <span class="panel-hdr-lbl">HISTORIAL DE RUTAS</span>
+        <button id="btn-clear-history" class="btn" style="padding:4px 10px;font-size:0.68rem;color:var(--red);border-color:rgba(255,34,85,0.2)">🗑 Borrar todo</button>
+      </div>
+      <div id="history-list" style="display:flex;flex-direction:column;gap:8px;">
+        <p class="history-empty">Aún no hay rutas guardadas.<br>Completa tu primera ruta para verla aquí.</p>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════
+         TAB 5: GIROSCOPIO
     ════════════════════════════ -->
     <div id="section-gyro" class="section">
 
@@ -416,9 +467,13 @@
       <span class="nav-icon">▶</span>
       <span class="nav-lbl">En Ruta</span>
     </button>
+    <button class="nav-btn" data-section="section-history">
+      <span class="nav-icon">📋</span>
+      <span class="nav-lbl">Historial</span>
+    </button>
     <button class="nav-btn" data-section="section-gyro">
       <span class="nav-icon">⚖️</span>
-      <span class="nav-lbl">Inclinación</span>
+      <span class="nav-lbl">Sensor</span>
     </button>
   </nav>
 
