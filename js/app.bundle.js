@@ -130,6 +130,7 @@ const App = {
   lastWeatherFetch: 0,
   weatherInterval:  null,
   lastGeocodedPos:  null,
+  lastPositionTime: null,
   wakeLock:         null,
   wakeLockEnabled:  false,
   gyroData:         { alpha:0, beta:0, gamma:0 },
@@ -150,7 +151,8 @@ const App = {
   routeLine:        null,
   routePoints:      [],
   waypointMarkers:  [],
-  followRider:      true
+  followRider:      true,
+  refollowTimer:    null
 };
 
 const REFRESH_MS     = 5 * 60 * 1000;
@@ -323,6 +325,8 @@ function startGPS() {
 }
 
 async function onGPSPosition(pos) {
+  const prevPosition = App.position; // guardar posición anterior ANTES de sobreescribir
+
   App.position = {
     lat:      pos.coords.latitude,
     lon:      pos.coords.longitude,
@@ -332,10 +336,25 @@ async function onGPSPosition(pos) {
   };
   setStatusPill('gps', 'active');
 
-  // Velocidad GPS con suavizado
+  // Velocidad GPS con suavizado — usa coords.speed o calcula por distancia
+  let rawSpeed = null;
   if (pos.coords.speed !== null && pos.coords.speed >= 0) {
-    const raw = Math.round(pos.coords.speed * 3.6);
-    App.gpsSpeed = App.gpsSpeed === null ? raw : Math.round(App.gpsSpeed * 0.7 + raw * 0.3);
+    rawSpeed = Math.round(pos.coords.speed * 3.6);
+  } else if (prevPosition && App.lastPositionTime) {
+    const dt = (pos.timestamp - App.lastPositionTime) / 1000;
+    if (dt > 0 && dt < 10) {
+      const R    = 6371000;
+      const dLat = (pos.coords.latitude  - prevPosition.lat) * Math.PI / 180;
+      const dLon = (pos.coords.longitude - prevPosition.lon) * Math.PI / 180;
+      const a    = Math.sin(dLat/2)**2 + Math.cos(prevPosition.lat*Math.PI/180)*Math.cos(pos.coords.latitude*Math.PI/180)*Math.sin(dLon/2)**2;
+      const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      rawSpeed   = Math.round((dist / dt) * 3.6);
+    }
+  }
+  App.lastPositionTime = pos.timestamp;
+
+  if (rawSpeed !== null) {
+    App.gpsSpeed = App.gpsSpeed === null ? rawSpeed : Math.round(App.gpsSpeed * 0.7 + rawSpeed * 0.3);
     updateGpsSpeedUI(App.gpsSpeed);
     computeWindChill();
   }
@@ -350,10 +369,13 @@ async function onGPSPosition(pos) {
     updateLocationUI(name, App.position.lat, App.position.lon);
   }
 
-  // Meteo
+  // Meteo — siempre cargar en la primera posición o si han pasado 5 min
   const now = Date.now();
   if (!App.weather || (now - App.lastWeatherFetch > REFRESH_MS)) {
     await loadWeather(App.position.lat, App.position.lon);
+  } else {
+    // Aunque no refresque el tiempo, recalcular wind chill con velocidad actualizada
+    computeWindChill();
   }
 }
 
@@ -447,8 +469,178 @@ async function disableWakeLock() {
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && App.wakeLockEnabled) enableWakeLock(); });
 
 /* ═══════════════════════════════════════
-   ROUTE (waypoints)
+   PLANIFICADOR INTELIGENTE
 ═══════════════════════════════════════ */
+async function fetchHourlyWeather(lat, lon, isoTime) {
+  // Open-Meteo previsión horaria
+  const date   = isoTime.slice(0, 10);
+  const params = new URLSearchParams({
+    latitude: lat, longitude: lon,
+    hourly: 'temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code,precipitation_probability',
+    wind_speed_unit: 'kmh',
+    timezone: 'auto',
+    start_date: date,
+    end_date: date
+  });
+  const res  = await fetch('https://api.open-meteo.com/v1/forecast?' + params);
+  const data = await res.json();
+  const hour = parseInt(isoTime.slice(11, 13));
+  const idx  = Math.min(hour, (data.hourly.time?.length || 1) - 1);
+  return {
+    temp:        data.hourly.temperature_2m[idx],
+    windSpeed:   Math.round(data.hourly.wind_speed_10m[idx]),
+    windDir:     data.hourly.wind_direction_10m[idx],
+    windGust:    Math.round(data.hourly.wind_gusts_10m[idx]),
+    weatherCode: data.hourly.weather_code[idx],
+    rainProb:    data.hourly.precipitation_probability[idx]
+  };
+}
+
+function addHours(isoTime, hours) {
+  const d = new Date(isoTime);
+  d.setMinutes(0, 0, 0);
+  d.setHours(d.getHours() + Math.round(hours));
+  return d.toISOString().slice(0, 16);
+}
+
+function plannerHazards(w) {
+  const h = [];
+  if (w.rainProb > 50)   h.push('🌧 Lluvia probable ' + w.rainProb + '%');
+  if (w.temp <= 2)        h.push('🧊 Posible hielo');
+  if (w.windGust > 60)    h.push('💨 Ráfagas ' + w.windGust + ' km/h');
+  if ([71,73,75].includes(w.weatherCode)) h.push('❄️ Nieve');
+  return h;
+}
+
+async function runPlanner() {
+  const originInput = $('plan-origin')?.value?.trim();
+  const destInput   = $('plan-dest')?.value?.trim();
+  const timeInput   = $('plan-time')?.value;
+  const result      = $('plan-result');
+
+  if (!destInput)  { toast('Introduce un destino', 'info'); return; }
+  if (!timeInput)  { toast('Selecciona la hora de salida', 'info'); return; }
+
+  result.style.display = 'flex';
+  result.innerHTML = '<div class="planner-loading">Calculando previsión…</div>';
+
+  try {
+    // Origen
+    let origin;
+    if (originInput) {
+      origin = await geocode(originInput);
+    } else if (App.position) {
+      origin = { lat: App.position.lat, lon: App.position.lon, name: 'Tu posición' };
+    } else {
+      toast('Introduce un origen o espera al GPS', 'info'); return;
+    }
+
+    const dest = await geocode(destInput);
+    const points = [
+      { ...origin, index: 0, label: 'Salida', timeOffset: 0 },
+      ...interpolatePoints(origin, dest, 3).map((p, i) => ({ ...p, label: 'Punto ' + (i+1), timeOffset: (i+1) * 0.25 })),
+      { ...dest, index: 4, label: 'Llegada', timeOffset: 1.0 }
+    ];
+
+    // Estimar tiempo total (velocidad media del slider)
+    const avgSpeed    = App.routeSpeed || 80;
+    const R           = 6371;
+    const dLat        = (dest.lat - origin.lat) * Math.PI / 180;
+    const dLon        = (dest.lon - origin.lon) * Math.PI / 180;
+    const a           = Math.sin(dLat/2)**2 + Math.cos(origin.lat*Math.PI/180)*Math.cos(dest.lat*Math.PI/180)*Math.sin(dLon/2)**2;
+    const distKm      = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const totalHours  = distKm / avgSpeed;
+
+    // Previsión en cada punto
+    const pointsData = await Promise.all(points.map(async p => {
+      const arrivalTime = addHours(timeInput, p.timeOffset * totalHours);
+      const w           = await fetchHourlyWeather(p.lat, p.lon, arrivalTime);
+      const eff         = WindChill.effectiveSpeed(avgSpeed, w.windSpeed, w.windDir);
+      const wc          = WindChill.calculate(w.temp, eff);
+      const cls         = WindChill.classify(wc);
+      const hazards     = plannerHazards(w);
+      return { ...p, w, wc, cls, hazards, arrivalTime };
+    }));
+
+    // Mejor hora para salir (buscar la ventana de 4h con menos peligros en las próximas 12h)
+    const bestHour = await findBestHour(origin, dest, timeInput, totalHours, avgSpeed);
+
+    renderPlannerResult(pointsData, distKm, totalHours, bestHour);
+
+  } catch(err) {
+    result.innerHTML = '<p class="report-empty">Error: ' + err.message + '</p>';
+  }
+}
+
+async function findBestHour(origin, dest, baseTime, totalHours, avgSpeed) {
+  const scores = [];
+  for (let h = 0; h < 12; h++) {
+    const startTime = addHours(baseTime, h);
+    try {
+      // Solo comprobamos origen y destino para ir rápido
+      const [wO, wD] = await Promise.all([
+        fetchHourlyWeather(origin.lat, origin.lon, startTime),
+        fetchHourlyWeather(dest.lat, dest.lon, addHours(startTime, totalHours))
+      ]);
+      const score = (wO.rainProb || 0) + (wD.rainProb || 0) +
+                    (wO.temp <= 2 ? 30 : 0) + (wD.temp <= 2 ? 30 : 0) +
+                    (wO.windGust > 60 ? 20 : 0) + (wD.windGust > 60 ? 20 : 0);
+      scores.push({ h, score, time: startTime });
+    } catch { scores.push({ h, score: 999, time: startTime }); }
+  }
+  return scores.sort((a,b) => a.score - b.score)[0];
+}
+
+function renderPlannerResult(points, distKm, totalHours, bestHour) {
+  const result = $('plan-result');
+  if (!result) return;
+
+  const hasAlerts = points.some(p => p.hazards.length > 0);
+  const minWC     = Math.min(...points.map(p => p.wc));
+  const minWCCls  = WindChill.classify(minWC);
+
+  result.innerHTML = `
+    <div class="planner-summary">
+      <div class="planner-summary-row">
+        <div class="ps-item"><span class="ps-val">${Math.round(distKm)} km</span><span class="ps-lbl">Distancia</span></div>
+        <div class="ps-item"><span class="ps-val">${fmtDur(totalHours*3600000)}</span><span class="ps-lbl">Tiempo est.</span></div>
+        <div class="ps-item"><span class="ps-val ${minWCCls.cssClass}">${minWC > 0 ? '+' : ''}${minWC}°</span><span class="ps-lbl">Sens. mín.</span></div>
+      </div>
+      ${hasAlerts ? '<div class="planner-alert">⚠ Hay condiciones adversas en la ruta</div>' : '<div class="planner-ok">✓ Condiciones favorables en toda la ruta</div>'}
+    </div>
+
+    ${bestHour && bestHour.h !== 0 ? `
+    <div class="planner-best-hour">
+      <div class="pbh-icon">🕐</div>
+      <div>
+        <div class="pbh-title">Mejor hora para salir</div>
+        <div class="pbh-time">${new Date(bestHour.time).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</div>
+        <div class="pbh-desc">Menores condiciones adversas en las próximas 12h</div>
+      </div>
+    </div>` : ''}
+
+    <div class="planner-points">
+      ${points.map(p => `
+        <div class="planner-point">
+          <div class="pp-header">
+            <div class="pp-label">${p.label}</div>
+            <div class="pp-time">${new Date(p.arrivalTime).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</div>
+          </div>
+          <div class="pp-body">
+            <div class="pp-wc ${p.cls.cssClass}">${p.cls.emoji} ${p.wc > 0 ? '+' : ''}${p.wc}°</div>
+            <div class="pp-details">
+              <span>${p.w.temp}°C real</span>
+              <span>💨 ${p.w.windSpeed} km/h</span>
+              <span>🌧 ${p.w.rainProb || 0}%</span>
+            </div>
+            ${p.hazards.length ? '<div class="pp-hazards">' + p.hazards.map(h=>'<span class="hazard-tag">'+h+'</span>').join('') + '</div>' : ''}
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+}
+
+
 async function calculateRoute(destQuery, speed) {
   if (!App.position) { toast('Esperando GPS…', 'info'); return; }
   try {
@@ -478,7 +670,12 @@ function initMap() {
     .setView([App.position?.lat || 40.4, App.position?.lon || -3.7], 15);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(App.leafletMap);
   L.control.zoom({ position: 'bottomright' }).addTo(App.leafletMap);
-  App.leafletMap.on('dragstart', () => { App.followRider = false; });
+  App.leafletMap.on('dragstart', () => {
+    App.followRider = false;
+    // Reactivar seguimiento automáticamente después de 5 segundos sin tocar
+    clearTimeout(App.refollowTimer);
+    App.refollowTimer = setTimeout(() => { App.followRider = true; }, 5000);
+  });
 
   App.riderMarker = L.marker([App.position?.lat || 40.4, App.position?.lon || -3.7], {
     icon: L.divIcon({
@@ -501,7 +698,9 @@ function mapUpdatePosition(lat, lon) {
     App.routePoints.push([lat, lon]);
     App.routeLine.setLatLngs(App.routePoints);
   }
-  if (App.followRider) App.leafletMap.setView([lat, lon]);
+  if (App.followRider) {
+    App.leafletMap.setView([lat, lon], App.leafletMap.getZoom() || 15, { animate: true, duration: 0.5 });
+  }
 }
 
 function mapAddWaypoint(lat, lon, index) {
@@ -551,7 +750,7 @@ function detectCurve(roll, pos) {
     } else {
       const dur = Date.now() - App.curveState.startTime;
       if (dur >= CURVE_MIN_MS) {
-        const curve = { dir: App.curveState.dir, maxAngle: Math.round(App.curveState.maxAngle * 10)/10, duration: Math.round(dur/100)/10, lat: App.curveState.startPos?.lat, lon: App.curveState.startPos?.lon, t: Date.now() - App.sessionStart };
+        const curve = { dir: App.curveState.dir, maxAngle: Math.round(App.curveState.maxAngle * 10)/10, duration: Math.round(dur/100)/10, speed: App.gpsSpeed || 0, lat: App.curveState.startPos?.lat, lon: App.curveState.startPos?.lon, t: Date.now() - App.sessionStart };
         App.sessionCurves.push(curve);
         onCurveDetected(curve);
       }
@@ -605,13 +804,102 @@ function stopSession() {
   $('session-timer')?.classList.remove('show');
   const report = buildReport();
   App.sessionReport = report;
+  saveRouteToHistory(report);
   renderReport(report);
   $('report-panel')?.classList.add('show');
 }
 
 /* ═══════════════════════════════════════
-   INFORME
+   HISTÓRICO DE RUTAS (localStorage)
 ═══════════════════════════════════════ */
+const HISTORY_KEY = 'bw_route_history';
+const HISTORY_MAX = 50;
+
+function saveRouteToHistory(report) {
+  try {
+    const history = getHistory();
+    const entry = {
+      id:          Date.now(),
+      date:        report.meta.startTime,
+      mode:        report.meta.mode,
+      destination: report.meta.destination,
+      duration:    report.meta.durationFmt,
+      speedMax:    report.speed.max,
+      speedAvg:    report.speed.avg,
+      minWC:       report.thermal.minWC,
+      curvesTotal: report.curves.total,
+      curvesL:     report.curves.left,
+      curvesR:     report.curves.right,
+      maxAngle:    report.curves.maxAngle,
+      report:      report  // guardamos el informe completo
+    };
+    history.unshift(entry);
+    if (history.length > HISTORY_MAX) history.pop();
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  } catch(e) {
+    console.warn('No se pudo guardar en historial:', e);
+  }
+}
+
+function getHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  } catch { return []; }
+}
+
+function deleteFromHistory(id) {
+  const history = getHistory().filter(e => e.id !== id);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  renderHistory();
+}
+
+function renderHistory() {
+  const container = $('history-list');
+  if (!container) return;
+  const history = getHistory();
+
+  if (!history.length) {
+    container.innerHTML = '<p class="no-route" style="padding:24px">Aún no hay rutas guardadas.<br>Completa tu primera ruta para verla aquí.</p>';
+    return;
+  }
+
+  container.innerHTML = history.map(e => `
+    <div class="history-card" data-id="${e.id}">
+      <div class="history-header">
+        <div class="history-date">${new Date(e.date).toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short' })} · ${new Date(e.date).toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' })}</div>
+        <button class="history-delete" data-id="${e.id}" title="Eliminar">✕</button>
+      </div>
+      <div class="history-title">${e.mode === 'route' && e.destination ? '📍 ' + e.destination : '🗺 Ruta libre'}</div>
+      <div class="history-stats">
+        <div class="history-stat"><span class="hs-val" style="color:#ff5500">${e.speedMax}</span><span class="hs-lbl">km/h máx</span></div>
+        <div class="history-stat"><span class="hs-val" style="color:#ffb300">${e.speedAvg}</span><span class="hs-lbl">km/h med</span></div>
+        <div class="history-stat"><span class="hs-val" style="color:#29d9ff">${e.minWC != null ? (e.minWC > 0 ? '+' : '') + e.minWC + '°' : '--'}</span><span class="hs-lbl">sens. mín</span></div>
+        <div class="history-stat"><span class="hs-val" style="color:#00f0a0">${e.curvesTotal}</span><span class="hs-lbl">curvas</span></div>
+        <div class="history-stat"><span class="hs-val">${e.duration}</span><span class="hs-lbl">duración</span></div>
+        <div class="history-stat"><span class="hs-val" style="color:#ff5500">${e.maxAngle}°</span><span class="hs-lbl">máx ang</span></div>
+      </div>
+      <button class="history-view-btn" data-id="${e.id}">Ver informe completo →</button>
+    </div>
+  `).join('');
+
+  // Eventos
+  container.querySelectorAll('.history-delete').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      deleteFromHistory(parseInt(btn.dataset.id));
+    });
+  });
+  container.querySelectorAll('.history-view-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const entry = getHistory().find(e => e.id === parseInt(btn.dataset.id));
+      if (entry?.report) {
+        App.sessionReport = entry.report;
+        renderReport(entry.report);
+        $('report-panel')?.classList.add('show');
+      }
+    });
+  });
+}
 function buildReport() {
   const dur    = Date.now() - App.sessionStart;
   const speeds = App.sessionSamples.map(s => s.speed).filter(v => v != null);
@@ -622,7 +910,7 @@ function buildReport() {
   const maxAng = App.sessionCurves.length ? Math.max(...App.sessionCurves.map(c => c.maxAngle)) : 0;
   const avgAng = App.sessionCurves.length ? Math.round(App.sessionCurves.reduce((a,c)=>a+c.maxAngle,0)/App.sessionCurves.length*10)/10 : 0;
   return {
-    meta:   { mode: App.rideMode, destination: App.rideDestination, startTime: App.sessionStart, duration: dur, durationFmt: fmtDur(dur) },
+    meta:   { mode: App.rideMode, destination: App.rideDestination, startTime: App.sessionStart, duration: dur, durationFmt: fmtDur(dur), track: App.sessionSamples.filter(s=>s.lat).map(s=>({lat:s.lat,lon:s.lon})) },
     speed:  { max: speeds.length?Math.max(...speeds):0, avg: speeds.length?Math.round(speeds.reduce((a,b)=>a+b,0)/speeds.length):0, history: speeds },
     thermal:{ minWC: wcs.length?Math.min(...wcs):null, avgWC: wcs.length?Math.round(wcs.reduce((a,b)=>a+b,0)/wcs.length*10)/10:null, history: wcs },
     inclin: { maxAngle: Math.max(...rolls.map(Math.abs), 0), history: rolls },
@@ -638,32 +926,67 @@ function fmtDur(ms) {
 function renderReport(r) {
   const c = $('report-content');
   if (!c) return;
-  const title = r.meta.mode === 'route' ? 'Ruta a ' + r.meta.destination : 'Ruta libre';
-  const score = (r.speed.max>100?1:0)+(r.curves.total>5?1:0)+(r.inclin.maxAngle>20?1:0)+(r.curves.total>15?1:0)+(r.inclin.maxAngle>35?1:0);
+  const title  = r.meta.mode === 'route' ? 'Ruta a ' + r.meta.destination : 'Ruta libre';
+  const score  = (r.speed.max>100?1:0)+(r.curves.total>5?1:0)+(r.inclin.maxAngle>20?1:0)+(r.curves.total>15?1:0)+(r.inclin.maxAngle>35?1:0);
   const ratings = [
-    {s:0, r:'ROOKIE',     stars:1, d:'Ruta tranquila, buena para empezar.'},
-    {s:1, r:'ROOKIE',     stars:1, d:'Ruta tranquila, buena para empezar.'},
-    {s:2, r:'INTERMEDIO', stars:2, d:'Ruta variada con buen control.'},
-    {s:3, r:'AVANZADO',   stars:3, d:'Buen ritmo. Curvas bien trazadas.'},
-    {s:4, r:'EXPERTO',    stars:4, d:'Excelente manejo. Curvas y velocidad notables.'},
-    {s:5, r:'MOTOGP PRO', stars:5, d:'Ruta técnica e intensa. Gran nivel de pilotaje.'}
+    {r:'ROOKIE',     stars:1, d:'Ruta tranquila, buena para empezar.'},
+    {r:'ROOKIE',     stars:1, d:'Ruta tranquila, buena para empezar.'},
+    {r:'INTERMEDIO', stars:2, d:'Ruta variada con buen control.'},
+    {r:'AVANZADO',   stars:3, d:'Buen ritmo. Curvas bien trazadas.'},
+    {r:'EXPERTO',    stars:4, d:'Excelente manejo. Curvas y velocidad notables.'},
+    {r:'MOTOGP PRO', stars:5, d:'Ruta técnica e intensa. Gran nivel de pilotaje.'}
   ];
   const rating = ratings[Math.min(score, 5)];
+  const prev   = getPreviousReport();
+  const badges = computeBadges(r);
 
   c.innerHTML = `
     <div class="report-wrap">
+
+      <!-- CABECERA -->
       <div class="report-header">
         <div class="report-logo">🏍 BIKERWEATHER</div>
-        <div class="report-title">${title}</div>
-        <div class="report-date">${new Date(r.meta.startTime).toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
-        <div class="report-duration">Duración: <strong>${r.meta.durationFmt}</strong></div>
+        <div class="report-header-top">
+          <div>
+            <div class="report-title">${title}</div>
+            <div class="report-date">${new Date(r.meta.startTime).toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+            <div class="report-duration">Duración: <strong>${r.meta.durationFmt}</strong></div>
+          </div>
+          ${trackMinimapSVG(r.meta.track || [])}
+        </div>
       </div>
+
+      <!-- KPIs -->
       <div class="report-kpis">
-        <div class="report-kpi"><div class="kpi-value" style="color:#ff5500">${r.speed.max} km/h</div><div class="kpi-label">VEL. MÁXIMA</div></div>
-        <div class="report-kpi"><div class="kpi-value" style="color:#ffb300">${r.speed.avg} km/h</div><div class="kpi-label">VEL. MEDIA</div></div>
-        <div class="report-kpi"><div class="kpi-value" style="color:#29d9ff">${r.thermal.minWC != null ? (r.thermal.minWC>0?'+':'')+r.thermal.minWC+'°C' : '--'}</div><div class="kpi-label">SENSACIÓN MÍN.</div></div>
-        <div class="report-kpi"><div class="kpi-value" style="color:#00f0a0">${r.curves.total}</div><div class="kpi-label">CURVAS TOTALES</div></div>
+        <div class="report-kpi">
+          <div class="kpi-value" style="color:#ff5500">${r.speed.max} km/h</div>
+          <div class="kpi-label">VEL. MÁXIMA</div>
+          ${prev ? compareKpi(r.speed.max, prev.speed.max, 'km/h', true) : ''}
+        </div>
+        <div class="report-kpi">
+          <div class="kpi-value" style="color:#ffb300">${r.speed.avg} km/h</div>
+          <div class="kpi-label">VEL. MEDIA</div>
+          ${prev ? compareKpi(r.speed.avg, prev.speed.avg, 'km/h', true) : ''}
+        </div>
+        <div class="report-kpi">
+          <div class="kpi-value" style="color:#29d9ff">${r.thermal.minWC != null ? (r.thermal.minWC>0?'+':'')+r.thermal.minWC+'°C' : '--'}</div>
+          <div class="kpi-label">SENSACIÓN MÍN.</div>
+          ${prev && prev.thermal.minWC != null && r.thermal.minWC != null ? compareKpi(r.thermal.minWC, prev.thermal.minWC, '°C', false) : ''}
+        </div>
+        <div class="report-kpi">
+          <div class="kpi-value" style="color:#00f0a0">${r.curves.total}</div>
+          <div class="kpi-label">CURVAS TOTALES</div>
+          ${prev ? compareKpi(r.curves.total, prev.curves.total, '', true) : ''}
+        </div>
       </div>
+
+      <!-- BADGES -->
+      ${badges.length ? '<div class="badges-row">' + badges.map(b=>'<div class="badge-item"><span class="badge-icon">'+b.icon+'</span><span class="badge-name">'+b.name+'</span></div>').join('') + '</div>' : ''}
+
+      <!-- COMPARATIVA CON RUTA ANTERIOR -->
+      ${prev ? comparisonBlock(r, prev) : ''}
+
+      <!-- CURVAS -->
       <div class="report-section">
         <div class="report-section-title">ANÁLISIS DE CURVAS</div>
         <div class="report-curves-grid">
@@ -673,6 +996,8 @@ function renderReport(r) {
         </div>
         ${angleDistChart(r.curves.list)}
       </div>
+
+      <!-- GRÁFICOS -->
       <div class="report-section">
         <div class="report-section-title">PERFIL DE VELOCIDAD</div>
         ${lineChartSVG(r.speed.history, '#ff5500', 0, Math.max(r.speed.max,20), 'km/h')}
@@ -685,7 +1010,11 @@ function renderReport(r) {
         <div class="report-section-title">SENSACIÓN TÉRMICA EN RUTA</div>
         ${lineChartSVG(r.thermal.history, '#29d9ff', r.thermal.minWC != null ? r.thermal.minWC-2 : 0, r.thermal.avgWC != null ? r.thermal.avgWC+5 : 20, '°C')}
       </div>
+
+      <!-- TOP CURVAS -->
       ${topCurvesHTML(r.curves.list)}
+
+      <!-- CLASIFICACIÓN -->
       <div class="report-section report-rating">
         <div class="report-section-title">CLASIFICACIÓN DE PILOTO</div>
         <div class="rating-content">
@@ -694,8 +1023,113 @@ function renderReport(r) {
           <div class="rating-desc">${rating.d}</div>
         </div>
       </div>
+
       <div class="report-footer">Generado por BikerWeather · ${new Date().toLocaleString('es-ES')}</div>
     </div>`;
+}
+
+/* ── Miniatura de trayectoria ── */
+function trackMinimapSVG(track) {
+  if (!track || track.length < 2) return '<div class="track-minimap-empty">Sin trayectoria</div>';
+  const W = 80, H = 80, pad = 6;
+  const lats = track.map(p => p.lat), lons = track.map(p => p.lon);
+  const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+  const minLon = Math.min(...lons), maxLon = Math.max(...lons);
+  const ranLat = maxLat - minLat || 0.001;
+  const ranLon = maxLon - minLon || 0.001;
+  const toX = lon => pad + ((lon - minLon) / ranLon) * (W - pad*2);
+  const toY = lat => pad + ((maxLat - lat) / ranLat) * (H - pad*2);
+  const pts = track.map(p => toX(p.lon) + ',' + toY(p.lat)).join(' ');
+  const start = track[0], end = track[track.length-1];
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="track-minimap">
+    <rect width="${W}" height="${H}" rx="4" fill="#0f0f18" stroke="rgba(255,85,0,0.2)" stroke-width="1"/>
+    <polyline points="${pts}" fill="none" stroke="#ff5500" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.8"/>
+    <circle cx="${toX(start.lon)}" cy="${toY(start.lat)}" r="3" fill="#00f0a0"/>
+    <circle cx="${toX(end.lon)}"   cy="${toY(end.lat)}"   r="3" fill="#ff2255"/>
+  </svg>`;
+}
+
+/* ── Flecha comparativa KPI ── */
+function compareKpi(current, previous, unit, higherIsBetter) {
+  if (previous == null) return '';
+  const diff = current - previous;
+  if (diff === 0) return '<div class="kpi-compare neutral">= igual</div>';
+  const better = higherIsBetter ? diff > 0 : diff < 0;
+  const arrow  = diff > 0 ? '▲' : '▼';
+  const color  = better ? '#00f0a0' : '#ff2255';
+  const sign   = diff > 0 ? '+' : '';
+  return `<div class="kpi-compare" style="color:${color}">${arrow} ${sign}${Math.round(diff*10)/10}${unit} vs anterior</div>`;
+}
+
+/* ── Bloque comparativa completa ── */
+function comparisonBlock(r, prev) {
+  return `
+    <div class="report-section">
+      <div class="report-section-title">VS RUTA ANTERIOR</div>
+      <div class="comparison-grid">
+        ${compRow('Vel. máxima',   r.speed.max,        prev.speed.max,        'km/h', true)}
+        ${compRow('Vel. media',    r.speed.avg,        prev.speed.avg,        'km/h', true)}
+        ${compRow('Curvas',        r.curves.total,     prev.curves.total,     '',     true)}
+        ${compRow('Ángulo máx.',   r.curves.maxAngle,  prev.curves.maxAngle,  '°',    true)}
+        ${compRow('Sens. mínima',  r.thermal.minWC,    prev.thermal.minWC,    '°C',   false)}
+      </div>
+    </div>`;
+}
+
+function compRow(label, current, previous, unit, higherIsBetter) {
+  if (current == null || previous == null) return '';
+  const diff   = current - previous;
+  const better = higherIsBetter ? diff >= 0 : diff <= 0;
+  const color  = diff === 0 ? '#5a5a7a' : better ? '#00f0a0' : '#ff2255';
+  const arrow  = diff > 0 ? '▲' : diff < 0 ? '▼' : '=';
+  const sign   = diff > 0 ? '+' : '';
+  return `<div class="comp-row">
+    <span class="comp-label">${label}</span>
+    <span class="comp-prev">${previous}${unit}</span>
+    <span class="comp-arrow" style="color:${color}">${arrow}</span>
+    <span class="comp-current" style="color:${color}">${current}${unit}</span>
+    <span class="comp-diff" style="color:${color}">${sign}${Math.round(diff*10)/10}${unit}</span>
+  </div>`;
+}
+
+/* ── Obtener ruta anterior del historial ── */
+function getPreviousReport() {
+  const history = getHistory();
+  return history.length >= 2 ? history[1].report : null;
+}
+
+/* ── Badges/medallas ── */
+function computeBadges(r) {
+  const history = getHistory();
+  const badges  = [];
+  const allSpeeds  = history.map(e => e.speedMax);
+  const allCurves  = history.map(e => e.curvesTotal);
+  const allAngles  = history.map(e => e.maxAngle);
+
+  if (r.thermal.minWC != null && r.thermal.minWC < 0)
+    badges.push({ icon:'🥶', name:'Bajo cero' });
+  if (r.thermal.minWC != null && r.thermal.minWC < -10)
+    badges.push({ icon:'🧊', name:'Gélido extremo' });
+  if (r.curves.total >= 50)
+    badges.push({ icon:'🔄', name:'50+ curvas' });
+  if (r.curves.total >= 100)
+    badges.push({ icon:'💯', name:'100 curvas' });
+  if (r.curves.maxAngle >= 45)
+    badges.push({ icon:'🏆', name:'45° inclinación' });
+  if (r.speed.max >= 150)
+    badges.push({ icon:'🚀', name:'+150 km/h' });
+  if (r.meta.durationFmt.includes('h'))
+    badges.push({ icon:'⏱', name:'Ruta larga' });
+  if (history.length === 1)
+    badges.push({ icon:'🌟', name:'Primera ruta' });
+  if (allSpeeds.length > 1 && r.speed.max >= Math.max(...allSpeeds))
+    badges.push({ icon:'⚡', name:'Récord velocidad' });
+  if (allCurves.length > 1 && r.curves.total >= Math.max(...allCurves))
+    badges.push({ icon:'🎯', name:'Récord curvas' });
+  if (allAngles.length > 1 && r.curves.maxAngle >= Math.max(...allAngles))
+    badges.push({ icon:'🔥', name:'Récord inclinación' });
+
+  return badges;
 }
 
 function lineChartSVG(data, color, min, max, unit) {
@@ -752,7 +1186,7 @@ function topCurvesHTML(list) {
   if (!list.length) return '';
   const top = [...list].sort((a,b)=>b.maxAngle-a.maxAngle).slice(0,5);
   return '<div class="report-section"><div class="report-section-title">TOP CURVAS MÁS PRONUNCIADAS</div><div class="top-curves-list">'+
-    top.map((c,i)=>'<div class="top-curve-row"><div class="tc-rank">#'+(i+1)+'</div><div class="tc-dir '+(c.dir==='L'?'left':'right')+'">'+(c.dir==='L'?'↰ IZQ':'↱ DER')+'</div><div class="tc-angle">'+c.maxAngle+'°</div><div class="tc-bar-wrap"><div class="tc-bar" style="width:'+Math.round(c.maxAngle/90*100)+'%;background:'+(c.dir==='L'?'#29d9ff':'#ff5500')+'"></div></div><div class="tc-dur">'+c.duration+'s</div></div>').join('')+
+    top.map((c,i)=>'<div class="top-curve-row"><div class="tc-rank">#'+(i+1)+'</div><div class="tc-dir '+(c.dir==='L'?'left':'right')+'">'+(c.dir==='L'?'↰ IZQ':'↱ DER')+'</div><div class="tc-angle">'+c.maxAngle+'°</div><div class="tc-bar-wrap"><div class="tc-bar" style="width:'+Math.round(c.maxAngle/90*100)+'%;background:'+(c.dir==='L'?'#29d9ff':'#ff5500')+'"></div></div><div class="tc-dur">'+c.speed+'km/h</div></div>').join('')+
   '</div></div>';
 }
 
@@ -785,6 +1219,9 @@ function initNav() {
       btn.classList.add('active');
       if (target === 'section-riding' && App.mapInitialized) {
         setTimeout(() => App.leafletMap.invalidateSize(), 100);
+      }
+      if (target === 'section-history') {
+        renderHistory();
       }
     });
   });
@@ -919,6 +1356,32 @@ function initGpsDiag() {
    MAIN
 ═══════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', async () => {
+  // PWA Install prompt
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const banner = document.getElementById('install-banner');
+    if (banner) banner.style.display = 'flex';
+  });
+  window.addEventListener('appinstalled', () => {
+    const banner = document.getElementById('install-banner');
+    if (banner) banner.style.display = 'none';
+    deferredPrompt = null;
+  });
+  document.getElementById('btn-install')?.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    const banner = document.getElementById('install-banner');
+    if (banner) banner.style.display = 'none';
+  });
+  document.getElementById('btn-install-close')?.addEventListener('click', () => {
+    const banner = document.getElementById('install-banner');
+    if (banner) banner.style.display = 'none';
+  });
+
   // Service worker
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 
@@ -929,6 +1392,33 @@ document.addEventListener('DOMContentLoaded', async () => {
   initRidingControls();
   initReportControls();
   initGpsDiag();
+
+  // Planificador inteligente
+  $('btn-plan-go')?.addEventListener('click', runPlanner);
+  $('btn-plan-myloc')?.addEventListener('click', () => {
+    if (App.position) {
+      $('plan-origin').value = 'Mi posición (' + App.position.lat.toFixed(4) + ', ' + App.position.lon.toFixed(4) + ')';
+    } else {
+      toast('Esperando GPS…', 'info');
+    }
+  });
+  // Hora de salida por defecto = ahora
+  const planTime = $('plan-time');
+  if (planTime) {
+    const now = new Date();
+    now.setMinutes(0, 0, 0);
+    planTime.value = now.toISOString().slice(0, 16);
+  }
+  $('plan-dest')?.addEventListener('keydown', e => { if (e.key === 'Enter') runPlanner(); });
+
+  // Historial
+  renderHistory();
+  $('btn-clear-history')?.addEventListener('click', () => {
+    if (confirm('¿Borrar todo el historial de rutas?')) {
+      localStorage.removeItem(HISTORY_KEY);
+      renderHistory();
+    }
+  });
 
   // Calibrar giroscopio
   $('btn-calibrate')?.addEventListener('click', () => { toast('Calibrado ✓', 'ok'); });
