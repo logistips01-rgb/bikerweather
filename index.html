@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#050508" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="BikerWeather" />
+  <meta name="description" content="Sensación térmica real para motoristas. GPS + velocidad + tiempo." />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <title>BikerWeather</title>
+</head>
+<body>
+
+<div id="offline-banner" class="offline-banner">⚡ SIN CONEXIÓN — Datos en caché</div>
+<div id="toast-container"></div>
+
+<div id="app">
+
+  <!-- ══ HEADER ══ -->
+  <header class="app-header">
+    <div class="logo">
+      <div class="logo-icon">🏍</div>
+      <div>
+        <div class="logo-text">Biker<em>Weather</em></div>
+        <span class="logo-sub">Wind Chill Calculator</span>
+      </div>
+    </div>
+    <div class="hdr-right">
+      <div class="status-pills">
+        <div id="status-gps" class="status-pill">
+          <span class="dot"></span>GPS
+        </div>
+        <div id="status-weather" class="status-pill">
+          <span class="dot"></span>MET
+        </div>
+        <div id="status-gyro" class="status-pill">
+          <span class="dot"></span>GYR
+        </div>
+      </div>
+      <button id="wakelock-badge" class="wakelock-btn">
+        <span class="wl-dot"></span>
+        <span class="wl-text">SCREEN</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ══ MAIN ══ -->
+  <main>
+
+    <!-- Ubicación -->
+    <div class="location-bar">
+      <div class="loc-ping"></div>
+      <span id="loc-name" class="loc-name">Adquiriendo ubicación…</span>
+      <span id="loc-coords" class="loc-coords">—</span>
+    </div>
+
+    <!-- ════════════════════════════
+         TAB 1: DASHBOARD
+    ════════════════════════════ -->
+    <div id="section-dashboard" class="section active">
+
+      <!-- HERO: sensación térmica -->
+      <div class="hero-block">
+        <div class="hero-glow"></div>
+        <div class="hero-inner">
+          <div class="hero-label-row">
+            <span class="hero-label">SENSACIÓN TÉRMICA</span>
+            <span id="wc-emoji" class="hero-emoji">🌡</span>
+          </div>
+          <div>
+            <span id="wc-value" class="temp-giant cool">--</span><span class="temp-unit-float">°C</span>
+          </div>
+          <div id="wc-class" class="hero-class">calculando…</div>
+
+          <div class="hero-divider"></div>
+
+          <div class="hero-stats">
+            <div class="hero-stat">
+              <div id="real-temp" class="hstat-val amber">--°</div>
+              <div class="hstat-lbl">Temp. real</div>
+            </div>
+            <div class="hero-stat">
+              <div id="eff-speed" class="hstat-val orange">-- km/h</div>
+              <div class="hstat-lbl">Vel. efectiva</div>
+            </div>
+            <div class="hero-stat">
+              <div id="w-wind-hero" class="hstat-val ice">-- km/h</div>
+              <div class="hstat-lbl">Viento</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Barra de confort -->
+        <div class="comfort-section">
+          <div class="comfort-labels">
+            <span>❄ GÉLIDO</span>
+            <span>CONFORT</span>
+            <span>🔥 CALOR</span>
+          </div>
+          <div class="comfort-track">
+            <div id="comfort-needle" class="comfort-needle" style="left:50%"></div>
+          </div>
+        </div>
+
+        <!-- Recomendación equipo -->
+        <div class="gear-rec-row">
+          <span class="gear-icon">🧥</span>
+          <span id="gear-rec" class="gear-text">—</span>
+        </div>
+      </div>
+
+      <!-- VELOCIDAD GPS -->
+      <div class="speed-panel">
+        <div class="panel-hdr">
+          <span class="panel-hdr-lbl">VELOCIDAD GPS</span>
+          <span style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-dim);letter-spacing:0.08em">TIEMPO REAL</span>
+        </div>
+        <div class="speed-body">
+          <div class="speed-top">
+            <span id="gps-speed-value" class="speed-big">--</span>
+            <span class="speed-kmh">km/h</span>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:0.62rem;color:var(--text-dim);margin-top:-4px;letter-spacing:0.05em">
+            Velocidad leída del GPS del dispositivo
+          </div>
+        </div>
+      </div>
+
+      <!-- CONDICIONES -->
+      <div class="weather-panel">
+        <div class="panel-hdr">
+          <span class="panel-hdr-lbl">CONDICIONES ACTUALES</span>
+          <span id="last-update" class="last-update-bar" style="padding:0;font-size:0.52rem;color:var(--text-muted)">—</span>
+        </div>
+
+        <!-- Alertas -->
+        <div id="hazards-list" class="hazard-strip">
+          <span class="hazard-ok" style="color:var(--text-muted)">Sin datos</span>
+        </div>
+
+        <!-- Tiempo principal -->
+        <div class="condition-row">
+          <span id="w-condition-emoji" class="condition-emoji">🌡</span>
+          <div>
+            <div id="w-condition" class="condition-text">Sin datos</div>
+            <div id="w-condition-sub" class="condition-meta">Esperando ubicación…</div>
+          </div>
+        </div>
+
+        <!-- Grid datos -->
+        <div class="weather-grid">
+          <div class="w-cell">
+            <span class="w-cell-icon">🌡</span>
+            <span id="w-temp" class="w-cell-val">--</span>
+            <span class="w-cell-lbl">Temperatura</span>
+          </div>
+          <div class="w-cell">
+            <span class="w-cell-icon">💧</span>
+            <span id="w-humidity" class="w-cell-val">--</span>
+            <span class="w-cell-lbl">Humedad</span>
+          </div>
+          <div class="w-cell">
+            <span class="w-cell-icon">🌬</span>
+            <span id="w-wind" class="w-cell-val">--</span>
+            <span class="w-cell-lbl">Viento</span>
+          </div>
+          <div class="w-cell">
+            <span class="w-cell-icon">💨</span>
+            <span id="w-gust" class="w-cell-val">--</span>
+            <span class="w-cell-lbl">Ráfagas</span>
+          </div>
+          <div class="w-cell">
+            <span class="w-cell-icon">🧭</span>
+            <span id="w-winddir" class="w-cell-val">--</span>
+            <span class="w-cell-lbl">Dir. viento</span>
+          </div>
+          <div class="w-cell">
+            <span class="w-cell-icon">📊</span>
+            <span id="w-pressure" class="w-cell-val">--</span>
+            <span class="w-cell-lbl">Presión hPa</span>
+          </div>
+        </div>
+
+        <div class="last-update-bar">Act. <span id="last-update">—</span></div>
+      </div>
+
+    </div><!-- /dashboard -->
+
+    <!-- ════════════════════════════
+         TAB 2: RUTA
+    ════════════════════════════ -->
+    <div id="section-route" class="section">
+
+      <div class="input-card">
+        <p class="input-desc">
+          Introduce tu destino. BikerWeather calculará la sensación de frío en 3 puntos
+          intermedios de la ruta usando tu velocidad actual.
+        </p>
+        <div class="input-row">
+          <input id="dest-input" type="text" placeholder="Destino: Pamplona, Teruel…" autocomplete="off" />
+          <button id="btn-route" class="btn btn-primary">IR</button>
+        </div>
+        <button id="btn-clear-route" class="btn" style="font-size:0.75rem;padding:6px 12px">✕ Limpiar ruta</button>
+      </div>
+
+      <!-- Velocidad para la ruta (manual) -->
+      <div class="speed-panel">
+        <div class="panel-hdr">
+          <span class="panel-hdr-lbl">VELOCIDAD DE VIAJE</span>
+          <span style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-dim);letter-spacing:0.08em">PARA CALCULAR RUTA</span>
+        </div>
+        <div class="speed-body">
+          <div class="speed-top">
+            <span id="speed-value" class="speed-big">80</span>
+            <span class="speed-kmh">km/h</span>
+          </div>
+          <input id="speed-slider" type="range" min="0" max="220" value="80" step="5" />
+          <div class="speed-presets">
+            <button class="speed-preset" data-speed="30">30</button>
+            <button class="speed-preset" data-speed="50">50</button>
+            <button class="speed-preset active" data-speed="80">80</button>
+            <button class="speed-preset" data-speed="100">100</button>
+            <button class="speed-preset" data-speed="120">120</button>
+            <button class="speed-preset" data-speed="150">150</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="waypoints-panel">
+        <div class="panel-hdr">
+          <span class="panel-hdr-lbl">PUNTOS INTERMEDIOS</span>
+          <span class="route-spd-badge">a <span id="route-speed-lbl">80</span> km/h</span>
+        </div>
+        <div id="waypoints-list" class="waypoints-list">
+          <p class="no-route">Introduce un destino para ver la ruta</p>
+        </div>
+      </div>
+
+    </div><!-- /route -->
+
+    <!-- ════════════════════════════
+         TAB 3: EN RUTA
+    ════════════════════════════ -->
+    <div id="section-riding" class="section riding-section">
+
+      <!-- Controles de inicio (visibles antes de empezar) -->
+      <div id="pre-ride-controls" style="display:flex;flex-direction:column;gap:8px;">
+
+        <!-- Selector de modo -->
+        <div class="mode-selector">
+          <button class="mode-btn active" id="mode-free">🗺 Ruta libre</button>
+          <button class="mode-btn" id="mode-dest">📍 Con destino</button>
+        </div>
+
+        <!-- Input destino (solo en modo con destino) -->
+        <div class="route-dest-wrap hidden" id="ride-dest-wrap">
+          <input id="ride-dest-input" type="text" placeholder="Destino: Logroño, Teruel…" autocomplete="off" />
+        </div>
+
+        <!-- Botón iniciar -->
+        <button class="btn-start-route" id="btn-start-route">▶ INICIAR RUTA</button>
+      </div>
+
+      <!-- Mapa con HUD (visible durante la sesión) -->
+      <div id="map-container" style="display:none;position:relative;">
+        <!-- El mapa se renderiza aquí por Leaflet -->
+        <div id="leaflet-map" style="width:100%;height:100%;"></div>
+
+        <!-- Timer sesión -->
+        <div id="session-timer" class="session-timer">
+          <span class="dot"></span><span id="session-time">00:00</span>
+        </div>
+
+        <!-- HUD overlay -->
+        <div class="riding-hud">
+          <!-- Superior: velocidad + sensación + horizonte -->
+          <div class="hud-top">
+            <div class="hud-speed-card">
+              <div id="hud-speed" class="hud-speed-val">0</div>
+              <div class="hud-speed-lbl">km/h</div>
+            </div>
+            <div class="hud-wc-card">
+              <div id="hud-wc" class="hud-wc-val">--</div>
+              <div class="hud-wc-lbl">°C sensación</div>
+              <div id="hud-wc-class" class="hud-wc-class">—</div>
+            </div>
+            <div class="hud-horizon-card">
+              <div class="hud-horizon-mini">
+                <div id="hud-horizon-bar" class="hud-horizon-bar"></div>
+              </div>
+              <div id="hud-roll-val" class="hud-roll-val">0°</div>
+              <div id="hud-roll-dir" class="hud-roll-dir">—</div>
+            </div>
+          </div>
+
+          <!-- Flash curva detectada -->
+          <div id="curve-flash" class="curve-flash"></div>
+
+          <!-- Inferior: curvas + botón fin -->
+          <div class="hud-bottom">
+            <div class="hud-curves">
+              <div class="hud-curve-badge left">↰ <span id="hud-curves-l" class="hud-curve-num">0</span></div>
+              <div class="hud-curve-badge right">↱ <span id="hud-curves-r" class="hud-curve-num">0</span></div>
+            </div>
+            <button class="btn-stop-route" id="btn-stop-route" style="display:flex;">⏹ FINALIZAR RUTA</button>
+          </div>
+        </div>
+
+        <!-- Botón recentrar -->
+        <button class="btn-recenter" id="btn-recenter" title="Recentrar mapa">◎</button>
+      </div>
+
+    </div><!-- /section-riding -->
+
+    <!-- ════════════════════════════
+         TAB 4: GIROSCOPIO
+    ════════════════════════════ -->
+    <div id="section-gyro" class="section">
+
+      <div class="gyro-panel">
+        <div class="panel-hdr">
+          <span class="panel-hdr-lbl">INCLINACIÓN EN TIEMPO REAL</span>
+          <button id="btn-calibrate" class="btn" style="padding:4px 10px;font-size:0.68rem">⊕ Calibrar</button>
+        </div>
+
+        <!-- Horizon -->
+        <div class="horizon-wrap">
+          <div class="horizon-target"></div>
+          <div id="bike-horizon" class="horizon-bar"></div>
+        </div>
+
+        <!-- Readouts -->
+        <div class="gyro-readouts">
+          <div class="gyro-cell">
+            <div id="gyro-roll" class="gyro-val">0°</div>
+            <div class="gyro-lbl">Roll lateral</div>
+          </div>
+          <div class="gyro-cell">
+            <div id="gyro-head" class="gyro-val amber">0°</div>
+            <div class="gyro-lbl">Rumbo</div>
+          </div>
+          <div class="gyro-cell">
+            <div id="gyro-pitch" class="gyro-val">0°</div>
+            <div class="gyro-lbl">Pitch frente</div>
+          </div>
+        </div>
+
+        <!-- Barras -->
+        <div class="gyro-bars">
+          <div class="axis-row">
+            <span class="axis-name">Roll</span>
+            <div class="axis-track"><div id="bar-roll" class="axis-fill" style="width:0%"></div></div>
+            <span id="axis-roll-num" class="axis-num">0°</span>
+          </div>
+          <div class="axis-row">
+            <span class="axis-name">Pitch</span>
+            <div class="axis-track"><div id="bar-pitch" class="axis-fill" style="width:0%"></div></div>
+            <span id="axis-pitch-num" class="axis-num">0°</span>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="gyro-footer">
+          <p class="gyro-tip">
+            Coloca el móvil en el manillar o depósito en posición estable.
+            Pulsa <strong style="color:var(--orange)">Calibrar</strong> con la moto recta para fijar el punto cero.
+          </p>
+          <button id="btn-calibrate2" class="btn btn-primary" style="align-self:flex-start">⊕ Calibrar posición</button>
+        </div>
+      </div>
+
+      <!-- Estado sensores -->
+      <div class="sensors-card">
+        <div class="panel-hdr" style="padding:8px 14px 7px">
+          <span class="panel-hdr-lbl">SOPORTE DE APIS</span>
+        </div>
+        <div class="sensor-row">
+          <span class="sensor-name">DeviceOrientation API</span>
+          <span id="sensor-orient" class="sensor-val">—</span>
+        </div>
+        <div class="sensor-row">
+          <span class="sensor-name">DeviceMotion API</span>
+          <span id="sensor-motion" class="sensor-val">—</span>
+        </div>
+        <div class="sensor-row">
+          <span class="sensor-name">Screen Wake Lock API</span>
+          <span id="sensor-wakelock" class="sensor-val">—</span>
+        </div>
+        <div class="sensor-row">
+          <span class="sensor-name">Geolocation API</span>
+          <span id="sensor-geo" class="sensor-val">—</span>
+        </div>
+      </div>
+
+    </div><!-- /gyro -->
+
+  </main>
+
+  <!-- ══ BOTTOM NAV ══ -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-section="section-dashboard">
+      <span class="nav-icon">🏍</span>
+      <span class="nav-lbl">Dashboard</span>
+    </button>
+    <button class="nav-btn" data-section="section-route">
+      <span class="nav-icon">🗺</span>
+      <span class="nav-lbl">Ruta</span>
+    </button>
+    <button class="nav-btn" data-section="section-riding">
+      <span class="nav-icon">▶</span>
+      <span class="nav-lbl">En Ruta</span>
+    </button>
+    <button class="nav-btn" data-section="section-gyro">
+      <span class="nav-icon">⚖️</span>
+      <span class="nav-lbl">Inclinación</span>
+    </button>
+  </nav>
+
+</div><!-- /app -->
+
+<!-- Panel de informe (pantalla completa) -->
+<div id="report-panel" class="report-panel">
+  <div class="report-panel-header">
+    <div class="report-panel-title">📊 Informe de Ruta</div>
+    <button class="btn-close-report" id="btn-close-report">✕</button>
+  </div>
+  <div class="report-scroll">
+    <div id="report-content"></div>
+    <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
+      <button class="btn-whatsapp" id="btn-whatsapp">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        Compartir por WhatsApp
+      </button>
+      <button class="btn" id="btn-new-route" style="padding:12px">↩ Nueva ruta</button>
+    </div>
+  </div>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/app.bundle.js"></script>
+
+</body>
+</html>
