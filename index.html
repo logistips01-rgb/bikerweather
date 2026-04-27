@@ -370,7 +370,60 @@
     </div>
 
     <!-- ════════════════════════════
-         TAB 5: GIROSCOPIO
+         TAB 5: SOCIAL
+    ════════════════════════════ -->
+    <div id="section-social" class="section">
+
+      <!-- Nickname -->
+      <div class="input-card">
+        <div class="panel-hdr-lbl" style="margin-bottom:8px">TU NOMBRE EN EL RANKING</div>
+        <div class="input-row">
+          <input id="nickname-input" type="text" placeholder="Tu nombre de piloto…" maxlength="20" autocomplete="off" />
+          <button id="btn-save-nickname" class="btn btn-primary">Guardar</button>
+        </div>
+      </div>
+
+      <!-- Compartir ruta en tiempo real -->
+      <div class="input-card">
+        <div class="panel-hdr-lbl" style="margin-bottom:6px">📡 COMPARTIR RUTA EN TIEMPO REAL</div>
+        <p style="font-family:var(--font-mono);font-size:0.62rem;color:var(--text-dim);line-height:1.6;margin-bottom:10px">
+          Comparte tu telemetría en directo — velocidad, inclinación y sensación térmica — con quien quieras.
+        </p>
+        <button id="btn-share-start" class="btn btn-primary" style="width:100%">📡 Iniciar compartir</button>
+        <div id="share-controls" style="display:none;flex-direction:column;gap:8px;margin-top:8px">
+          <div style="display:flex;gap:6px">
+            <input id="share-url-box" type="text" readonly style="flex:1;font-size:0.65rem" />
+            <button id="btn-share-copy" class="btn" style="padding:9px 10px">📋</button>
+            <button id="btn-share-wa"   class="btn" style="padding:9px 10px;background:#25D366;border-color:#25D366;color:#fff">WhatsApp</button>
+          </div>
+          <button id="btn-share-stop" class="btn" style="border-color:rgba(255,34,85,0.3);color:var(--red)">⏹ Detener compartir</button>
+        </div>
+      </div>
+
+      <!-- Panel de observación (oculto por defecto, visible en modo watch) -->
+      <div id="watch-panel" style="display:none;flex-direction:column;gap:0;background:var(--panel);border:1px solid rgba(255,85,0,0.3);border-radius:var(--r2);overflow:hidden">
+        <div class="panel-hdr"><span class="panel-hdr-lbl">👁 VIENDO EN DIRECTO</span><span id="watch-nickname" style="font-family:var(--font-mono);font-size:0.6rem;color:var(--orange)"></span></div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border-dim)">
+          <div class="w-cell"><span class="w-cell-icon">🚀</span><span id="watch-speed" class="w-cell-val">--</span><span class="w-cell-lbl">Velocidad</span></div>
+          <div class="w-cell"><span class="w-cell-icon">⚖️</span><span id="watch-roll"  class="w-cell-val">--</span><span class="w-cell-lbl">Inclinación</span></div>
+          <div class="w-cell"><span class="w-cell-icon">🌡</span><span id="watch-wc"    class="w-cell-val">--</span><span class="w-cell-lbl">Sensación</span></div>
+          <div class="w-cell"><span class="w-cell-icon">🌡</span><span id="watch-temp"  class="w-cell-val">--</span><span class="w-cell-lbl">Temp. real</span></div>
+        </div>
+      </div>
+
+      <!-- Ranking global -->
+      <div class="panel-hdr" style="padding:10px 0 6px">
+        <span class="panel-hdr-lbl">🏆 RANKING GLOBAL</span>
+        <button id="btn-reload-ranking" class="btn" style="padding:4px 10px;font-size:0.68rem">↻ Actualizar</button>
+      </div>
+      <div id="ranking-list" style="display:flex;flex-direction:column;gap:6px">
+        <p class="no-route" style="padding:20px">Conectando…</p>
+      </div>
+
+    </div><!-- /social -->
+
+    <!-- ════════════════════════════
+         TAB 6: GIROSCOPIO
     ════════════════════════════ -->
     <div id="section-gyro" class="section">
 
@@ -449,6 +502,23 @@
         </div>
       </div>
 
+      <!-- Configuración emergencia y radar -->
+      <div class="sensors-card">
+        <div class="panel-hdr" style="padding:8px 14px 7px">
+          <span class="panel-hdr-lbl">🆘 CONTACTO DE EMERGENCIA</span>
+        </div>
+        <div style="padding:10px 14px 12px;display:flex;flex-direction:column;gap:8px">
+          <p style="font-family:var(--font-mono);font-size:0.68rem;color:#8888aa;line-height:1.6">
+            Si BikerWeather detecta una posible caída, enviará tu ubicación por WhatsApp a este número.
+          </p>
+          <div class="input-row">
+            <input id="emergency-phone" type="tel" placeholder="+34 600 000 000" autocomplete="tel" />
+            <button id="btn-save-emergency" class="btn btn-primary">Guardar</button>
+          </div>
+          <div id="emergency-status" style="font-family:var(--font-mono);font-size:0.65rem;color:#8888aa"></div>
+        </div>
+      </div>
+
     </div><!-- /gyro -->
 
   </main>
@@ -470,6 +540,10 @@
     <button class="nav-btn" data-section="section-history">
       <span class="nav-icon">📋</span>
       <span class="nav-lbl">Historial</span>
+    </button>
+    <button class="nav-btn" data-section="section-social">
+      <span class="nav-icon">🏆</span>
+      <span class="nav-lbl">Social</span>
     </button>
     <button class="nav-btn" data-section="section-gyro">
       <span class="nav-icon">⚖️</span>
