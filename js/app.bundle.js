@@ -805,6 +805,7 @@ function stopSession() {
   const report = buildReport();
   App.sessionReport = report;
   saveRouteToHistory(report);
+  uploadRouteToRanking(report);
   renderReport(report);
   $('report-panel')?.classList.add('show');
 }
@@ -1433,6 +1434,61 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.addEventListener('online',  () => { const b=$('offline-banner'); if(b) b.classList.remove('show'); });
   window.addEventListener('offline', () => { const b=$('offline-banner'); if(b) b.classList.add('show'); });
 
+  // Contacto de emergencia
+  const savedPhone = localStorage.getItem('bw_emergency_phone');
+  if (savedPhone) {
+    const ep = $('emergency-phone');
+    if (ep) ep.value = savedPhone;
+    const es = $('emergency-status');
+    if (es) es.textContent = '✓ Guardado: ' + savedPhone;
+  }
+  $('btn-save-emergency')?.addEventListener('click', () => {
+    const input = $('emergency-phone');
+    const phone = input?.value?.trim();
+    if (!phone) { toast('Introduce un número', 'info'); return; }
+    localStorage.setItem('bw_emergency_phone', phone);
+    const es = $('emergency-status');
+    if (es) es.textContent = '✓ Guardado: ' + phone;
+    toast('Contacto de emergencia guardado ✓', 'ok');
+  });
+
+  // Detección de caída
+  startFallDetection();
+
+  // Firebase — init social
+  initFirebase().catch(e => console.warn('[FB]', e));
+  checkWatchMode();
+
+  // Nickname
+  const savedNick = localStorage.getItem('bw_nickname');
+  if (savedNick) { const ni = $('nickname-input'); if (ni) ni.value = savedNick; }
+  $('btn-save-nickname')?.addEventListener('click', saveNickname);
+
+  // Compartir
+  $('btn-share-start')?.addEventListener('click', startSharing);
+  $('btn-share-stop')?.addEventListener('click', stopSharing);
+  $('btn-share-copy')?.addEventListener('click', () => {
+    const box = $('share-url-box');
+    if (box) { navigator.clipboard.writeText(box.value); toast('Enlace copiado ✓', 'ok'); }
+  });
+  $('btn-share-wa')?.addEventListener('click', () => {
+    const box = $('share-url-box');
+    if (box) window.open('https://wa.me/?text=' + encodeURIComponent('¡Sígueme en directo en BikerWeather! 🏍\n' + box.value), '_blank');
+  });
+
+  // Ranking
+  $('btn-reload-ranking')?.addEventListener('click', loadRanking);
+
+  // Subir al ranking al finalizar sesión (añadir en stopSession)
+  // Se llama desde stopSession via uploadRouteToRanking
+
+  // Social tab → recargar ranking
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.section === 'section-social') loadRanking();
+    });
+  });
+
   // GPS — arrancar
   startGPS();
 
@@ -1446,3 +1502,455 @@ document.addEventListener('DOMContentLoaded', async () => {
     sl.addEventListener('input', upd); upd();
   }
 });
+
+/* ═══════════════════════════════════════
+   FIREBASE — Fase Social
+═══════════════════════════════════════ */
+
+const FB_CONFIG = {
+  apiKey:            "AIzaSyAedjK5EdwfnENt1rtbLBXMcPreeYTC0qY",
+  authDomain:        "bikerweather-1b89f.firebaseapp.com",
+  projectId:         "bikerweather-1b89f",
+  storageBucket:     "bikerweather-1b89f.firebasestorage.app",
+  messagingSenderId: "469242801037",
+  appId:             "1:469242801037:web:b48b5dacee917d82552bc4",
+  databaseURL:       "https://bikerweather-1b89f-default-rtdb.europe-west1.firebasedatabase.app"
+};
+
+let fbApp, fbAuth, fbDb, fbRtDb, fbUser;
+let sharingActive   = false;
+let sharingInterval = null;
+let shareSessionId  = null;
+let watchingId      = null;
+
+async function initFirebase() {
+  try {
+    const { initializeApp }          = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+    const { getAuth, signInAnonymously, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+    const { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, doc, setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const { getDatabase, ref, set, onValue, remove, off }   = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
+
+    fbApp  = initializeApp(FB_CONFIG);
+    fbAuth = getAuth(fbApp);
+    fbDb   = getFirestore(fbApp);
+    fbRtDb = getDatabase(fbApp);
+
+    // Login anónimo
+    await signInAnonymously(fbAuth);
+    onAuthStateChanged(fbAuth, user => {
+      if (user) {
+        fbUser = user;
+        App.fbUserId = user.uid;
+        console.log('[FB] Usuario:', user.uid);
+        loadRanking();
+        startRadar();
+      }
+    });
+
+    // Guardar helpers globales para usar en otras funciones
+    App._fb = { collection, addDoc, getDocs, query, orderBy, limit, doc, setDoc, serverTimestamp, ref, set, onValue, remove, off };
+    return true;
+  } catch(e) {
+    console.error('[FB] Error init:', e);
+    return false;
+  }
+}
+
+/* ── Subir ruta al ranking ── */
+async function uploadRouteToRanking(report) {
+  if (!fbUser || !App._fb) return;
+  const { collection, addDoc, serverTimestamp } = App._fb;
+  try {
+    const nickname = localStorage.getItem('bw_nickname') || 'Motorista';
+    await addDoc(collection(fbDb, 'ranking'), {
+      uid:         fbUser.uid,
+      nickname,
+      date:        serverTimestamp(),
+      speedMax:    report.speed.max,
+      speedAvg:    report.speed.avg,
+      curvesTotal: report.curves.total,
+      maxAngle:    report.curves.maxAngle,
+      minWC:       report.thermal.minWC,
+      duration:    report.meta.durationFmt,
+      destination: report.meta.destination || 'Ruta libre',
+      mode:        report.meta.mode
+    });
+    toast('Ruta subida al ranking ✓', 'ok');
+  } catch(e) {
+    console.error('[FB] Error upload:', e);
+  }
+}
+
+/* ── Cargar ranking ── */
+async function loadRanking() {
+  if (!fbDb || !App._fb) return;
+  const { collection, getDocs, query, orderBy, limit } = App._fb;
+  try {
+    const q    = query(collection(fbDb, 'ranking'), orderBy('speedMax', 'desc'), limit(20));
+    const snap = await getDocs(q);
+    const rows = [];
+    snap.forEach(d => rows.push({ id: d.id, ...d.data() }));
+    renderRanking(rows);
+  } catch(e) {
+    console.error('[FB] Error ranking:', e);
+  }
+}
+
+/* ── Render ranking ── */
+function renderRanking(rows) {
+  const el = $('ranking-list');
+  if (!el) return;
+  if (!rows.length) {
+    el.innerHTML = '<p class="no-route">Aún no hay rutas en el ranking. ¡Sé el primero!</p>';
+    return;
+  }
+  el.innerHTML = rows.map((r, i) => {
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`;
+    const isMe  = r.uid === App.fbUserId;
+    return `
+      <div class="ranking-row ${isMe ? 'ranking-me' : ''}">
+        <div class="rk-pos">${medal}</div>
+        <div class="rk-info">
+          <div class="rk-name">${r.nickname}${isMe ? ' <span style="color:var(--orange);font-size:0.55rem">TÚ</span>' : ''}</div>
+          <div class="rk-dest">${r.destination}</div>
+        </div>
+        <div class="rk-stats">
+          <div class="rk-stat"><span style="color:#ff5500">${r.speedMax}</span><span class="rk-lbl">km/h</span></div>
+          <div class="rk-stat"><span style="color:#00f0a0">${r.curvesTotal}</span><span class="rk-lbl">curvas</span></div>
+          <div class="rk-stat"><span style="color:#ff5500">${r.maxAngle}°</span><span class="rk-lbl">máx</span></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ── Compartir ruta en tiempo real ── */
+async function startSharing() {
+  if (!fbUser || !App._fb) { toast('Conectando…', 'info'); return; }
+  const { ref, set } = App._fb;
+  shareSessionId = fbUser.uid + '_' + Date.now();
+  sharingActive  = true;
+
+  const nickname = localStorage.getItem('bw_nickname') || 'Motorista';
+  await set(ref(fbRtDb, 'live/' + shareSessionId), {
+    nickname,
+    active: true,
+    started: Date.now()
+  });
+
+  sharingInterval = setInterval(async () => {
+    if (!App.position || !sharingActive) return;
+    await set(ref(fbRtDb, 'live/' + shareSessionId + '/telemetry'), {
+      lat:      App.position.lat,
+      lon:      App.position.lon,
+      speed:    App.gpsSpeed || 0,
+      roll:     App.gyroData.gamma || 0,
+      wc:       App.windChill || null,
+      temp:     App.weather?.temp || null,
+      t:        Date.now()
+    });
+  }, 2000);
+
+  // Mostrar enlace para compartir
+  const shareUrl = location.origin + location.pathname + '?watch=' + shareSessionId;
+  $('share-url-box').value = shareUrl;
+  $('share-controls').style.display = 'flex';
+  $('btn-share-start').style.display = 'none';
+
+  toast('¡Compartiendo en tiempo real!', 'ok');
+}
+
+async function stopSharing() {
+  if (!sharingActive || !App._fb) return;
+  const { ref, remove } = App._fb;
+  sharingActive = false;
+  clearInterval(sharingInterval);
+  await remove(ref(fbRtDb, 'live/' + shareSessionId));
+  $('share-controls').style.display = 'none';
+  $('btn-share-start').style.display = 'flex';
+  shareSessionId = null;
+  toast('Detenido el compartir', 'info');
+}
+
+/* ── Ver ruta de otro usuario ── */
+async function watchLiveRoute(sessionId) {
+  if (!fbRtDb || !App._fb) return;
+  const { ref, onValue } = App._fb;
+
+  const el = $('watch-panel');
+  if (el) el.style.display = 'flex';
+
+  watchingId = onValue(ref(fbRtDb, 'live/' + sessionId + '/telemetry'), snap => {
+    const d = snap.val();
+    if (!d) return;
+    setEl('watch-speed', d.speed + ' km/h');
+    setEl('watch-roll',  Math.abs(Math.round(d.roll)) + '°');
+    setEl('watch-wc',    d.wc != null ? (d.wc > 0 ? '+' : '') + d.wc + '°C' : '--');
+    setEl('watch-temp',  d.temp != null ? d.temp + '°C' : '--');
+    if (App.mapInitialized && d.lat) {
+      App.riderMarker?.setLatLng([d.lat, d.lon]);
+      App.leafletMap?.setView([d.lat, d.lon]);
+    }
+  });
+}
+
+/* ── Nickname ── */
+function saveNickname() {
+  const input = $('nickname-input');
+  if (!input?.value?.trim()) return;
+  localStorage.setItem('bw_nickname', input.value.trim());
+  toast('Nombre guardado ✓', 'ok');
+}
+
+/* ── Detectar modo watch en URL ── */
+function checkWatchMode() {
+  const params = new URLSearchParams(location.search);
+  const watchId = params.get('watch');
+  if (watchId) {
+    initFirebase().then(() => watchLiveRoute(watchId));
+  }
+}
+
+/* ═══════════════════════════════════════
+   RADAR BIKERWEATHER
+   Detecta otros usuarios a menos de 50m
+   y muestra flash ✌️
+═══════════════════════════════════════ */
+
+const RADAR_DIST_M  = 50;
+const RADAR_TICK_MS = 5000; // cada 5s publica posición y escanea
+let radarInterval   = null;
+let lastGreeted     = {};   // uid → timestamp, evita saludos repetidos en 60s
+
+async function startRadar() {
+  if (!fbUser || !App._fb) return;
+  radarInterval = setInterval(radarTick, RADAR_TICK_MS);
+  radarTick();
+}
+
+async function radarTick() {
+  if (!App.position || !fbUser || !App._fb) return;
+  const { ref, set, getDocs, collection, query, where } = App._fb;
+
+  // Publicar mi posición (con timestamp para limpiar fantasmas)
+  await set(ref(fbRtDb, 'radar/' + fbUser.uid), {
+    lat: App.position.lat,
+    lon: App.position.lon,
+    t:   Date.now()
+  });
+
+  // Leer posiciones de otros usuarios activos (últimos 15s)
+  try {
+    const snap = await getDocs(query(collection(fbDb, 'radar_positions')));
+    // Usar Realtime DB directamente
+  } catch {}
+
+  // Escanear radar via Realtime DB
+  const { onValue, ref: rtRef, off } = App._fb;
+  const radarRef = rtRef(fbRtDb, 'radar');
+  onValue(radarRef, snap => {
+    const data = snap.val();
+    if (!data) return;
+    Object.entries(data).forEach(([uid, pos]) => {
+      if (uid === fbUser.uid) return;           // soy yo
+      if (Date.now() - pos.t > 15000) return;  // posición vieja
+      const dist = haversineM(App.position.lat, App.position.lon, pos.lat, pos.lon);
+      if (dist <= RADAR_DIST_M) {
+        const now = Date.now();
+        if (!lastGreeted[uid] || now - lastGreeted[uid] > 60000) {
+          lastGreeted[uid] = now;
+          showGreeting();
+        }
+      }
+    });
+    off(radarRef); // desuscribir tras lectura
+  }, { onlyOnce: true });
+}
+
+function haversineM(lat1, lon1, lat2, lon2) {
+  const R    = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a    = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function showGreeting() {
+  // Vibración
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+
+  // Flash ✌️ grande en pantalla
+  let flash = $('greeting-flash');
+  if (!flash) {
+    flash = document.createElement('div');
+    flash.id = 'greeting-flash';
+    flash.style.cssText = `
+      position:fixed;top:0;left:0;right:0;bottom:0;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      background:rgba(5,5,8,0.85);backdrop-filter:blur(8px);
+      z-index:9999;pointer-events:none;
+      opacity:0;transition:opacity 0.3s ease;
+    `;
+    flash.innerHTML = `
+      <div style="font-size:5rem;line-height:1;animation:greetPulse 0.6s ease">✌️</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;
+        letter-spacing:0.2em;text-transform:uppercase;color:#ff5500;margin-top:12px">
+        SALUDO MOTERO
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:#8888aa;margin-top:6px">
+        BikerWeather detectado cerca
+      </div>
+    `;
+    document.body.appendChild(flash);
+  }
+
+  flash.style.opacity = '1';
+  setTimeout(() => { flash.style.opacity = '0'; }, 3000);
+}
+
+/* ═══════════════════════════════════════
+   DETECCIÓN DE CAÍDA
+   Detecta impacto fuerte + inmovilidad
+   y envía WhatsApp al contacto configurado
+═══════════════════════════════════════ */
+
+const FALL_IMPACT_G    = 2.5;  // g de aceleración para considerar impacto
+const FALL_STILL_MS    = 8000; // ms inmóvil tras impacto para confirmar caída
+const FALL_CANCEL_MS   = 15000;// ms para cancelar la alerta
+let fallState          = 'monitoring'; // monitoring | impact | fallen
+let fallImpactTime     = null;
+let fallCancelTimer    = null;
+let fallConfirmTimer   = null;
+
+function startFallDetection() {
+  if (!window.DeviceMotionEvent) return;
+  window.addEventListener('devicemotion', onMotionFall, true);
+}
+
+function onMotionFall(e) {
+  if (fallState !== 'monitoring') return;
+  const acc = e.accelerationIncludingGravity;
+  if (!acc) return;
+  const g = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) / 9.81;
+
+  // Detectar impacto fuerte
+  if (g > FALL_IMPACT_G) {
+    fallState     = 'impact';
+    fallImpactTime = Date.now();
+
+    // Si sigue inmóvil después de FALL_STILL_MS → confirmar caída
+    fallConfirmTimer = setTimeout(() => {
+      if (fallState === 'impact') {
+        fallState = 'fallen';
+        triggerFallAlert();
+      }
+    }, FALL_STILL_MS);
+  }
+}
+
+// Detectar que se vuelve a mover (cancela la alarma)
+window.addEventListener('devicemotion', e => {
+  if (fallState !== 'impact') return;
+  const acc = e.accelerationIncludingGravity;
+  if (!acc) return;
+  const g = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) / 9.81;
+  if (g > 0.3) {
+    // Se movió — no era caída
+    clearTimeout(fallConfirmTimer);
+    fallState = 'monitoring';
+  }
+}, true);
+
+function triggerFallAlert() {
+  const phone = localStorage.getItem('bw_emergency_phone');
+  if (!phone) {
+    console.warn('[FALL] No hay teléfono de emergencia configurado');
+    fallState = 'monitoring';
+    return;
+  }
+
+  // Vibración de emergencia
+  if (navigator.vibrate) navigator.vibrate([500,200,500,200,500]);
+
+  // Mostrar panel de cancelación
+  showFallWarning(phone);
+}
+
+function showFallWarning(phone) {
+  let panel = $('fall-warning');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'fall-warning';
+    panel.style.cssText = `
+      position:fixed;top:0;left:0;right:0;bottom:0;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      background:rgba(255,34,85,0.95);z-index:9998;padding:20px;text-align:center;
+    `;
+    document.body.appendChild(panel);
+  }
+
+  let remaining = Math.round(FALL_CANCEL_MS / 1000);
+  panel.innerHTML = `
+    <div style="font-size:3rem;margin-bottom:12px">🆘</div>
+    <div style="font-family:'Rajdhani',sans-serif;font-size:1.8rem;font-weight:700;
+      color:#fff;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px">
+      POSIBLE CAÍDA
+    </div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:rgba(255,255,255,0.8);
+      margin-bottom:20px;line-height:1.6">
+      Enviando alerta a tu contacto de emergencia<br>en <span id="fall-countdown">${remaining}</span> segundos
+    </div>
+    <button id="btn-fall-cancel" style="
+      background:#fff;border:none;border-radius:8px;padding:16px 32px;
+      font-family:'Rajdhani',sans-serif;font-size:1.1rem;font-weight:700;
+      color:#ff2255;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;
+      margin-bottom:12px;width:100%;max-width:280px;
+    ">✓ ESTOY BIEN — CANCELAR</button>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:rgba(255,255,255,0.6)">
+      Se enviará a: ${phone}
+    </div>
+  `;
+
+  // Cuenta atrás
+  const countdown = setInterval(() => {
+    remaining--;
+    const el = $('fall-countdown');
+    if (el) el.textContent = remaining;
+    if (remaining <= 0) {
+      clearInterval(countdown);
+      sendFallAlert(phone);
+      panel.style.display = 'none';
+      fallState = 'monitoring';
+    }
+  }, 1000);
+
+  // Botón cancelar
+  $('btn-fall-cancel')?.addEventListener('click', () => {
+    clearInterval(countdown);
+    clearTimeout(fallCancelTimer);
+    panel.style.display = 'none';
+    fallState = 'monitoring';
+    toast('Alerta cancelada ✓', 'ok');
+  });
+}
+
+function sendFallAlert(phone) {
+  const lat  = App.position?.lat?.toFixed(5) || '--';
+  const lon  = App.position?.lon?.toFixed(5) || '--';
+  const mapsUrl = `https://maps.google.com/?q=${lat},${lon}`;
+  const msg  = encodeURIComponent(
+    `🆘 ALERTA BikerWeather\n\nPosible caída detectada.\n\nÚltima posición conocida:\n${mapsUrl}\n\nVelocidad antes del impacto: ${App.gpsSpeed || '--'} km/h`
+  );
+  const clean = phone.replace(/\D/g, '');
+  window.open(`https://wa.me/${clean}?text=${msg}`, '_blank');
+}
+
+/* Añadir animación CSS para el saludo */
+const greetStyle = document.createElement('style');
+greetStyle.textContent = `
+  @keyframes greetPulse {
+    0%   { transform: scale(0.5) rotate(-20deg); opacity:0; }
+    60%  { transform: scale(1.2) rotate(10deg);  opacity:1; }
+    100% { transform: scale(1)   rotate(0deg);   opacity:1; }
+  }
+`;
+document.head.appendChild(greetStyle);
