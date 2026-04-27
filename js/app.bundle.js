@@ -10,9 +10,20 @@
 ═══════════════════════════════════════ */
 const WindChill = {
   calculate(tempC, speedKmh) {
-    if (tempC > 10 || speedKmh < 5) return Math.round(tempC * 10) / 10;
-    const wc = 13.12 + 0.6215 * tempC - 11.37 * Math.pow(speedKmh, 0.16) + 0.3965 * tempC * Math.pow(speedKmh, 0.16);
-    return Math.round(wc * 10) / 10;
+    if (tempC > 30 || speedKmh < 5) return Math.round(tempC * 10) / 10;
+
+    if (tempC <= 10) {
+      // Fórmula JAG/TI oficial (frío)
+      const wc = 13.12 + 0.6215 * tempC - 11.37 * Math.pow(speedKmh, 0.16) + 0.3965 * tempC * Math.pow(speedKmh, 0.16);
+      return Math.round(wc * 10) / 10;
+    } else {
+      // Fórmula de enfriamiento por convección (10°C - 30°C)
+      // El viento reduce la temperatura percibida por evaporación y convección
+      // Factor de reducción basado en velocidad: más velocidad = más frescor
+      const windFactor = Math.min(6, Math.log(speedKmh / 5) * 2.2);
+      const wc = tempC - windFactor;
+      return Math.round(wc * 10) / 10;
+    }
   },
   effectiveSpeed(bikeKmh, windKmh, windDir, heading) {
     const diff = ((windDir - heading + 360) % 360);
@@ -354,8 +365,10 @@ async function onGPSPosition(pos) {
   App.lastPositionTime = pos.timestamp;
 
   if (rawSpeed !== null) {
-    App.gpsSpeed = App.gpsSpeed === null ? rawSpeed : Math.round(App.gpsSpeed * 0.7 + rawSpeed * 0.3);
-    updateGpsSpeedUI(App.gpsSpeed);
+    // Filtro: ignorar velocidades muy bajas (ruido GPS estando parado)
+    const filtered = rawSpeed < 3 ? 0 : rawSpeed;
+    App.gpsSpeed = App.gpsSpeed === null ? filtered : Math.round(App.gpsSpeed * 0.7 + filtered * 0.3);
+    updateGpsSpeedUI(App.gpsSpeed === 0 ? 0 : App.gpsSpeed);
     computeWindChill();
   }
 
@@ -1813,13 +1826,14 @@ function showGreeting() {
    y envía WhatsApp al contacto configurado
 ═══════════════════════════════════════ */
 
-const FALL_IMPACT_G    = 2.5;  // g de aceleración para considerar impacto
-const FALL_STILL_MS    = 8000; // ms inmóvil tras impacto para confirmar caída
-const FALL_CANCEL_MS   = 15000;// ms para cancelar la alerta
-let fallState          = 'monitoring'; // monitoring | impact | fallen
+const FALL_IMPACT_G    = 1.8;  // g — más sensible (era 2.5)
+const FALL_STILL_MS    = 5000; // ms inmóvil tras impacto (era 8000)
+const FALL_CANCEL_MS   = 15000;
+let fallState          = 'monitoring';
 let fallImpactTime     = null;
 let fallCancelTimer    = null;
 let fallConfirmTimer   = null;
+let lastGValue         = 1.0;  // para detectar el pico de impacto
 
 function startFallDetection() {
   if (!window.DeviceMotionEvent) return;
