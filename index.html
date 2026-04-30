@@ -213,18 +213,6 @@
     ════════════════════════════ -->
     <div id="section-route" class="section">
 
-      <div class="input-card">
-        <p class="input-desc">
-          Introduce tu destino. BikerWeather calculará la sensación de frío en 3 puntos
-          intermedios de la ruta usando tu velocidad actual.
-        </p>
-        <div class="input-row">
-          <input id="dest-input" type="text" placeholder="Destino: Pamplona, Teruel…" autocomplete="off" />
-          <button id="btn-route" class="btn btn-primary">IR</button>
-        </div>
-        <button id="btn-clear-route" class="btn" style="font-size:0.75rem;padding:6px 12px">✕ Limpiar ruta</button>
-      </div>
-
       <!-- PLANIFICADOR INTELIGENTE -->
       <div class="panel-hdr" style="padding:10px 0 6px">
         <span class="panel-hdr-lbl">🗓 PLANIFICADOR — ANTES DE SALIR</span>
@@ -247,11 +235,11 @@
       <!-- Resultado planificador -->
       <div id="plan-result" style="display:none;flex-direction:column;gap:8px;"></div>
 
-      <!-- Velocidad para la ruta (manual) -->
+      <!-- Velocidad para el planificador (manual) -->
       <div class="speed-panel">
         <div class="panel-hdr">
           <span class="panel-hdr-lbl">VELOCIDAD DE VIAJE</span>
-          <span style="font-family:var(--font-mono);font-size:0.5rem;color:var(--text-dim);letter-spacing:0.08em">PARA CALCULAR RUTA</span>
+          <span style="font-family:var(--font-mono);font-size:0.65rem;color:#8888aa;letter-spacing:0.08em">PARA CALCULAR RUTA</span>
         </div>
         <div class="speed-body">
           <div class="speed-top">
@@ -267,16 +255,6 @@
             <button class="speed-preset" data-speed="120">120</button>
             <button class="speed-preset" data-speed="150">150</button>
           </div>
-        </div>
-      </div>
-
-      <div class="waypoints-panel">
-        <div class="panel-hdr">
-          <span class="panel-hdr-lbl">PUNTOS INTERMEDIOS</span>
-          <span class="route-spd-badge">a <span id="route-speed-lbl">80</span> km/h</span>
-        </div>
-        <div id="waypoints-list" class="waypoints-list">
-          <p class="no-route">Introduce un destino para ver la ruta</p>
         </div>
       </div>
 
@@ -502,6 +480,23 @@
         </div>
       </div>
 
+      <!-- Modelo de moto -->
+      <div class="sensors-card">
+        <div class="panel-hdr" style="padding:8px 14px 7px">
+          <span class="panel-hdr-lbl">🏍 MI MOTO</span>
+        </div>
+        <div style="padding:10px 14px 12px;display:flex;flex-direction:column;gap:8px">
+          <p style="font-family:var(--font-mono);font-size:0.68rem;color:#8888aa;line-height:1.6">
+            Tu moto aparecerá en el informe y en el ranking.
+          </p>
+          <div class="input-row">
+            <input id="bike-model" type="text" placeholder="Ej: Honda CB650R, BMW R1250GS…" autocomplete="off" maxlength="40" />
+            <button id="btn-save-bike" class="btn btn-primary">Guardar</button>
+          </div>
+          <div id="bike-status" style="font-family:var(--font-mono);font-size:0.65rem;color:#8888aa"></div>
+        </div>
+      </div>
+
       <!-- Configuración emergencia y radar -->
       <div class="sensors-card">
         <div class="panel-hdr" style="padding:8px 14px 7px">
@@ -546,8 +541,8 @@
       <span class="nav-lbl">Social</span>
     </button>
     <button class="nav-btn" data-section="section-gyro">
-      <span class="nav-icon">⚖️</span>
-      <span class="nav-lbl">Sensor</span>
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-lbl">Config</span>
     </button>
   </nav>
 
