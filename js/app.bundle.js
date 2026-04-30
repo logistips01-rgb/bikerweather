@@ -1300,17 +1300,8 @@ function initSpeedSlider() {
    ROUTE TAB CONTROLS
 ═══════════════════════════════════════ */
 function initRouteControls() {
-  const input = $('dest-input'), btn = $('btn-route'), clr = $('btn-clear-route');
-  btn?.addEventListener('click', async () => {
-    const q = input?.value?.trim();
-    if (!q)              { toast('Introduce un destino', 'info'); return; }
-    if (!App.position)   { toast('Esperando GPS…', 'info'); return; }
-    btn.disabled = true;
-    await calculateRoute(q, App.routeSpeed).catch(e => toast(e.message,'error'));
-    btn.disabled = false;
-  });
-  input?.addEventListener('keydown', e => { if (e.key==='Enter') btn?.click(); });
-  clr?.addEventListener('click', () => { renderWaypoints([]); if (input) input.value=''; });
+  // Los controles de destino se gestionan desde En Ruta (initRidingControls)
+  // Solo mantenemos el slider de velocidad para el planificador
 }
 
 /* ═══════════════════════════════════════
@@ -1447,6 +1438,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.addEventListener('online',  () => { const b=$('offline-banner'); if(b) b.classList.remove('show'); });
   window.addEventListener('offline', () => { const b=$('offline-banner'); if(b) b.classList.add('show'); });
 
+  // Modelo de moto
+  const savedBike = localStorage.getItem('bw_bike_model');
+  if (savedBike) {
+    const bm = $('bike-model');
+    if (bm) bm.value = savedBike;
+    const bs = $('bike-status');
+    if (bs) bs.textContent = '✓ ' + savedBike;
+  }
+  $('btn-save-bike')?.addEventListener('click', () => {
+    const input = $('bike-model');
+    const model = input?.value?.trim();
+    if (!model) { toast('Introduce el modelo de tu moto', 'info'); return; }
+    localStorage.setItem('bw_bike_model', model);
+    const bs = $('bike-status');
+    if (bs) bs.textContent = '✓ ' + model;
+    toast('Moto guardada ✓', 'ok');
+  });
+
   // Contacto de emergencia
   const savedPhone = localStorage.getItem('bw_emergency_phone');
   if (savedPhone) {
@@ -1573,20 +1582,41 @@ async function initFirebase() {
 async function uploadRouteToRanking(report) {
   if (!fbUser || !App._fb) return;
   const { collection, addDoc, serverTimestamp } = App._fb;
+
+  if (report.meta.duration < 30 * 60 * 1000) {
+    toast('Ruta menor de 30 min, no cuenta para el ranking', 'info');
+    return;
+  }
+
   try {
-    const nickname = localStorage.getItem('bw_nickname') || 'Motorista';
+    const nickname  = localStorage.getItem('bw_nickname') || 'Motorista';
+    const bikeModel = localStorage.getItem('bw_bike_model') || '';
+
+    const fullTrack = report.meta.track || [];
+    const step  = fullTrack.length > 500 ? Math.ceil(fullTrack.length / 500) : 1;
+    const track = fullTrack.filter((_, i) => i % step === 0);
+
+    const score = Math.round(
+      report.curves.avgAngle * report.curves.total +
+      report.speed.avg * 0.3
+    );
+
     await addDoc(collection(fbDb, 'ranking'), {
       uid:         fbUser.uid,
       nickname,
+      bike:        bikeModel,
       date:        serverTimestamp(),
+      score,
       speedMax:    report.speed.max,
       speedAvg:    report.speed.avg,
       curvesTotal: report.curves.total,
       maxAngle:    report.curves.maxAngle,
+      avgAngle:    report.curves.avgAngle,
       minWC:       report.thermal.minWC,
       duration:    report.meta.durationFmt,
       destination: report.meta.destination || 'Ruta libre',
-      mode:        report.meta.mode
+      mode:        report.meta.mode,
+      track
     });
     toast('Ruta subida al ranking ✓', 'ok');
   } catch(e) {
@@ -1599,7 +1629,7 @@ async function loadRanking() {
   if (!fbDb || !App._fb) return;
   const { collection, getDocs, query, orderBy, limit } = App._fb;
   try {
-    const q    = query(collection(fbDb, 'ranking'), orderBy('speedMax', 'desc'), limit(20));
+    const q    = query(collection(fbDb, 'ranking'), orderBy('score', 'desc'), limit(20));
     const snap = await getDocs(q);
     const rows = [];
     snap.forEach(d => rows.push({ id: d.id, ...d.data() }));
@@ -1618,22 +1648,54 @@ function renderRanking(rows) {
     return;
   }
   el.innerHTML = rows.map((r, i) => {
-    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`;
-    const isMe  = r.uid === App.fbUserId;
+    const medal    = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`;
+    const isMe     = r.uid === App.fbUserId;
+    const hasTrack = r.track && r.track.length > 1;
     return `
       <div class="ranking-row ${isMe ? 'ranking-me' : ''}">
         <div class="rk-pos">${medal}</div>
         <div class="rk-info">
           <div class="rk-name">${r.nickname}${isMe ? ' <span style="color:var(--orange);font-size:0.55rem">TÚ</span>' : ''}</div>
-          <div class="rk-dest">${r.destination}</div>
+          <div class="rk-dest">${r.bike ? '🏍 ' + r.bike + ' · ' : ''}${r.destination}</div>
         </div>
         <div class="rk-stats">
-          <div class="rk-stat"><span style="color:#ff5500">${r.speedMax}</span><span class="rk-lbl">km/h</span></div>
+          <div class="rk-stat"><span style="color:#29d9ff">${r.score ?? '--'}</span><span class="rk-lbl">pts</span></div>
           <div class="rk-stat"><span style="color:#00f0a0">${r.curvesTotal}</span><span class="rk-lbl">curvas</span></div>
-          <div class="rk-stat"><span style="color:#ff5500">${r.maxAngle}°</span><span class="rk-lbl">máx</span></div>
+          <div class="rk-stat"><span style="color:#ff5500">${r.maxAngle}°</span><span class="rk-lbl">máx ang</span></div>
         </div>
+        ${hasTrack ? `<button class="rk-replicate-btn" data-idx="${i}" style="font-size:0.65rem;background:var(--bg3);color:#29d9ff;border:1px solid #29d9ff;border-radius:6px;padding:3px 8px;margin-top:5px;cursor:pointer;width:100%;letter-spacing:0.05em">▶ Ver / Replicar ruta</button>` : ''}
       </div>`;
   }).join('');
+
+  el.querySelectorAll('.rk-replicate-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const r = rows[parseInt(btn.dataset.idx)];
+      if (r?.track?.length > 1) replicateRoute(r.track, r.destination);
+    });
+  });
+}
+
+/* ── Mostrar en el mapa una ruta del ranking ── */
+let _replicaPolyline = null;
+function replicateRoute(track, label) {
+  if (!App.mapInitialized) {
+    const mc = $('map-container');
+    if (mc) mc.style.display = 'block';
+    initMap();
+  }
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  $('section-riding')?.classList.add('active');
+  document.querySelector('.nav-btn[data-section="section-riding"]')?.classList.add('active');
+
+  setTimeout(() => {
+    App.leafletMap.invalidateSize();
+    if (_replicaPolyline) { App.leafletMap.removeLayer(_replicaPolyline); _replicaPolyline = null; }
+    const latlngs = track.map(p => [p.lat, p.lon]);
+    _replicaPolyline = L.polyline(latlngs, { color: '#29d9ff', weight: 3, opacity: 0.8, dashArray: '8,5' }).addTo(App.leafletMap);
+    App.leafletMap.fitBounds(_replicaPolyline.getBounds(), { padding: [30, 30] });
+    toast(`Ruta de referencia: ${label || 'Ruta libre'}`, 'info');
+  }, 200);
 }
 
 /* ── Compartir ruta en tiempo real ── */
