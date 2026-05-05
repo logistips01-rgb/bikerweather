@@ -500,12 +500,12 @@ async function fetchHourlyWeather(lat, lon, isoTime) {
   const hour = parseInt(isoTime.slice(11, 13));
   const idx  = Math.min(hour, (data.hourly.time?.length || 1) - 1);
   return {
-    temp:        data.hourly.temperature_2m[idx],
-    windSpeed:   Math.round(data.hourly.wind_speed_10m[idx]),
-    windDir:     data.hourly.wind_direction_10m[idx],
-    windGust:    Math.round(data.hourly.wind_gusts_10m[idx]),
-    weatherCode: data.hourly.weather_code[idx],
-    rainProb:    data.hourly.precipitation_probability[idx]
+    temp:        data.hourly.temperature_2m?.[idx]        ?? 15,
+    windSpeed:   Math.round(data.hourly.wind_speed_10m?.[idx]    ?? 0),
+    windDir:     data.hourly.wind_direction_10m?.[idx]    ?? 0,
+    windGust:    Math.round(data.hourly.wind_gusts_10m?.[idx]    ?? 0),
+    weatherCode: data.hourly.weather_code?.[idx]          ?? 0,
+    rainProb:    data.hourly.precipitation_probability?.[idx] ?? 0
   };
 }
 
@@ -568,8 +568,8 @@ async function runPlanner() {
     const pointsData = await Promise.all(points.map(async p => {
       const arrivalTime = addHours(timeInput, p.timeOffset * totalHours);
       const w           = await fetchHourlyWeather(p.lat, p.lon, arrivalTime);
-      const eff         = WindChill.effectiveSpeed(avgSpeed, w.windSpeed, w.windDir);
-      const wc          = WindChill.calculate(w.temp, eff);
+      const eff         = WindChill.effectiveSpeed(avgSpeed, w.windSpeed || 0, w.windDir || 0);
+      const wc          = WindChill.calculate(w.temp ?? 15, eff);
       const cls         = WindChill.classify(wc);
       const hazards     = plannerHazards(w);
       return { ...p, w, wc, cls, hazards, arrivalTime };
