@@ -574,7 +574,6 @@ async function runPlanner() {
       // Velocidad efectiva = velocidad moto + viento en contra (nunca menos que la moto)
       const effRaw      = WindChill.effectiveSpeed(avgSpeed, windSpeed, windDir);
       const eff         = Math.max(avgSpeed, effRaw);
-      console.log('[PLANNER] temp:', temp, 'avgSpeed:', avgSpeed, 'windSpeed:', windSpeed, 'eff:', eff);
       const wcRaw       = WindChill.calculate(temp, eff);
       const wc          = typeof wcRaw === 'number' && !isNaN(wcRaw) ? Math.round(wcRaw * 10) / 10 : Math.round(temp * 10) / 10;
       const wc          = typeof wcRaw === 'number' && !isNaN(wcRaw) ? Math.round(wcRaw * 10) / 10 : temp;
@@ -586,7 +585,7 @@ async function runPlanner() {
     // Mejor hora para salir (buscar la ventana de 4h con menos peligros en las próximas 12h)
     const bestHour = await findBestHour(origin, dest, timeInput, totalHours, avgSpeed);
 
-    renderPlannerResult(pointsData, distKm, totalHours, bestHour);
+    renderPlannerResult(pointsData, distKm, totalHours, bestHour, avgSpeed);
 
   } catch(err) {
     result.innerHTML = '<p class="report-empty">Error: ' + err.message + '</p>';
@@ -612,7 +611,7 @@ async function findBestHour(origin, dest, baseTime, totalHours, avgSpeed) {
   return scores.sort((a,b) => a.score - b.score)[0];
 }
 
-function renderPlannerResult(points, distKm, totalHours, bestHour) {
+function renderPlannerResult(points, distKm, totalHours, bestHour, avgSpeed) {
   const result = $('plan-result');
   if (!result) return;
 
@@ -651,7 +650,8 @@ function renderPlannerResult(points, distKm, totalHours, bestHour) {
             <div class="pp-wc ${p.cls?.cssClass || 'cool'}">${p.cls?.emoji || '🌡'} ${p.wc > 0 ? '+' : ''}${p.wc}°</div>
             <div class="pp-details">
               <span>${p.w.temp}°C real</span>
-              <span>💨 ${p.w.windSpeed} km/h</span>
+              <span>💨 ${p.w.windSpeed} km/h viento</span>
+              <span>🏍 ${avgSpeed} km/h moto</span>
               <span>🌧 ${p.w.rainProb || 0}%</span>
             </div>
             ${p.hazards.length ? '<div class="pp-hazards">' + p.hazards.map(h=>'<span class="hazard-tag">'+h+'</span>').join('') + '</div>' : ''}
