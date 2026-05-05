@@ -571,7 +571,10 @@ async function runPlanner() {
       const temp        = typeof w.temp === 'number' && !isNaN(w.temp) ? w.temp : 15;
       const windSpeed   = typeof w.windSpeed === 'number' && !isNaN(w.windSpeed) ? w.windSpeed : 0;
       const windDir     = typeof w.windDir === 'number' && !isNaN(w.windDir) ? w.windDir : 0;
-      const eff         = WindChill.effectiveSpeed(avgSpeed, windSpeed, windDir);
+      // En el planificador la velocidad efectiva es como mínimo la velocidad de la moto
+      // (el viento puede sumar pero nunca restar por debajo de avgSpeed)
+      const effRaw      = WindChill.effectiveSpeed(avgSpeed, windSpeed, windDir);
+      const eff         = Math.max(avgSpeed, effRaw);
       const wcRaw       = WindChill.calculate(temp, eff);
       const wc          = typeof wcRaw === 'number' && !isNaN(wcRaw) ? Math.round(wcRaw * 10) / 10 : temp;
       const cls         = WindChill.classify(wc);
