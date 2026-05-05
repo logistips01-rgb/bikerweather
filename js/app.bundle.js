@@ -568,11 +568,15 @@ async function runPlanner() {
     const pointsData = await Promise.all(points.map(async p => {
       const arrivalTime = addHours(timeInput, p.timeOffset * totalHours);
       const w           = await fetchHourlyWeather(p.lat, p.lon, arrivalTime);
-      const eff         = WindChill.effectiveSpeed(avgSpeed, w.windSpeed || 0, w.windDir || 0);
-      const wc          = WindChill.calculate(w.temp ?? 15, eff);
+      const temp        = typeof w.temp === 'number' && !isNaN(w.temp) ? w.temp : 15;
+      const windSpeed   = typeof w.windSpeed === 'number' && !isNaN(w.windSpeed) ? w.windSpeed : 0;
+      const windDir     = typeof w.windDir === 'number' && !isNaN(w.windDir) ? w.windDir : 0;
+      const eff         = WindChill.effectiveSpeed(avgSpeed, windSpeed, windDir);
+      const wcRaw       = WindChill.calculate(temp, eff);
+      const wc          = typeof wcRaw === 'number' && !isNaN(wcRaw) ? Math.round(wcRaw * 10) / 10 : temp;
       const cls         = WindChill.classify(wc);
       const hazards     = plannerHazards(w);
-      return { ...p, w, wc, cls, hazards, arrivalTime };
+      return { ...p, w: { ...w, temp, windSpeed, windDir }, wc, cls, hazards, arrivalTime };
     }));
 
     // Mejor hora para salir (buscar la ventana de 4h con menos peligros en las próximas 12h)
@@ -640,7 +644,7 @@ function renderPlannerResult(points, distKm, totalHours, bestHour) {
             <div class="pp-time">${new Date(p.arrivalTime).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</div>
           </div>
           <div class="pp-body">
-            <div class="pp-wc ${p.cls.cssClass}">${p.cls.emoji} ${p.wc > 0 ? '+' : ''}${p.wc}°</div>
+            <div class="pp-wc ${p.cls?.cssClass || 'cool'}">${p.cls?.emoji || '🌡'} ${p.wc > 0 ? '+' : ''}${p.wc}°</div>
             <div class="pp-details">
               <span>${p.w.temp}°C real</span>
               <span>💨 ${p.w.windSpeed} km/h</span>
