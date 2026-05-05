@@ -555,8 +555,8 @@ async function runPlanner() {
       { ...dest, index: 4, label: 'Llegada', timeOffset: 1.0 }
     ];
 
-    // Estimar tiempo total (velocidad media del slider)
-    const avgSpeed    = App.routeSpeed || 80;
+    // Velocidad del planificador viene SIEMPRE del slider, nunca del GPS
+    const avgSpeed = App.routeSpeed || 80;
     const R           = 6371;
     const dLat        = (dest.lat - origin.lat) * Math.PI / 180;
     const dLon        = (dest.lon - origin.lon) * Math.PI / 180;
@@ -571,11 +571,11 @@ async function runPlanner() {
       const temp        = typeof w.temp === 'number' && !isNaN(w.temp) ? w.temp : 15;
       const windSpeed   = typeof w.windSpeed === 'number' && !isNaN(w.windSpeed) ? w.windSpeed : 0;
       const windDir     = typeof w.windDir === 'number' && !isNaN(w.windDir) ? w.windDir : 0;
-      // En el planificador la velocidad efectiva es como mínimo la velocidad de la moto
-      // (el viento puede sumar pero nunca restar por debajo de avgSpeed)
+      // Velocidad efectiva = velocidad moto + viento en contra (nunca menos que la moto)
       const effRaw      = WindChill.effectiveSpeed(avgSpeed, windSpeed, windDir);
       const eff         = Math.max(avgSpeed, effRaw);
       const wcRaw       = WindChill.calculate(temp, eff);
+      const wc          = typeof wcRaw === 'number' && !isNaN(wcRaw) ? Math.round(wcRaw * 10) / 10 : Math.round(temp * 10) / 10;
       const wc          = typeof wcRaw === 'number' && !isNaN(wcRaw) ? Math.round(wcRaw * 10) / 10 : temp;
       const cls         = WindChill.classify(wc);
       const hazards     = plannerHazards(w);
