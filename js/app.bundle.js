@@ -576,7 +576,6 @@ async function runPlanner() {
       const eff         = Math.max(avgSpeed, effRaw);
       const wcRaw       = WindChill.calculate(temp, eff);
       const wc          = typeof wcRaw === 'number' && !isNaN(wcRaw) ? Math.round(wcRaw * 10) / 10 : Math.round(temp * 10) / 10;
-      const wc          = typeof wcRaw === 'number' && !isNaN(wcRaw) ? Math.round(wcRaw * 10) / 10 : temp;
       const cls         = WindChill.classify(wc);
       const hazards     = plannerHazards(w);
       return { ...p, w: { ...w, temp, windSpeed, windDir }, wc, cls, hazards, arrivalTime };
