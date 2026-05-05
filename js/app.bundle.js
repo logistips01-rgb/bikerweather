@@ -555,8 +555,8 @@ async function runPlanner() {
       { ...dest, index: 4, label: 'Llegada', timeOffset: 1.0 }
     ];
 
-    // Velocidad del planificador viene SIEMPRE del slider, nunca del GPS
-    const avgSpeed = App.routeSpeed || 80;
+    // Estimar tiempo total (velocidad media del slider)
+    const avgSpeed    = App.routeSpeed || 80;
     const R           = 6371;
     const dLat        = (dest.lat - origin.lat) * Math.PI / 180;
     const dLon        = (dest.lon - origin.lon) * Math.PI / 180;
@@ -568,23 +568,17 @@ async function runPlanner() {
     const pointsData = await Promise.all(points.map(async p => {
       const arrivalTime = addHours(timeInput, p.timeOffset * totalHours);
       const w           = await fetchHourlyWeather(p.lat, p.lon, arrivalTime);
-      const temp        = typeof w.temp === 'number' && !isNaN(w.temp) ? w.temp : 15;
-      const windSpeed   = typeof w.windSpeed === 'number' && !isNaN(w.windSpeed) ? w.windSpeed : 0;
-      const windDir     = typeof w.windDir === 'number' && !isNaN(w.windDir) ? w.windDir : 0;
-      // Velocidad efectiva = velocidad moto + viento en contra (nunca menos que la moto)
-      const effRaw      = WindChill.effectiveSpeed(avgSpeed, windSpeed, windDir);
-      const eff         = Math.max(avgSpeed, effRaw);
-      const wcRaw       = WindChill.calculate(temp, eff);
-      const wc          = typeof wcRaw === 'number' && !isNaN(wcRaw) ? Math.round(wcRaw * 10) / 10 : Math.round(temp * 10) / 10;
+      const eff         = WindChill.effectiveSpeed(avgSpeed, w.windSpeed || 0, w.windDir || 0);
+      const wc          = WindChill.calculate(w.temp ?? 15, eff);
       const cls         = WindChill.classify(wc);
       const hazards     = plannerHazards(w);
-      return { ...p, w: { ...w, temp, windSpeed, windDir }, wc, cls, hazards, arrivalTime };
+      return { ...p, w, wc, cls, hazards, arrivalTime };
     }));
 
     // Mejor hora para salir (buscar la ventana de 4h con menos peligros en las próximas 12h)
     const bestHour = await findBestHour(origin, dest, timeInput, totalHours, avgSpeed);
 
-    renderPlannerResult(pointsData, distKm, totalHours, bestHour, avgSpeed);
+    renderPlannerResult(pointsData, distKm, totalHours, bestHour);
 
   } catch(err) {
     result.innerHTML = '<p class="report-empty">Error: ' + err.message + '</p>';
@@ -610,7 +604,7 @@ async function findBestHour(origin, dest, baseTime, totalHours, avgSpeed) {
   return scores.sort((a,b) => a.score - b.score)[0];
 }
 
-function renderPlannerResult(points, distKm, totalHours, bestHour, avgSpeed) {
+function renderPlannerResult(points, distKm, totalHours, bestHour) {
   const result = $('plan-result');
   if (!result) return;
 
@@ -646,11 +640,10 @@ function renderPlannerResult(points, distKm, totalHours, bestHour, avgSpeed) {
             <div class="pp-time">${new Date(p.arrivalTime).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</div>
           </div>
           <div class="pp-body">
-            <div class="pp-wc ${p.cls?.cssClass || 'cool'}">${p.cls?.emoji || '🌡'} ${p.wc > 0 ? '+' : ''}${p.wc}°</div>
+            <div class="pp-wc ${p.cls.cssClass}">${p.cls.emoji} ${p.wc > 0 ? '+' : ''}${p.wc}°</div>
             <div class="pp-details">
               <span>${p.w.temp}°C real</span>
-              <span>💨 ${p.w.windSpeed} km/h viento</span>
-              <span>🏍 ${avgSpeed} km/h moto</span>
+              <span>💨 ${p.w.windSpeed} km/h</span>
               <span>🌧 ${p.w.rainProb || 0}%</span>
             </div>
             ${p.hazards.length ? '<div class="pp-hazards">' + p.hazards.map(h=>'<span class="hazard-tag">'+h+'</span>').join('') + '</div>' : ''}
