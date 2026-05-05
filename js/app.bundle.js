@@ -574,6 +574,7 @@ async function runPlanner() {
       // Velocidad efectiva = velocidad moto + viento en contra (nunca menos que la moto)
       const effRaw      = WindChill.effectiveSpeed(avgSpeed, windSpeed, windDir);
       const eff         = Math.max(avgSpeed, effRaw);
+      console.log('[PLANNER] temp:', temp, 'avgSpeed:', avgSpeed, 'windSpeed:', windSpeed, 'eff:', eff);
       const wcRaw       = WindChill.calculate(temp, eff);
       const wc          = typeof wcRaw === 'number' && !isNaN(wcRaw) ? Math.round(wcRaw * 10) / 10 : Math.round(temp * 10) / 10;
       const wc          = typeof wcRaw === 'number' && !isNaN(wcRaw) ? Math.round(wcRaw * 10) / 10 : temp;
