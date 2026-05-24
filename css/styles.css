@@ -575,6 +575,46 @@ input[type="text"]::placeholder { color: #8888aa; }
 }
 
 /* Contador de curvas en HUD */
+/* Tira de fuerzas G en el HUD */
+.hud-g-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  background: rgba(5,5,8,0.82);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-dim);
+  border-radius: var(--r2);
+  padding: 5px 0;
+  pointer-events: none;
+}
+.hud-g-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 14px;
+  gap: 1px;
+}
+.hud-g-val {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.2s ease;
+}
+.hud-g-lbl {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.12em;
+  color: #5a5a7a;
+  text-transform: uppercase;
+}
+.hud-g-sep {
+  width: 1px;
+  height: 28px;
+  background: var(--border-dim);
+}
+
 .hud-curves {
   display: flex;
   gap: 6px;
