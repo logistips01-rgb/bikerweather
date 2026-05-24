@@ -139,7 +139,7 @@ const App = {
   wakeLock:         null,
   wakeLockEnabled:  false,
   gyroData:         { alpha:0, beta:0, gamma:0, _rawRoll:0, _rawPitch:0 },
-  tiltFilter:       { roll:0, pitch:0, lastTime:null, gyroReady:false, rollOffset:0,
+  tiltFilter:       { roll:0, pitch:0, lastTime:null, gyroReady:false, rollOffset:0, pitchOffset:0,
                       lastGpsHeading:null, lastGpsHeadingTime:null, gpsLean:null },
   sessionActive:    false,
   sessionStart:     null,
@@ -424,12 +424,13 @@ function startGyro() {
       App.gyroData.alpha     = alpha;
       App.gyroData._rawRoll  = -gamma;
       App.gyroData._rawPitch = beta;
-      // Fallback directo cuando rotationRate no está disponible
+      // Fallback directo cuando DeviceMotion no está disponible
       if (!App.tiltFilter.gyroReady) {
-        const roll = -gamma - App.tiltFilter.rollOffset;
+        const roll  = -gamma - App.tiltFilter.rollOffset;
+        const pitch = beta   - App.tiltFilter.pitchOffset;
         App.gyroData.gamma = roll;
-        App.gyroData.beta  = beta;
-        updateGyroUI(roll, beta, alpha);
+        App.gyroData.beta  = pitch;
+        updateGyroUI(roll, pitch, alpha);
         if (App.sessionActive) detectCurve(roll, App.position);
       }
     }, true);
@@ -456,18 +457,22 @@ function startGyro() {
    Gyro (rotationRate 60 Hz) + Orientación (referencia absoluta) + GPS (corrección lean)
 ═══════════════════════════════════════ */
 function onMotionTilt(e) {
-  const rr = e.rotationRate;
-  if (!rr || rr.gamma === null || rr.beta === null) return;
-
+  const rr  = e.rotationRate;
   const now = Date.now();
+
+  // hasRealGyro: rotationRate disponible con valores reales (no todos los navegadores lo proveen)
+  const hasRealGyro = !!(rr && rr.gamma !== null && rr.beta !== null);
+  const gyroRollRate  = hasRealGyro ? -(rr.gamma || 0) : 0;
+  const gyroPitchRate = hasRealGyro ?  (rr.beta  || 0) : 0;
 
   if (!App.tiltFilter.gyroReady) {
     App.tiltFilter.gyroReady = true;
     App.tiltFilter.roll      = App.gyroData._rawRoll  || 0;
     App.tiltFilter.pitch     = App.gyroData._rawPitch || 0;
     App.tiltFilter.lastTime  = now;
-    const cfEl = $('cf-status');
-    if (cfEl) { cfEl.textContent = 'CF Activo'; cfEl.className = 'sensor-val ok'; }
+    const label = hasRealGyro ? 'CF Completo' : 'CF Orientación';
+    const cfEl  = $('cf-status');
+    if (cfEl) { cfEl.textContent = label; cfEl.className = 'sensor-val ok'; }
     const badge = $('cf-mode-badge');
     if (badge) { badge.textContent = 'CF'; badge.style.color = 'var(--green)'; badge.style.borderColor = 'rgba(0,240,160,0.35)'; badge.style.background = 'rgba(0,240,160,0.08)'; }
     return;
@@ -476,20 +481,17 @@ function onMotionTilt(e) {
   const dt = Math.min((now - App.tiltFilter.lastTime) / 1000, 0.1);
   App.tiltFilter.lastTime = now;
 
-  // d(roll)/dt = d(-gamma)/dt = -(rotationRate.gamma)
-  const gyroRollRate  = -(rr.gamma || 0);
-  const gyroPitchRate =  (rr.beta  || 0);
   const refRoll  = App.gyroData._rawRoll  || 0;
   const refPitch = App.gyroData._rawPitch || 0;
 
-  // α = 0.97: confianza alta en giróscopo para movimientos rápidos,
-  // referencia de acelerómetro (DeviceOrientation) para corregir drift lento
-  const CF_ALPHA = 0.97;
+  // Con giróscopo real: alta confianza en tasa angular (0.97)
+  // Sin giróscopo real: más peso a la referencia de orientación (0.85)
+  const CF_ALPHA = hasRealGyro ? 0.97 : 0.85;
   App.tiltFilter.roll  = CF_ALPHA * (App.tiltFilter.roll  + gyroRollRate  * dt) + (1 - CF_ALPHA) * refRoll;
   App.tiltFilter.pitch = CF_ALPHA * (App.tiltFilter.pitch + gyroPitchRate * dt) + (1 - CF_ALPHA) * refPitch;
 
-  const filteredRoll  = Math.round((App.tiltFilter.roll  - App.tiltFilter.rollOffset) * 10) / 10;
-  const filteredPitch = Math.round(App.tiltFilter.pitch * 10) / 10;
+  const filteredRoll  = Math.round((App.tiltFilter.roll  - App.tiltFilter.rollOffset)  * 10) / 10;
+  const filteredPitch = Math.round((App.tiltFilter.pitch - App.tiltFilter.pitchOffset) * 10) / 10;
 
   App.gyroData.gamma = filteredRoll;
   App.gyroData.beta  = filteredPitch;
@@ -1335,10 +1337,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Calibrar: fija el offset al ángulo actual (punto cero con moto recta)
   const doCalibrate = () => {
-    App.tiltFilter.rollOffset = App.tiltFilter.gyroReady
-      ? App.tiltFilter.roll
-      : (App.gyroData._rawRoll || 0);
-    toast('Calibrado ✓ — punto cero fijado', 'ok');
+    if (App.tiltFilter.gyroReady) {
+      App.tiltFilter.rollOffset  = App.tiltFilter.roll;
+      App.tiltFilter.pitchOffset = App.tiltFilter.pitch;
+    } else {
+      App.tiltFilter.rollOffset  = App.gyroData._rawRoll  || 0;
+      App.tiltFilter.pitchOffset = App.gyroData._rawPitch || 0;
+    }
+    toast('Calibrado ✓ — Roll y Pitch a cero', 'ok');
   };
   $('btn-calibrate')?.addEventListener('click',  doCalibrate);
   $('btn-calibrate2')?.addEventListener('click', doCalibrate);
