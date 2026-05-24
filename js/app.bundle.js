@@ -141,6 +141,8 @@ const App = {
   gyroData:         { alpha:0, beta:0, gamma:0, _rawRoll:0, _rawPitch:0 },
   tiltFilter:       { roll:0, pitch:0, lastTime:null, gyroReady:false, rollOffset:0, pitchOffset:0,
                       lastGpsHeading:null, lastGpsHeadingTime:null, gpsLean:null },
+  gForce:           { long:0, lat:0, peakBrake:0, peakAccel:0, peakLat:0,
+                      prevSpeedMs:null, prevSpeedTime:null },
   sessionActive:    false,
   sessionStart:     null,
   sessionSamples:   [],
@@ -347,6 +349,7 @@ async function onGPSPosition(pos) {
     App.gpsSpeed   = App.gpsSpeed === null ? filtered : Math.round(App.gpsSpeed * 0.7 + filtered * 0.3);
     updateGpsSpeedUI(App.gpsSpeed);
     computeWindChill();
+    computeGForce(pos.timestamp);
   }
 
   if (App.mapInitialized) mapUpdatePosition(App.position.lat, App.position.lon);
@@ -411,6 +414,60 @@ function computeWindChill() {
   updateWindChillUI(wc, cls);
   setEl('real-temp', (App.weather.temp > 0 ? '+' : '') + App.weather.temp + '°');
   setEl('eff-speed', Math.round(eff) + ' km/h');
+}
+
+/* ═══════════════════════════════════════
+   FUERZAS G
+   Longitudinal: delta velocidad GPS / (dt × 9.81)
+   Lateral:      tan(roll CF) — física centrípeta
+═══════════════════════════════════════ */
+function computeGForce(posTimestamp) {
+  const now     = posTimestamp || Date.now();
+  const speedMs = (App.gpsSpeed || 0) / 3.6;
+
+  if (App.gForce.prevSpeedMs !== null && App.gForce.prevSpeedTime !== null) {
+    const dt = (now - App.gForce.prevSpeedTime) / 1000;
+    if (dt > 0.1 && dt < 5) {
+      const rawLong = (speedMs - App.gForce.prevSpeedMs) / (dt * 9.81);
+      App.gForce.long = App.gForce.long * 0.5 + rawLong * 0.5;
+      if (App.sessionActive) {
+        if (App.gForce.long < -0.05) App.gForce.peakBrake = Math.min(App.gForce.peakBrake, App.gForce.long);
+        if (App.gForce.long >  0.05) App.gForce.peakAccel = Math.max(App.gForce.peakAccel, App.gForce.long);
+      }
+    }
+  }
+  App.gForce.prevSpeedMs   = speedMs;
+  App.gForce.prevSpeedTime = now;
+
+  // G lateral: tan(ángulo de inclinación) — sin necesidad de acelerómetro extra
+  const roll = App.gyroData.gamma || 0;
+  App.gForce.lat = Math.tan(roll * Math.PI / 180);
+  if (App.sessionActive && Math.abs(App.gForce.lat) > Math.abs(App.gForce.peakLat)) {
+    App.gForce.peakLat = App.gForce.lat;
+  }
+
+  updateGForceHUD();
+}
+
+function updateGForceHUD() {
+  const gL = App.gForce.long;
+  const gT = App.gForce.lat;
+
+  // Frenada (negativo) y aceleración (positivo) se muestran siempre en absoluto con signo visual
+  const brakeG = Math.max(0, -gL);
+  const accelG = Math.max(0,  gL);
+  const latG   = Math.abs(gT);
+
+  const brakeEl = $('hud-g-brake'); const accelEl = $('hud-g-accel'); const latEl = $('hud-g-lat');
+  if (!brakeEl) return;
+
+  brakeEl.textContent = brakeG.toFixed(2) + 'G';
+  accelEl.textContent = accelG.toFixed(2) + 'G';
+  latEl.textContent   = latG.toFixed(2)   + 'G';
+
+  brakeEl.style.color = brakeG > 0.5 ? '#ff2255' : brakeG > 0.25 ? '#ffb300' : '#5a5a7a';
+  accelEl.style.color = accelG > 0.4 ? '#00f0a0' : accelG > 0.15 ? '#29d9ff' : '#5a5a7a';
+  latEl.style.color   = latG   > 0.5 ? '#ffb300' : latG   > 0.25 ? '#ff5500' : '#5a5a7a';
 }
 
 /* ═══════════════════════════════════════
@@ -875,6 +932,9 @@ function startSession() {
   App.curveCountL    = 0;
   App.curveCountR    = 0;
   App.curveState     = { inCurve:false, startTime:null, startPos:null, maxAngle:0, dir:null };
+  App.gForce.peakBrake = 0;
+  App.gForce.peakAccel = 0;
+  App.gForce.peakLat   = 0;
   setEl('hud-curves-l', '0');
   setEl('hud-curves-r', '0');
   $('session-timer')?.classList.add('show');
@@ -882,7 +942,12 @@ function startSession() {
     const elapsed = Date.now() - App.sessionStart;
     const s = Math.floor(elapsed/1000)%60, m = Math.floor(elapsed/60000)%60, h = Math.floor(elapsed/3600000);
     setEl('session-time', (h>0?pad(h)+':':'') + pad(m) + ':' + pad(s));
-    App.sessionSamples.push({ t: elapsed, lat: App.position?.lat, lon: App.position?.lon, speed: App.gpsSpeed, roll: App.gyroData.gamma, wc: App.windChill, temp: App.weather?.temp });
+    App.sessionSamples.push({
+      t: elapsed, lat: App.position?.lat, lon: App.position?.lon,
+      speed: App.gpsSpeed, roll: App.gyroData.gamma, wc: App.windChill, temp: App.weather?.temp,
+      gLong: Math.round(App.gForce.long * 100) / 100,
+      gLat:  Math.round(App.gForce.lat  * 100) / 100
+    });
   }, 1000);
 }
 
@@ -976,20 +1041,26 @@ function renderHistory() {
    INFORME
 ═══════════════════════════════════════ */
 function buildReport() {
-  const dur    = Date.now() - App.sessionStart;
-  const speeds = App.sessionSamples.map(s => s.speed).filter(v => v != null);
-  const wcs    = App.sessionSamples.map(s => s.wc).filter(v => v != null);
-  const rolls  = App.sessionSamples.map(s => s.roll).filter(v => v != null);
-  const cL     = App.sessionCurves.filter(c => c.dir === 'L');
-  const cR     = App.sessionCurves.filter(c => c.dir === 'R');
-  const maxAng = App.sessionCurves.length ? Math.max(...App.sessionCurves.map(c => c.maxAngle)) : 0;
-  const avgAng = App.sessionCurves.length ? Math.round(App.sessionCurves.reduce((a,c)=>a+c.maxAngle,0)/App.sessionCurves.length*10)/10 : 0;
+  const dur     = Date.now() - App.sessionStart;
+  const speeds  = App.sessionSamples.map(s => s.speed).filter(v => v != null);
+  const wcs     = App.sessionSamples.map(s => s.wc).filter(v => v != null);
+  const rolls   = App.sessionSamples.map(s => s.roll).filter(v => v != null);
+  const gLongs  = App.sessionSamples.map(s => s.gLong).filter(v => v != null);
+  const gLats   = App.sessionSamples.map(s => s.gLat).filter(v => v != null);
+  const cL      = App.sessionCurves.filter(c => c.dir === 'L');
+  const cR      = App.sessionCurves.filter(c => c.dir === 'R');
+  const maxAng  = App.sessionCurves.length ? Math.max(...App.sessionCurves.map(c => c.maxAngle)) : 0;
+  const avgAng  = App.sessionCurves.length ? Math.round(App.sessionCurves.reduce((a,c)=>a+c.maxAngle,0)/App.sessionCurves.length*10)/10 : 0;
+  const peakBrk = gLongs.length ? Math.round(Math.abs(Math.min(0, ...gLongs)) * 100) / 100 : 0;
+  const peakAcc = gLongs.length ? Math.round(Math.max(0, ...gLongs) * 100) / 100 : 0;
+  const peakLat = gLats.length  ? Math.round(Math.max(...gLats.map(Math.abs)) * 100) / 100 : 0;
   return {
-    meta:    { mode: App.rideMode, destination: App.rideDestination, startTime: App.sessionStart, duration: dur, durationFmt: fmtDur(dur), track: App.sessionSamples.filter(s=>s.lat).map(s=>({lat:s.lat,lon:s.lon})) },
-    speed:   { max: speeds.length?Math.max(...speeds):0, avg: speeds.length?Math.round(speeds.reduce((a,b)=>a+b,0)/speeds.length):0, history: speeds },
-    thermal: { minWC: wcs.length?Math.min(...wcs):null, avgWC: wcs.length?Math.round(wcs.reduce((a,b)=>a+b,0)/wcs.length*10)/10:null, history: wcs },
-    inclin:  { maxAngle: Math.max(...(rolls.length?rolls.map(Math.abs):[0])), history: rolls },
-    curves:  { total: App.sessionCurves.length, left: cL.length, right: cR.length, list: App.sessionCurves, maxAngle: maxAng, avgAngle: avgAng }
+    meta:     { mode: App.rideMode, destination: App.rideDestination, startTime: App.sessionStart, duration: dur, durationFmt: fmtDur(dur), track: App.sessionSamples.filter(s=>s.lat).map(s=>({lat:s.lat,lon:s.lon})) },
+    speed:    { max: speeds.length?Math.max(...speeds):0, avg: speeds.length?Math.round(speeds.reduce((a,b)=>a+b,0)/speeds.length):0, history: speeds },
+    thermal:  { minWC: wcs.length?Math.min(...wcs):null, avgWC: wcs.length?Math.round(wcs.reduce((a,b)=>a+b,0)/wcs.length*10)/10:null, history: wcs },
+    inclin:   { maxAngle: Math.max(...(rolls.length?rolls.map(Math.abs):[0])), history: rolls },
+    curves:   { total: App.sessionCurves.length, left: cL.length, right: cR.length, list: App.sessionCurves, maxAngle: maxAng, avgAngle: avgAng },
+    gForces:  { peakBraking: peakBrk, peakAccel: peakAcc, peakLateral: peakLat, historyLong: gLongs, historyLat: gLats }
   };
 }
 
@@ -1040,7 +1111,14 @@ function renderReport(r) {
         '<div class="curve-stat right"><div class="curve-arrow">↱</div><div class="curve-count">' + r.curves.right + '</div><div class="curve-lbl">DERECHA</div></div>' +
       '</div>' + angleDistChart(r.curves.list) + '</div>' +
 
+    (r.gForces ? '<div class="report-kpis" style="margin-top:0;border-top:1px solid rgba(255,85,0,0.08);padding-top:10px">' +
+      '<div class="report-kpi"><div class="kpi-value" style="color:#ff2255">' + (r.gForces.peakBraking || 0).toFixed(2) + 'G</div><div class="kpi-label">G FRENADA</div></div>' +
+      '<div class="report-kpi"><div class="kpi-value" style="color:#00f0a0">' + (r.gForces.peakAccel   || 0).toFixed(2) + 'G</div><div class="kpi-label">G ACELERACIÓN</div></div>' +
+      '<div class="report-kpi"><div class="kpi-value" style="color:#ffb300">' + (r.gForces.peakLateral || 0).toFixed(2) + 'G</div><div class="kpi-label">G LATERAL</div></div>' +
+    '</div>' : '') +
+
     '<div class="report-section"><div class="report-section-title">PERFIL DE VELOCIDAD</div>' + lineChartSVG(r.speed.history, '#ff5500', 0, Math.max(r.speed.max,20), 'km/h') + '</div>' +
+    (r.gForces?.historyLong?.length > 2 ? '<div class="report-section"><div class="report-section-title">FUERZAS G LONGITUDINALES</div>' + gForceLongChartSVG(r.gForces.historyLong) + '</div>' : '') +
     '<div class="report-section"><div class="report-section-title">PERFIL DE INCLINACIÓN</div>' + inclinChartSVG(r.inclin.history, r.curves.list) + '</div>' +
     '<div class="report-section"><div class="report-section-title">SENSACIÓN TÉRMICA EN RUTA</div>' + lineChartSVG(r.thermal.history, '#29d9ff', r.thermal.minWC != null ? r.thermal.minWC-2 : 0, r.thermal.avgWC != null ? r.thermal.avgWC+5 : 20, '°C') + '</div>' +
     topCurvesHTML(r.curves.list) +
@@ -1145,6 +1223,30 @@ function lineChartSVG(data, color, min, max, unit) {
     '<path d="'+areaPath+'" fill="url(#'+gid+')"/>' +
     '<path d="'+linePath+'" fill="none" stroke="'+color+'" stroke-width="1.5" stroke-linejoin="round"/>' +
     '<text x="'+(pl+iW)+'" y="'+(pt-2)+'" font-size="8" fill="'+color+'" text-anchor="end">'+Math.max(...data)+unit+'</text>' +
+  '</svg>';
+}
+
+// Gráfico bicolor G longitudinal: aceleración (verde arriba) / frenada (rojo abajo)
+function gForceLongChartSVG(data) {
+  if (!data || data.length < 2) return '<p class="report-empty">Sin datos</p>';
+  const W=320,H=90,pl=36,pr=10,pt=10,pb=20,iW=W-pl-pr,iH=H-pt-pb;
+  const absMax = Math.max(0.1, ...data.map(Math.abs));
+  const zero   = pt + iH / 2;
+  const scaleY = v => zero - (v / absMax) * (iH / 2);
+  // Segmentos coloreados por signo
+  let paths = '';
+  for (let i = 1; i < data.length; i++) {
+    const x1 = pl + ((i-1)/(data.length-1))*iW, x2 = pl + (i/(data.length-1))*iW;
+    const y1 = scaleY(data[i-1]), y2 = scaleY(data[i]);
+    const col = (data[i-1]+data[i]) >= 0 ? '#00f0a0' : '#ff2255';
+    paths += '<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="'+col+'" stroke-width="1.5" stroke-linecap="round"/>';
+  }
+  return '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block">' +
+    '<line x1="'+pl+'" y1="'+zero+'" x2="'+(pl+iW)+'" y2="'+zero+'" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>' +
+    '<text x="'+(pl-4)+'" y="'+(pt+5)+'"    font-size="8" fill="#00f0a0" text-anchor="end">+'+absMax.toFixed(1)+'G</text>' +
+    '<text x="'+(pl-4)+'" y="'+(pt+iH+5)+'" font-size="8" fill="#ff2255" text-anchor="end">-'+absMax.toFixed(1)+'G</text>' +
+    '<text x="'+(pl-4)+'" y="'+(zero+3)+'"  font-size="8" fill="#5a5a7a" text-anchor="end">0</text>' +
+    paths +
   '</svg>';
 }
 
