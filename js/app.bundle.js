@@ -138,7 +138,9 @@ const App = {
   lastPositionTime: null,
   wakeLock:         null,
   wakeLockEnabled:  false,
-  gyroData:         { alpha:0, beta:0, gamma:0 },
+  gyroData:         { alpha:0, beta:0, gamma:0, _rawRoll:0, _rawPitch:0 },
+  tiltFilter:       { roll:0, pitch:0, lastTime:null, gyroReady:false, rollOffset:0,
+                      lastGpsHeading:null, lastGpsHeadingTime:null, gpsLean:null },
   sessionActive:    false,
   sessionStart:     null,
   sessionSamples:   [],
@@ -349,6 +351,8 @@ async function onGPSPosition(pos) {
 
   if (App.mapInitialized) mapUpdatePosition(App.position.lat, App.position.lon);
 
+  if (App.tiltFilter.gyroReady) applyGpsLeanCorrection();
+
   if (shouldGeocode(App.position)) {
     App.lastGeocodedPos = App.position;
     const name = await reverseGeocode(App.position.lat, App.position.lon);
@@ -417,11 +421,27 @@ function startGyro() {
   const startListening = () => {
     window.addEventListener('deviceorientation', e => {
       const alpha = e.alpha || 0, beta = e.beta || 0, gamma = e.gamma || 0;
-      const roll  = -gamma;
-      App.gyroData = { alpha, beta, gamma: roll };
-      updateGyroUI(roll, beta, alpha);
-      if (App.sessionActive) detectCurve(roll, App.position);
+      App.gyroData.alpha     = alpha;
+      App.gyroData._rawRoll  = -gamma;
+      App.gyroData._rawPitch = beta;
+      // Fallback directo cuando rotationRate no está disponible
+      if (!App.tiltFilter.gyroReady) {
+        const roll = -gamma - App.tiltFilter.rollOffset;
+        App.gyroData.gamma = roll;
+        App.gyroData.beta  = beta;
+        updateGyroUI(roll, beta, alpha);
+        if (App.sessionActive) detectCurve(roll, App.position);
+      }
     }, true);
+    // Filtro Complementario: rotationRate via DeviceMotion
+    if (window.DeviceMotionEvent) {
+      const startMotion = () => window.addEventListener('devicemotion', onMotionTilt, true);
+      if (typeof DeviceMotionEvent.requestPermission === 'function') {
+        DeviceMotionEvent.requestPermission().then(r => { if (r === 'granted') startMotion(); }).catch(() => {});
+      } else {
+        startMotion();
+      }
+    }
     setStatusPill('gyro', 'active');
   };
   if (typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -429,6 +449,94 @@ function startGyro() {
   } else {
     startListening();
   }
+}
+
+/* ═══════════════════════════════════════
+   FILTRO COMPLEMENTARIO DE INCLINACIÓN
+   Gyro (rotationRate 60 Hz) + Orientación (referencia absoluta) + GPS (corrección lean)
+═══════════════════════════════════════ */
+function onMotionTilt(e) {
+  const rr = e.rotationRate;
+  if (!rr || rr.gamma === null || rr.beta === null) return;
+
+  const now = Date.now();
+
+  if (!App.tiltFilter.gyroReady) {
+    App.tiltFilter.gyroReady = true;
+    App.tiltFilter.roll      = App.gyroData._rawRoll  || 0;
+    App.tiltFilter.pitch     = App.gyroData._rawPitch || 0;
+    App.tiltFilter.lastTime  = now;
+    const cfEl = $('cf-status');
+    if (cfEl) { cfEl.textContent = 'CF Activo'; cfEl.className = 'sensor-val ok'; }
+    const badge = $('cf-mode-badge');
+    if (badge) { badge.textContent = 'CF'; badge.style.color = 'var(--green)'; badge.style.borderColor = 'rgba(0,240,160,0.35)'; badge.style.background = 'rgba(0,240,160,0.08)'; }
+    return;
+  }
+
+  const dt = Math.min((now - App.tiltFilter.lastTime) / 1000, 0.1);
+  App.tiltFilter.lastTime = now;
+
+  // d(roll)/dt = d(-gamma)/dt = -(rotationRate.gamma)
+  const gyroRollRate  = -(rr.gamma || 0);
+  const gyroPitchRate =  (rr.beta  || 0);
+  const refRoll  = App.gyroData._rawRoll  || 0;
+  const refPitch = App.gyroData._rawPitch || 0;
+
+  // α = 0.97: confianza alta en giróscopo para movimientos rápidos,
+  // referencia de acelerómetro (DeviceOrientation) para corregir drift lento
+  const CF_ALPHA = 0.97;
+  App.tiltFilter.roll  = CF_ALPHA * (App.tiltFilter.roll  + gyroRollRate  * dt) + (1 - CF_ALPHA) * refRoll;
+  App.tiltFilter.pitch = CF_ALPHA * (App.tiltFilter.pitch + gyroPitchRate * dt) + (1 - CF_ALPHA) * refPitch;
+
+  const filteredRoll  = Math.round((App.tiltFilter.roll  - App.tiltFilter.rollOffset) * 10) / 10;
+  const filteredPitch = Math.round(App.tiltFilter.pitch * 10) / 10;
+
+  App.gyroData.gamma = filteredRoll;
+  App.gyroData.beta  = filteredPitch;
+
+  updateGyroUI(filteredRoll, filteredPitch, App.gyroData.alpha);
+  if (App.sessionActive) detectCurve(filteredRoll, App.position);
+}
+
+// Corrección física del lean angle usando cambio de rumbo GPS (física centrípeta)
+// Solo aplica cuando la velocidad > 15 km/h y hay heading disponible
+function applyGpsLeanCorrection() {
+  const pos = App.position;
+  if (!pos?.heading || !App.gpsSpeed || App.gpsSpeed < 15) return;
+
+  const now = Date.now();
+  if (!App.tiltFilter.lastGpsHeading) {
+    App.tiltFilter.lastGpsHeading     = pos.heading;
+    App.tiltFilter.lastGpsHeadingTime = now;
+    return;
+  }
+
+  const dtGps = (now - App.tiltFilter.lastGpsHeadingTime) / 1000;
+  if (dtGps < 1 || dtGps > 5) {
+    App.tiltFilter.lastGpsHeading     = pos.heading;
+    App.tiltFilter.lastGpsHeadingTime = now;
+    return;
+  }
+
+  let dHeading = pos.heading - App.tiltFilter.lastGpsHeading;
+  if (dHeading > 180)  dHeading -= 360;
+  if (dHeading < -180) dHeading += 360;
+  const headingRate = dHeading / dtGps; // grados/s
+
+  // tan(lean) = v² × ω / g  →  lean = atan2(v²·|ω|, g) · sign(ω)
+  const v     = App.gpsSpeed / 3.6;
+  const omega = headingRate * Math.PI / 180;
+  const gpsLean = Math.atan2(v * v * Math.abs(omega), 9.81) * 180 / Math.PI * Math.sign(omega);
+  App.tiltFilter.gpsLean = Math.round(gpsLean * 10) / 10;
+
+  // Corrección suave (5%) solo si la discrepancia es entre 5° y 30°
+  const diff = gpsLean - App.tiltFilter.roll;
+  if (Math.abs(diff) > 5 && Math.abs(diff) < 30) {
+    App.tiltFilter.roll += diff * 0.05;
+  }
+
+  App.tiltFilter.lastGpsHeading     = pos.heading;
+  App.tiltFilter.lastGpsHeadingTime = now;
 }
 
 /* ═══════════════════════════════════════
@@ -1172,6 +1280,12 @@ function detectAPIs() {
   set('sensor-motion',   'DeviceMotionEvent' in window);
   set('sensor-wakelock', 'wakeLock' in navigator);
   set('sensor-geo',      'geolocation' in navigator);
+  const cfEl = $('cf-status');
+  if (cfEl) {
+    const hasMotion = 'DeviceMotionEvent' in window;
+    cfEl.textContent = hasMotion ? 'Esperando giróscopo…' : 'No disponible';
+    cfEl.className   = 'sensor-val ' + (hasMotion ? '' : 'no');
+  }
 }
 
 /* ═══════════════════════════════════════
@@ -1219,8 +1333,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (confirm('¿Borrar todo el historial de rutas?')) { localStorage.removeItem(HISTORY_KEY); renderHistory(); }
   });
 
-  // Calibrar
-  $('btn-calibrate')?.addEventListener('click', () => toast('Calibrado ✓', 'ok'));
+  // Calibrar: fija el offset al ángulo actual (punto cero con moto recta)
+  const doCalibrate = () => {
+    App.tiltFilter.rollOffset = App.tiltFilter.gyroReady
+      ? App.tiltFilter.roll
+      : (App.gyroData._rawRoll || 0);
+    toast('Calibrado ✓ — punto cero fijado', 'ok');
+  };
+  $('btn-calibrate')?.addEventListener('click',  doCalibrate);
+  $('btn-calibrate2')?.addEventListener('click', doCalibrate);
 
   // Wake Lock
   $('wakelock-badge')?.addEventListener('click', async () => {
