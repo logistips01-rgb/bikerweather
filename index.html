@@ -408,7 +408,10 @@
       <div class="gyro-panel">
         <div class="panel-hdr">
           <span class="panel-hdr-lbl">INCLINACIÓN EN TIEMPO REAL</span>
-          <button id="btn-calibrate" class="btn" style="padding:4px 10px;font-size:0.68rem">⊕ Calibrar</button>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span id="cf-mode-badge" style="font-family:var(--font-mono);font-size:0.58rem;padding:2px 6px;border-radius:3px;background:rgba(90,90,122,0.2);color:#5a5a7a;border:1px solid rgba(90,90,122,0.3);letter-spacing:0.05em">CF</span>
+            <button id="btn-calibrate" class="btn" style="padding:4px 10px;font-size:0.68rem">⊕ Calibrar</button>
+          </div>
         </div>
 
         <!-- Horizon -->
@@ -469,6 +472,10 @@
         <div class="sensor-row">
           <span class="sensor-name">DeviceMotion API</span>
           <span id="sensor-motion" class="sensor-val">—</span>
+        </div>
+        <div class="sensor-row">
+          <span class="sensor-name">Filtro Complementario (CF)</span>
+          <span id="cf-status" class="sensor-val">—</span>
         </div>
         <div class="sensor-row">
           <span class="sensor-name">Screen Wake Lock API</span>
