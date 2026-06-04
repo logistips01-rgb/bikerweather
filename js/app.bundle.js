@@ -629,10 +629,18 @@ function updateRollOverlay(roll) {
   const dim   = `rgba(${r},${g},${b},0.12)`;
 
   // Rotar línea
-  line.style.transform  = `rotate(${-roll}deg)`;
-  line.style.height     = abs > 30 ? '4px' : abs > 15 ? '3px' : '2px';
-  line.style.background = `linear-gradient(to right,transparent 0%,${dim} 6%,${css} 28%,${css} 72%,${dim} 94%,transparent 100%)`;
-  line.style.filter     = abs > 8 ? `drop-shadow(0 0 ${Math.min(abs * 0.35, 14)}px ${css})` : 'none';
+  line.style.transform = `rotate(${-roll}deg)`;
+  if (App.landscapeMode) {
+    // En landscape la línea es vertical en CSS (→ horizontal visual tras rotación 90°)
+    // CSS controla height/width; JS solo pone el gradiente y el filtro
+    line.style.height = '';
+    line.style.width  = '';
+    line.style.background = `linear-gradient(to bottom,transparent 0%,${dim} 6%,${css} 28%,${css} 72%,${dim} 94%,transparent 100%)`;
+  } else {
+    line.style.height     = abs > 30 ? '4px' : abs > 15 ? '3px' : '2px';
+    line.style.background = `linear-gradient(to right,transparent 0%,${dim} 6%,${css} 28%,${css} 72%,${dim} 94%,transparent 100%)`;
+  }
+  line.style.filter = abs > 8 ? `drop-shadow(0 0 ${Math.min(abs * 0.35, 14)}px ${css})` : 'none';
 
   // Etiqueta de ángulo
   if (label) {

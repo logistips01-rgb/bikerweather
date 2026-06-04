@@ -727,8 +727,8 @@ body.landscape-mode #map-container {
   inset: auto !important;
   flex: 1 !important;
   min-height: 0 !important;
-  height: auto !important;
-  width: 100% !important;
+  height: 100dvw !important;   /* = ancho del portrait = alto del landscape */
+  width: 100dvh !important;    /* = alto del portrait = ancho del landscape */
   border-radius: 0 !important;
   border: none !important;
 }
@@ -782,9 +782,23 @@ body.landscape-mode .hud-curves        { display: none; }
 body.landscape-mode .btn-stop-route    { padding: 6px 11px !important; font-size: 0.65rem !important; }
 body.landscape-mode .session-timer     { display: none; }
 
-/* Línea de roll: más prominente en landscape */
-body.landscape-mode .roll-line         { height: 2.5px; }
-body.landscape-mode .roll-angle-label  { font-size: 1.3rem; right: 10%; }
+/* Línea de roll: vertical en CSS portrait → horizontal en landscape tras rotación 90° CW */
+body.landscape-mode .roll-line {
+  top: 7.5% !important;
+  left: 50% !important;
+  height: 85% !important;
+  width: 3px !important;
+  margin-top: 0 !important;
+  margin-left: -1.5px !important;
+  transform-origin: center center !important;
+}
+/* Etiqueta de ángulo: junto al extremo superior de la línea vertical */
+body.landscape-mode .roll-angle-label {
+  font-size: 1.3rem !important;
+  right: auto !important;
+  top: 4% !important;
+  left: calc(50% + 12px) !important;
+}
 
 /* Botón invertir inclinación — solo visible en landscape */
 .btn-tilt-flip {
