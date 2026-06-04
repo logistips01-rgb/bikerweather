@@ -1302,7 +1302,7 @@ function _drawKitt(cv) {
   const W = cv.width, H = cv.height;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#050000'; ctx.fillRect(0, 0, W, H);
-  const spd = _kirkSpeaking ? 10 : 6;
+  const spd = _kirkSpeaking ? 22 : 14;
   _kirkKittPos += _kirkKittDir * spd;
   if (_kirkKittPos >= W - 8) _kirkKittDir = -1;
   if (_kirkKittPos <= 8)     _kirkKittDir = 1;
