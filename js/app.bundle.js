@@ -65,7 +65,11 @@ async function fetchWeatherData(lat, lon) {
     current: 'temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code,surface_pressure',
     wind_speed_unit: 'kmh', timezone: 'auto'
   });
-  const res  = await fetch('https://api.open-meteo.com/v1/forecast?' + params);
+  const ctrl = new AbortController();
+  const tid  = setTimeout(() => ctrl.abort(), 8000);
+  let res;
+  try { res = await fetch('https://api.open-meteo.com/v1/forecast?' + params, { signal: ctrl.signal }); }
+  finally { clearTimeout(tid); }
   if (!res.ok) throw new Error('API meteo ' + res.status);
   const data = await res.json();
   if (data.error) throw new Error(data.reason || 'API error');
@@ -395,6 +399,7 @@ async function loadWeather(lat, lon) {
     const w = await fetchWeatherData(lat, lon);
     App.weather          = w;
     App.lastWeatherFetch = Date.now();
+    try { localStorage.setItem('bw_weather', JSON.stringify({ w, ts: Date.now(), lat, lon })); } catch(_) {}
     updateWeatherUI(w);
     updateHazardsUI(weatherHazards(w));
     setStatusPill('weather', 'active');
@@ -403,8 +408,23 @@ async function loadWeather(lat, lon) {
       App.weatherInterval = setInterval(() => { if (App.position) loadWeather(App.position.lat, App.position.lon); }, REFRESH_MS);
     }
   } catch(err) {
+    App.lastWeatherFetch = Date.now();
+    // Intentar usar datos cacheados recientes (< 2 horas)
+    if (!App.weather) {
+      try {
+        const cached = JSON.parse(localStorage.getItem('bw_weather') || 'null');
+        if (cached && (Date.now() - cached.ts) < 7_200_000) {
+          App.weather = cached.w;
+          updateWeatherUI(cached.w);
+          updateHazardsUI(weatherHazards(cached.w));
+          computeWindChill();
+          setStatusPill('weather', 'warn');
+          toast('Meteo: usando datos cacheados', 'info');
+          return;
+        }
+      } catch(_) {}
+    }
     setStatusPill('weather', 'error');
-    App.lastWeatherFetch = Date.now(); // throttle: retryWait=30s cuando !App.weather
     const msg = !navigator.onLine ? 'Sin conexión para datos meteo' : 'Error meteo, reintentando...';
     toast(msg, 'error');
   }
