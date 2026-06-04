@@ -620,6 +620,174 @@ input[type="text"]::placeholder { color: #8888aa; }
   gap: 6px;
   justify-content: center;
 }
+
+/* ══════════════════════════════════════════════
+   OVERLAY DE INCLINACIÓN — CABINA DE CAZA
+══════════════════════════════════════════════ */
+.roll-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 490;
+  transition: box-shadow 0.35s ease;
+}
+.roll-line {
+  position: absolute;
+  top: 50%; left: 7.5%;
+  width: 85%;
+  height: 2px;
+  margin-top: -1px;
+  transform-origin: center center;
+  transform: rotate(0deg);
+  border-radius: 2px;
+  transition: transform 0.07s ease, height 0.15s ease;
+}
+.roll-line-pulse {
+  animation: rollPulse 0.4s ease-out forwards;
+}
+@keyframes rollPulse {
+  0%   { filter: brightness(1) }
+  40%  { filter: brightness(3) }
+  100% { filter: brightness(1) }
+}
+.roll-angle-label {
+  position: absolute;
+  right: 9%;
+  top: calc(50% - 26px);
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  transition: color 0.3s ease, opacity 0.3s ease;
+}
+.hud-ls-time {
+  display: none;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: #8888aa;
+  letter-spacing: 0.08em;
+}
+
+/* Botón toggle landscape en pre-ruta */
+.btn-landscape-toggle {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  padding: 7px 14px;
+  border: 1px solid var(--border-dim);
+  color: var(--text-dim);
+  background: var(--bg3);
+  border-radius: var(--r2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  align-self: flex-start;
+}
+.btn-landscape-toggle.active {
+  border-color: rgba(0,240,160,0.4);
+  color: var(--green);
+  background: rgba(0,240,160,0.07);
+}
+
+/* ══════════════════════════════════════════════
+   MODO HORIZONTAL (LANDSCAPE) — COCKPIT DE CAZA
+══════════════════════════════════════════════ */
+body.landscape-mode #app                { max-width: 100%; }
+body.landscape-mode main                { padding: 0; gap: 0; }
+body.landscape-mode .bottom-nav         { display: none; }
+body.landscape-mode .app-header         { display: none; }
+body.landscape-mode .location-bar       { display: none; }
+body.landscape-mode .section            { gap: 0; }
+
+body.landscape-mode #map-container {
+  position: fixed !important;
+  inset: 0 !important;
+  height: 100dvh !important;
+  width: 100vw !important;
+  z-index: 50 !important;
+  border-radius: 0 !important;
+  border: none !important;
+}
+body.landscape-mode #leaflet-map        { height: 100% !important; }
+
+/* HUD layout: columna → barra superior compacta */
+body.landscape-mode .riding-hud {
+  padding: 0;
+  justify-content: flex-start;
+}
+body.landscape-mode .hud-top {
+  gap: 0;
+  background: rgba(5,5,8,0.80);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-dim);
+  border-radius: 0;
+  padding: 0;
+  flex-shrink: 0;
+}
+body.landscape-mode .hud-speed-card,
+body.landscape-mode .hud-wc-card,
+body.landscape-mode .hud-horizon-card {
+  background: none; backdrop-filter: none;
+  border: none; border-right: 1px solid var(--border-dim);
+  border-radius: 0; flex-direction: row;
+  align-items: center; gap: 6px;
+  padding: 5px 14px; min-width: unset; flex: none;
+}
+body.landscape-mode .hud-speed-val     { font-size: 1.3rem; }
+body.landscape-mode .hud-speed-lbl     { font-size: 0.58rem; }
+body.landscape-mode .hud-wc-val        { font-size: 1.1rem; }
+body.landscape-mode .hud-wc-lbl        { font-size: 0.56rem; }
+body.landscape-mode .hud-wc-class      { display: none; }
+body.landscape-mode .hud-horizon-mini  { display: none; }
+body.landscape-mode .hud-roll-val      { font-size: 1.1rem; font-weight: 700; }
+body.landscape-mode .hud-roll-dir      { font-size: 0.62rem; }
+body.landscape-mode .hud-ls-time       { display: block; }
+
+/* Panel inferior: esquina inferior derecha */
+body.landscape-mode .hud-bottom {
+  position: absolute;
+  bottom: 10px; right: 10px; left: auto;
+  width: auto;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+body.landscape-mode .hud-g-strip {
+  background: rgba(5,5,8,0.72);
+  backdrop-filter: blur(8px);
+  padding: 4px 0;
+}
+body.landscape-mode .hud-g-val         { font-size: 0.7rem; }
+body.landscape-mode .hud-g-lbl         { font-size: 0.44rem; }
+body.landscape-mode .hud-curves        { display: none; }
+body.landscape-mode .btn-stop-route    { padding: 6px 11px !important; font-size: 0.65rem !important; }
+
+/* Session timer oculto en landscape (se muestra en top bar) */
+body.landscape-mode .session-timer     { display: none; }
+
+/* Línea de roll: más prominente en landscape */
+body.landscape-mode .roll-line         { height: 2.5px; }
+body.landscape-mode .roll-angle-label  { font-size: 1.3rem; right: 10%; }
+
+/* Botón invertir inclinación — solo visible en landscape */
+.btn-tilt-flip {
+  display: none;
+  padding: 5px 9px;
+  background: rgba(5,5,8,0.75);
+  border: 1px solid var(--border-dim);
+  border-radius: var(--r);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all var(--t);
+}
+.btn-tilt-flip:hover  { border-color: var(--border); color: var(--text); }
+.btn-tilt-flip.active { border-color: rgba(41,217,255,0.4); color: var(--ice); }
+body.landscape-mode .btn-tilt-flip { display: inline-flex; }
 .hud-curve-badge {
   background: rgba(5,5,8,0.85);
   backdrop-filter: blur(8px);
