@@ -691,33 +691,54 @@ input[type="text"]::placeholder { color: #8888aa; }
 
 /* ══════════════════════════════════════════════
    MODO HORIZONTAL (LANDSCAPE) — COCKPIT DE CAZA
+   Estrategia: rotar #app 90° CW para que el teléfono
+   en soporte portrait muestre contenido en landscape
 ══════════════════════════════════════════════ */
-body.landscape-mode #app                { max-width: 100%; }
-body.landscape-mode main                { padding: 0; gap: 0; }
-body.landscape-mode .bottom-nav         { display: none; }
-body.landscape-mode .app-header         { display: none; }
-body.landscape-mode .location-bar       { display: none; }
-body.landscape-mode .section            { gap: 0; }
 
-body.landscape-mode #map-container {
+/* Rotación 90° del app completo: top-left origin, desplazado al borde derecho */
+body.landscape-mode #app {
   position: fixed !important;
-  inset: 0 !important;
-  height: 100dvh !important;
-  width: 100vw !important;
-  z-index: 50 !important;
+  top: 0 !important;
+  left: 100dvw !important;
+  width: 100dvh !important;
+  height: 100dvw !important;
+  max-width: none !important;
+  transform-origin: top left !important;
+  transform: rotate(90deg) !important;
+  overflow: hidden !important;
+}
+
+/* Main ocupa el espacio restante tras ocultar header/nav */
+body.landscape-mode main {
+  flex: 1;
+  padding: 0;
+  gap: 0;
+  min-height: 0;
+}
+body.landscape-mode .riding-section    { flex: 1; min-height: 0; }
+body.landscape-mode .bottom-nav        { display: none; }
+body.landscape-mode .app-header        { display: none; }
+body.landscape-mode .location-bar      { display: none; }
+body.landscape-mode .section           { gap: 0; }
+
+/* Mapa ocupa todo el espacio disponible (ya no necesita position:fixed) */
+body.landscape-mode #map-container {
+  position: relative !important;
+  inset: auto !important;
+  flex: 1 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  width: 100% !important;
   border-radius: 0 !important;
   border: none !important;
 }
-body.landscape-mode #leaflet-map        { height: 100% !important; }
+body.landscape-mode #leaflet-map       { height: 100% !important; }
 
-/* HUD layout: columna → barra superior compacta */
-body.landscape-mode .riding-hud {
-  padding: 0;
-  justify-content: flex-start;
-}
+/* HUD compacto: panel de instrumentos tipo cabina */
+body.landscape-mode .riding-hud        { padding: 0; justify-content: flex-start; }
 body.landscape-mode .hud-top {
   gap: 0;
-  background: rgba(5,5,8,0.80);
+  background: rgba(5,5,8,0.85);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border-dim);
   border-radius: 0;
@@ -733,36 +754,32 @@ body.landscape-mode .hud-horizon-card {
   align-items: center; gap: 6px;
   padding: 5px 14px; min-width: unset; flex: none;
 }
-body.landscape-mode .hud-speed-val     { font-size: 1.3rem; }
-body.landscape-mode .hud-speed-lbl     { font-size: 0.58rem; }
-body.landscape-mode .hud-wc-val        { font-size: 1.1rem; }
-body.landscape-mode .hud-wc-lbl        { font-size: 0.56rem; }
+body.landscape-mode .hud-speed-val     { font-size: 1.4rem; }
+body.landscape-mode .hud-speed-lbl     { font-size: 0.6rem; }
+body.landscape-mode .hud-wc-val        { font-size: 1.2rem; }
+body.landscape-mode .hud-wc-lbl        { font-size: 0.58rem; }
 body.landscape-mode .hud-wc-class      { display: none; }
 body.landscape-mode .hud-horizon-mini  { display: none; }
-body.landscape-mode .hud-roll-val      { font-size: 1.1rem; font-weight: 700; }
-body.landscape-mode .hud-roll-dir      { font-size: 0.62rem; }
+body.landscape-mode .hud-roll-val      { font-size: 1.2rem; font-weight: 700; }
+body.landscape-mode .hud-roll-dir      { font-size: 0.64rem; }
 body.landscape-mode .hud-ls-time       { display: block; }
 
-/* Panel inferior: esquina inferior derecha */
+/* Controles inferiores: fila compacta fija en esquina */
 body.landscape-mode .hud-bottom {
   position: absolute;
   bottom: 10px; right: 10px; left: auto;
-  width: auto;
-  flex-direction: row;
-  align-items: center;
-  gap: 6px;
+  width: auto; flex-direction: row;
+  align-items: center; gap: 6px;
 }
 body.landscape-mode .hud-g-strip {
   background: rgba(5,5,8,0.72);
   backdrop-filter: blur(8px);
   padding: 4px 0;
 }
-body.landscape-mode .hud-g-val         { font-size: 0.7rem; }
-body.landscape-mode .hud-g-lbl         { font-size: 0.44rem; }
+body.landscape-mode .hud-g-val         { font-size: 0.72rem; }
+body.landscape-mode .hud-g-lbl         { font-size: 0.46rem; }
 body.landscape-mode .hud-curves        { display: none; }
 body.landscape-mode .btn-stop-route    { padding: 6px 11px !important; font-size: 0.65rem !important; }
-
-/* Session timer oculto en landscape (se muestra en top bar) */
 body.landscape-mode .session-timer     { display: none; }
 
 /* Línea de roll: más prominente en landscape */
@@ -929,9 +946,10 @@ body.landscape-mode .btn-tilt-flip { display: inline-flex; }
 }
 .btn-map-landscape:hover     { border-color: var(--green); color: var(--green); }
 .btn-map-landscape.active    { border-color: rgba(0,240,160,0.5); color: var(--green); background: rgba(0,240,160,0.08); }
-/* En landscape el botón se mueve al top-right para salir fácilmente */
+/* En landscape (rotado) el botón queda justo bajo la barra HUD */
 body.landscape-mode .btn-map-landscape {
-  bottom: auto; top: 42px; right: 10px;
+  bottom: auto; top: 46px; right: 10px;
+  font-size: 0.8rem;
   color: var(--green); border-color: rgba(0,240,160,0.4);
   background: rgba(5,5,8,0.75);
 }

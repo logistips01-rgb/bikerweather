@@ -677,8 +677,11 @@ function toggleLandscapeMode() {
   App.tiltFilter.pitch     = 0;
   App.tiltFilter.lastTime  = null;
 
-  // Leaflet necesita saber que cambió el tamaño del contenedor
-  if (App.mapInitialized) setTimeout(() => App.leafletMap.invalidateSize(), 200);
+  // Leaflet necesita saber el nuevo tamaño tras la rotación
+  if (App.mapInitialized) {
+    setTimeout(() => App.leafletMap.invalidateSize(), 100);
+    setTimeout(() => App.leafletMap.invalidateSize(), 400);
+  }
 
   updateRollOverlay(App.gyroData.gamma || 0);
 }
