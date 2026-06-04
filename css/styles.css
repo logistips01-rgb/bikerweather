@@ -702,6 +702,7 @@ body.landscape-mode #app {
   left: 100dvw !important;
   width: 100dvh !important;
   height: 100dvw !important;
+  min-height: 0 !important;
   max-width: none !important;
   transform-origin: top left !important;
   transform: rotate(90deg) !important;
