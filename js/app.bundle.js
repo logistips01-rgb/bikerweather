@@ -60,25 +60,68 @@ const WMO = {
 };
 
 async function fetchWeatherData(lat, lon) {
-  const params = new URLSearchParams({
-    latitude: lat, longitude: lon,
-    current: 'temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code,surface_pressure',
-    wind_speed_unit: 'kmh', timezone: 'auto'
-  });
-  const res  = await fetch('https://api.open-meteo.com/v1/forecast?' + params);
+  try {
+    const params = new URLSearchParams({
+      latitude: lat, longitude: lon,
+      current: 'temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code,surface_pressure',
+      wind_speed_unit: 'kmh', timezone: 'auto'
+    });
+    const res  = await fetch('https://api.open-meteo.com/v1/forecast?' + params);
+    if (!res.ok) throw new Error('open-meteo ' + res.status);
+    const data = await res.json();
+    if (data.error) throw new Error(data.reason || 'open-meteo error');
+    const c   = data.current;
+    const wmo = WMO[c.weather_code] || { d:'Desconocido', emoji:'🌡' };
+    return {
+      temp:        Math.round(c.temperature_2m * 10) / 10,
+      humidity:    c.relative_humidity_2m,
+      windSpeed:   Math.round(c.wind_speed_10m),
+      windDir:     c.wind_direction_10m,
+      windGust:    Math.round(c.wind_gusts_10m),
+      weatherCode: c.weather_code,
+      condition:   wmo.d,
+      emoji:       wmo.emoji,
+      pressure:    Math.round(c.surface_pressure)
+    };
+  } catch(_) {
+    return fetchWeatherDataMET(lat, lon);
+  }
+}
+
+async function fetchWeatherDataMET(lat, lon) {
+  const res  = await fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${lat}&lon=${lon}`);
+  if (!res.ok) throw new Error('MET ' + res.status);
   const data = await res.json();
-  const c    = data.current;
-  const wmo  = WMO[c.weather_code] || { d:'Desconocido', emoji:'🌡' };
+  const d    = data.properties.timeseries[0].data;
+  const det  = d.instant.details;
+  const sym  = d.next_1_hours?.summary?.symbol_code || d.next_6_hours?.summary?.symbol_code || '';
+  const MET_MAP = {
+    clearsky:      { d:'Despejado',           emoji:'☀️',  wmo:0  },
+    fair:          { d:'Poco nublado',         emoji:'🌤️', wmo:1  },
+    partlycloudy:  { d:'Parcialmente nublado', emoji:'⛅', wmo:2  },
+    cloudy:        { d:'Nublado',              emoji:'☁️', wmo:3  },
+    fog:           { d:'Niebla',               emoji:'🌫️', wmo:45 },
+    lightrain:     { d:'Lluvia débil',         emoji:'🌦️', wmo:51 },
+    rain:          { d:'Lluvia',               emoji:'🌧️', wmo:61 },
+    heavyrain:     { d:'Lluvia fuerte',        emoji:'🌧️', wmo:65 },
+    sleet:         { d:'Aguanieve',            emoji:'🌨️', wmo:71 },
+    snow:          { d:'Nieve',                emoji:'❄️', wmo:71 },
+    heavysnow:     { d:'Nevada fuerte',        emoji:'❄️', wmo:75 },
+    thunder:       { d:'Tormenta',             emoji:'⛈️', wmo:95 },
+  };
+  const key  = Object.keys(MET_MAP).find(k => sym.startsWith(k)) || 'fair';
+  const wmo  = MET_MAP[key];
+  const wspd = Math.round((det.wind_speed || 0) * 3.6);
   return {
-    temp:        Math.round(c.temperature_2m * 10) / 10,
-    humidity:    c.relative_humidity_2m,
-    windSpeed:   Math.round(c.wind_speed_10m),
-    windDir:     c.wind_direction_10m,
-    windGust:    Math.round(c.wind_gusts_10m),
-    weatherCode: c.weather_code,
+    temp:        Math.round((det.air_temperature || 0) * 10) / 10,
+    humidity:    Math.round(det.relative_humidity || 0),
+    windSpeed:   wspd,
+    windDir:     det.wind_from_direction || 0,
+    windGust:    Math.round(wspd * 1.3),
+    weatherCode: wmo.wmo,
     condition:   wmo.d,
     emoji:       wmo.emoji,
-    pressure:    Math.round(c.surface_pressure)
+    pressure:    Math.round(det.air_pressure_at_sea_level || 1013)
   };
 }
 
