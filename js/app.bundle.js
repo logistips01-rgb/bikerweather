@@ -664,8 +664,12 @@ function toggleLandscapeMode() {
   App.landscapeMode = !App.landscapeMode;
   document.body.classList.toggle('landscape-mode', App.landscapeMode);
 
+  // Sync both landscape toggle buttons (pre-ride + in-session)
+  const on = App.landscapeMode;
   const btn = $('btn-landscape');
-  if (btn) { btn.textContent = App.landscapeMode ? '⊡ PORTRAIT' : '⊞ HORIZONTAL'; btn.classList.toggle('active', App.landscapeMode); }
+  if (btn) { btn.textContent = on ? '⊡ PORTRAIT' : '⊞ HORIZONTAL'; btn.classList.toggle('active', on); }
+  const btnMap = $('btn-map-landscape');
+  if (btnMap) { btnMap.textContent = on ? '⊡' : '⊞'; btnMap.classList.toggle('active', on); btnMap.title = on ? 'Salir modo horizontal' : 'Modo horizontal'; }
 
   // Re-bootstrap del CF con los ejes correctos para la nueva orientación
   App.tiltFilter.gyroReady = false;
@@ -674,7 +678,7 @@ function toggleLandscapeMode() {
   App.tiltFilter.lastTime  = null;
 
   // Leaflet necesita saber que cambió el tamaño del contenedor
-  if (App.mapInitialized) setTimeout(() => App.leafletMap.invalidateSize(), 120);
+  if (App.mapInitialized) setTimeout(() => App.leafletMap.invalidateSize(), 200);
 
   updateRollOverlay(App.gyroData.gamma || 0);
 }
@@ -1537,6 +1541,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-calibrate')?.addEventListener('click',  doCalibrate);
   $('btn-calibrate2')?.addEventListener('click', doCalibrate);
   $('btn-landscape')?.addEventListener('click', toggleLandscapeMode);
+  $('btn-map-landscape')?.addEventListener('click', toggleLandscapeMode);
   $('btn-tilt-flip')?.addEventListener('click', () => {
     App.tiltFlip = !App.tiltFlip;
     $('btn-tilt-flip')?.classList.toggle('active', App.tiltFlip);

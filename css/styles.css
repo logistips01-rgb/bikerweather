@@ -910,6 +910,32 @@ body.landscape-mode .btn-tilt-flip { display: inline-flex; }
 }
 .btn-recenter:hover { border-color: var(--orange); color: var(--orange); }
 
+/* Botón landscape en el mapa (siempre accesible durante la sesión) */
+.btn-map-landscape {
+  position: absolute;
+  bottom: 124px; right: 10px;
+  z-index: 501;
+  width: 36px; height: 36px;
+  background: rgba(5,5,8,0.88);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--r2);
+  color: var(--text-dim);
+  font-size: 1rem;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all var(--t);
+  pointer-events: auto;
+}
+.btn-map-landscape:hover     { border-color: var(--green); color: var(--green); }
+.btn-map-landscape.active    { border-color: rgba(0,240,160,0.5); color: var(--green); background: rgba(0,240,160,0.08); }
+/* En landscape el botón se mueve al top-right para salir fácilmente */
+body.landscape-mode .btn-map-landscape {
+  bottom: auto; top: 42px; right: 10px;
+  color: var(--green); border-color: rgba(0,240,160,0.4);
+  background: rgba(5,5,8,0.75);
+}
+
 /* Recuadro info sesión activa (tiempo transcurrido) */
 .session-timer {
   position: absolute;
