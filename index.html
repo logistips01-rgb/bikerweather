@@ -281,7 +281,10 @@
 
         <!-- Botón iniciar -->
         <button class="btn-start-route" id="btn-start-route">▶ INICIAR RUTA</button>
-        <button id="btn-landscape" class="btn btn-landscape-toggle">⊞ HORIZONTAL</button>
+        <div style="display:flex;gap:8px">
+          <button id="btn-landscape" class="btn btn-landscape-toggle" style="flex:1">⊞ HORIZONTAL</button>
+          <button id="btn-open-circuit" class="btn btn-circuit-open" style="flex:1">🏁 CIRCUITO</button>
+        </div>
       </div>
 
       <!-- Mapa con HUD (visible durante la sesión) -->
@@ -579,6 +582,46 @@
       <span class="nav-lbl">Config</span>
     </button>
   </nav>
+
+  <!-- ══ CIRCUIT HUD OVERLAY ══ -->
+  <div id="circuit-overlay">
+    <div id="cir-heading-wrap"><canvas id="cir-hdg-cv"></canvas></div>
+    <div id="cir-mid">
+      <div id="cir-spd-wrap"><canvas id="cir-spd-cv"></canvas></div>
+      <div id="cir-ahi-wrap">
+        <canvas id="cir-ahi-cv"></canvas>
+        <div id="cir-mode-label">MODO CIRCUITO</div>
+      </div>
+      <div id="cir-alt-wrap"><canvas id="cir-alt-cv"></canvas></div>
+    </div>
+    <div id="cir-bottom">
+      <div class="cir-cell">
+        <div id="cir-g-val" class="cir-big">0.0<span class="cir-unit">G</span></div>
+        <div id="cir-g-bar-wrap"><div id="cir-g-bar"></div></div>
+        <div class="cir-lbl">G-FORCE</div>
+      </div>
+      <div class="cir-cell">
+        <svg id="cir-wind-svg" viewBox="0 0 28 28" width="28" height="28">
+          <circle cx="14" cy="14" r="12" fill="none" stroke="rgba(0,255,136,0.2)" stroke-width="1"/>
+          <polygon id="cir-wind-poly" points="14,3 11,12 14,10 17,12" fill="#00ff88"/>
+        </svg>
+        <div id="cir-wind-val" class="cir-med">--</div>
+        <div class="cir-lbl">VIENTO km/h</div>
+      </div>
+      <div class="cir-cell">
+        <div id="cir-roll-val" class="cir-big">0°</div>
+        <div class="cir-lbl">ROLL</div>
+      </div>
+      <div class="cir-cell">
+        <div id="cir-spd-val" class="cir-xl">0</div>
+        <div class="cir-lbl">km/h</div>
+      </div>
+    </div>
+    <button id="btn-cir-start" class="cir-start-btn">🏁 INICIO</button>
+    <button id="btn-cir-stop" class="cir-stop-btn" style="display:none">⏹ FIN</button>
+    <button id="btn-cir-exit" class="cir-exit-btn">✕</button>
+    <button id="btn-cir-ls" class="cir-ls-btn">⊞</button>
+  </div>
 
 </div><!-- /app -->
 

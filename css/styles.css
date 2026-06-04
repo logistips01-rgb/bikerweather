@@ -1464,3 +1464,183 @@ body.landscape-mode .btn-map-landscape {
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
+
+/* ══════════════════════════════════════════════
+   MODO CIRCUITO — HUD OVERLAY
+══════════════════════════════════════════════ */
+.btn-circuit-open {
+  background: rgba(0,255,136,0.06);
+  border-color: rgba(0,255,136,0.3);
+  color: #00ff88;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.btn-circuit-open:active { background: rgba(0,255,136,0.15); }
+
+#circuit-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  background: #000;
+  flex-direction: column;
+  font-family: 'Courier New', monospace;
+  overflow: hidden;
+}
+#circuit-overlay.active { display: flex; }
+
+#cir-heading-wrap {
+  flex-shrink: 0;
+  height: 48px;
+  position: relative;
+  background: rgba(0,0,0,0.8);
+  border-bottom: 1px solid rgba(0,255,136,0.25);
+}
+#cir-hdg-cv { width: 100%; height: 100%; display: block; }
+
+#cir-mid {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+#cir-spd-wrap, #cir-alt-wrap {
+  width: 72px;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  background: rgba(0,0,0,0.7);
+}
+#cir-spd-cv, #cir-alt-cv { width: 100%; height: 100%; display: block; }
+#cir-spd-wrap { border-right: 1px solid rgba(0,255,136,0.2); }
+#cir-alt-wrap { border-left: 1px solid rgba(0,255,136,0.2); }
+
+#cir-ahi-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+#cir-ahi-cv {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+#cir-mode-label {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
+  color: rgba(0,255,136,0.25);
+  letter-spacing: 3px;
+  pointer-events: none;
+  border: 1px solid rgba(0,255,136,0.1);
+  padding: 2px 10px;
+  background: rgba(0,0,0,0.5);
+  white-space: nowrap;
+}
+
+#cir-bottom {
+  flex-shrink: 0;
+  height: 120px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid rgba(0,255,136,0.2);
+  background: rgba(0,0,0,0.9);
+}
+.cir-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border-right: 1px solid rgba(0,255,136,0.08);
+  padding: 6px 4px;
+}
+.cir-cell:last-child { border-right: none; }
+.cir-big  { font-size: 22px; font-weight: bold; color: #00ff88; line-height: 1; letter-spacing: 1px; transition: color 0.3s; }
+.cir-med  { font-size: 18px; font-weight: bold; color: #00ff88; line-height: 1; transition: color 0.3s; }
+.cir-xl   { font-size: 30px; font-weight: bold; color: #00ff88; line-height: 1; letter-spacing: 1px; transition: color 0.3s; }
+.cir-unit { font-size: 0.55em; opacity: 0.7; }
+.cir-lbl  { font-size: 7px; color: rgba(0,255,136,0.3); letter-spacing: 2px; text-transform: uppercase; }
+#cir-g-bar-wrap { width: 48px; height: 3px; background: rgba(0,255,136,0.1); border-radius: 2px; margin-top: 1px; }
+#cir-g-bar { height: 100%; background: #00ff88; border-radius: 2px; width: 0%; transition: width 0.15s, background 0.15s; }
+#cir-wind-svg { flex-shrink: 0; }
+
+/* Buttons overlaid on circuit HUD */
+.cir-start-btn {
+  position: absolute;
+  bottom: 138px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  background: rgba(0,0,0,0.85);
+  border: 1.5px solid rgba(0,255,136,0.6);
+  color: #00ff88;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  padding: 10px 28px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cir-stop-btn {
+  position: absolute;
+  bottom: 138px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  background: rgba(0,0,0,0.85);
+  border: 1.5px solid rgba(255,50,50,0.5);
+  color: #ff4444;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  padding: 10px 28px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cir-exit-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  background: rgba(0,0,0,0.8);
+  border: 1px solid rgba(0,255,136,0.2);
+  color: rgba(0,255,136,0.5);
+  font-family: 'Courier New', monospace;
+  font-size: 15px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.cir-ls-btn {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  background: rgba(0,0,0,0.8);
+  border: 1px solid rgba(0,255,136,0.2);
+  color: rgba(0,255,136,0.5);
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  padding: 5px 10px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  border-radius: 2px;
+}
+.cir-ls-btn.active { border-color: rgba(0,255,136,0.6); color: #00ff88; }
+
+/* Landscape: circuit overlay rotates with #app */
+body.landscape-mode #circuit-overlay {
+  border-radius: 0;
+}

@@ -189,6 +189,8 @@ const App = {
   gForce:           { long:0, lat:0, peakBrake:0, peakAccel:0, peakLat:0,
                       prevSpeedMs:null, prevSpeedTime:null },
   landscapeMode:    false,
+  circuitMode:      false,
+  circuitAlt:       null,
   tiltFlip:         false,
   sessionActive:    false,
   sessionStart:     null,
@@ -375,6 +377,7 @@ async function onGPSPosition(pos) {
     lat: pos.coords.latitude, lon: pos.coords.longitude,
     accuracy: pos.coords.accuracy, heading: pos.coords.heading, speed: pos.coords.speed
   };
+  if (pos.coords.altitude !== null) App.circuitAlt = Math.round(pos.coords.altitude);
   setStatusPill('gps', 'active');
 
   let rawSpeed = null;
@@ -742,6 +745,9 @@ function toggleLandscapeMode() {
   App.tiltFilter.pitch     = 0;
   App.tiltFilter.lastTime  = null;
 
+  // Resize circuit canvases when orientation changes
+  if (App.circuitMode) setTimeout(resizeCircuitCanvases, 150);
+
   // Leaflet necesita saber el nuevo tamaño tras la rotación
   if (App.mapInitialized) {
     setTimeout(() => App.leafletMap.invalidateSize(), 100);
@@ -1100,6 +1106,7 @@ function startSession() {
     const timeStr = (h>0?pad(h)+':':'') + pad(m) + ':' + pad(s);
     setEl('session-time', timeStr);
     setEl('hud-ls-time',  timeStr);
+    if (App.circuitMode) setEl('cir-time', timeStr);
     App.sessionSamples.push({
       t: elapsed, lat: App.position?.lat, lon: App.position?.lon,
       speed: App.gpsSpeed, roll: App.gyroData.gamma, wc: App.windChill, temp: App.weather?.temp,
@@ -1225,6 +1232,233 @@ function buildReport() {
 function fmtDur(ms) {
   const s=Math.floor(ms/1000), m=Math.floor(s/60), h=Math.floor(m/60);
   return h>0?h+'h '+m%60+'m':m>0?m+'m '+s%60+'s':s+'s';
+}
+
+/* ═══════════════════════════════════════
+   MODO CIRCUITO
+═══════════════════════════════════════ */
+let _cirRaf = null;
+
+function cirColor(v, warn, danger) {
+  if (v >= danger) return '#ff3333';
+  if (v >= warn)   return '#ff8800';
+  return '#00ff88';
+}
+
+function openCircuit() {
+  App.circuitMode = true;
+  const ov = $('circuit-overlay');
+  if (ov) ov.classList.add('active');
+  const lsBtn = $('btn-cir-ls');
+  if (lsBtn) lsBtn.classList.toggle('active', App.landscapeMode);
+  setTimeout(() => { resizeCircuitCanvases(); _cirLoop(); }, 50);
+}
+
+function closeCircuit() {
+  if (App.sessionActive) stopSession();
+  App.circuitMode = false;
+  const ov = $('circuit-overlay');
+  if (ov) ov.classList.remove('active');
+  if (_cirRaf) { cancelAnimationFrame(_cirRaf); _cirRaf = null; }
+}
+
+function startCircuitSession() {
+  App.rideMode = 'circuit';
+  App.rideDestination = 'Sesión de circuito';
+  startSession();
+  $('btn-cir-start').style.display = 'none';
+  $('btn-cir-stop').style.display  = 'flex';
+}
+
+function stopCircuitSession() {
+  stopSession();
+  $('btn-cir-start').style.display = 'flex';
+  $('btn-cir-stop').style.display  = 'none';
+}
+
+function resizeCircuitCanvases() {
+  const pairs = [
+    ['cir-hdg-cv', 'cir-heading-wrap'],
+    ['cir-spd-cv', 'cir-spd-wrap'],
+    ['cir-alt-cv', 'cir-alt-wrap'],
+    ['cir-ahi-cv', 'cir-ahi-wrap']
+  ];
+  pairs.forEach(([cvId, wrapId]) => {
+    const cv   = $(cvId);
+    const wrap = $(wrapId);
+    if (!cv || !wrap) return;
+    cv.width  = wrap.offsetWidth  || 1;
+    cv.height = wrap.offsetHeight || 1;
+  });
+}
+
+function _cirLoop() {
+  if (!App.circuitMode) return;
+  const roll  = App.gyroData.gamma || 0;
+  const pitch = App.gyroData.beta  || 0;
+  const hdg   = App.gyroData.alpha || 0;
+  const spd   = App.gpsSpeed       || 0;
+  const alt   = App.circuitAlt     || 0;
+  _drawHdgTape($('cir-hdg-cv'), hdg);
+  _drawVTape($('cir-spd-cv'), spd, 0, 240, 20, 10, 'km/h', false);
+  _drawVTape($('cir-alt-cv'), alt, Math.max(0, alt-100), alt+100, 50, 25, 'm', true);
+  _drawAHI($('cir-ahi-cv'), roll, pitch);
+  _updateCirBottom(roll, spd);
+  _cirRaf = requestAnimationFrame(_cirLoop);
+}
+
+function _drawHdgTape(cv, hdg) {
+  if (!cv || cv.width < 2) return;
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const G = '#00ff88', DIM = 'rgba(0,255,136,0.3)';
+  const DIRS = {0:'N',45:'NE',90:'E',135:'SE',180:'S',225:'SO',270:'O',315:'NO'};
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='rgba(0,0,0,0.8)'; ctx.fillRect(0,0,W,H);
+  const PPD = W / 60;
+  for (let d=-32; d<=32; d+=5) {
+    const deg=((Math.round(hdg)+d)%360+360)%360;
+    const x=W/2+d*PPD;
+    const maj=deg%10===0;
+    ctx.strokeStyle=maj?G:DIM; ctx.lineWidth=maj?1.5:1;
+    const th=maj?12:6;
+    ctx.beginPath(); ctx.moveTo(x,H-th-4); ctx.lineTo(x,H-4); ctx.stroke();
+    if (maj) {
+      const lbl=DIRS[deg]||deg;
+      ctx.fillStyle=G; ctx.font='bold 10px Courier New'; ctx.textAlign='center';
+      ctx.fillText(lbl,x,H-th-7);
+    }
+  }
+  const bw=44,bh=20;
+  ctx.fillStyle='rgba(0,0,0,0.9)'; ctx.fillRect(W/2-bw/2,2,bw,bh);
+  ctx.strokeStyle=G; ctx.lineWidth=1; ctx.strokeRect(W/2-bw/2,2,bw,bh);
+  ctx.fillStyle=G; ctx.font='bold 12px Courier New'; ctx.textAlign='center';
+  ctx.fillText(Math.round(hdg)+'°',W/2,16);
+  ctx.fillStyle=G;
+  ctx.beginPath(); ctx.moveTo(W/2,H-1); ctx.lineTo(W/2-5,H-10); ctx.lineTo(W/2+5,H-10); ctx.closePath(); ctx.fill();
+}
+
+function _drawVTape(cv, val, minV, maxV, majStep, minStep, unit, right) {
+  if (!cv || cv.height < 2) return;
+  const ctx = cv.getContext('2d');
+  const W=cv.width, H=cv.height;
+  const G='#00ff88', DIM='rgba(0,255,136,0.3)';
+  const PPU=H/80;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='rgba(0,0,0,0.75)'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(0,255,136,0.2)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(right?W-1:0,0); ctx.lineTo(right?W-1:0,H); ctx.stroke();
+  const lo=val-40, hi=val+40;
+  for (let v=Math.floor(lo/minStep)*minStep; v<=hi+minStep; v+=minStep) {
+    const y=H/2-(v-val)*PPU;
+    if (y<-5||y>H+5) continue;
+    const maj=v%majStep===0;
+    const tl=maj?14:7;
+    ctx.strokeStyle=maj?G:DIM; ctx.lineWidth=maj?1.5:1;
+    if (right) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(tl,y); ctx.stroke(); }
+    else       { ctx.beginPath(); ctx.moveTo(W-tl,y); ctx.lineTo(W,y); ctx.stroke(); }
+    if (maj&&v>=minV) {
+      ctx.fillStyle=G; ctx.font='9px Courier New';
+      ctx.textAlign=right?'left':'right';
+      ctx.fillText(v, right?tl+3:W-tl-3, y+3);
+    }
+  }
+  const bh=22;
+  ctx.fillStyle='#000'; ctx.fillRect(0,H/2-bh/2,W,bh);
+  ctx.strokeStyle=G; ctx.lineWidth=1.5; ctx.strokeRect(0,H/2-bh/2,W,bh);
+  ctx.fillStyle=G; ctx.font='bold 13px Courier New'; ctx.textAlign='center';
+  ctx.fillText(Math.round(val),W/2,H/2+5);
+  ctx.fillStyle=DIM; ctx.font='8px Courier New'; ctx.textAlign='center';
+  ctx.fillText(unit,W/2,H-5);
+}
+
+function _drawAHI(cv, roll, pitch) {
+  if (!cv || cv.width < 2) return;
+  const ctx = cv.getContext('2d');
+  const W=cv.width, H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.save();
+  ctx.translate(W/2,H/2);
+  ctx.rotate(roll*Math.PI/180);
+  const PS=H/60, po=pitch*PS, bH=H*2;
+  const skyG=ctx.createLinearGradient(0,-bH/2+po,0,po);
+  skyG.addColorStop(0,'rgba(0,25,55,0.95)'); skyG.addColorStop(1,'rgba(0,45,90,0.9)');
+  ctx.fillStyle=skyG; ctx.fillRect(-W,-bH/2+po,W*2,bH/2);
+  const gndG=ctx.createLinearGradient(0,po,0,bH/2+po);
+  gndG.addColorStop(0,'rgba(45,22,0,0.9)'); gndG.addColorStop(1,'rgba(25,12,0,0.95)');
+  ctx.fillStyle=gndG; ctx.fillRect(-W,po,W*2,bH/2);
+  ctx.strokeStyle='rgba(0,255,136,0.9)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(-W,po); ctx.lineTo(W,po); ctx.stroke();
+  ctx.font='bold 9px Courier New';
+  for (let p=-40; p<=40; p+=5) {
+    if (p===0) continue;
+    const y=po-p*PS, maj=p%10===0;
+    const len=maj?Math.min(W*0.32,65):Math.min(W*0.18,38);
+    ctx.strokeStyle='rgba(0,255,136,'+(maj?0.65:0.35)+')'; ctx.lineWidth=maj?1.5:1;
+    ctx.beginPath(); ctx.moveTo(-len/2,y); ctx.lineTo(len/2,y); ctx.stroke();
+    if (maj) {
+      ctx.fillStyle='rgba(0,255,136,0.6)';
+      ctx.textAlign='right'; ctx.fillText(Math.abs(p),-len/2-4,y+4);
+      ctx.textAlign='left';  ctx.fillText(Math.abs(p), len/2+4,y+4);
+    }
+  }
+  ctx.restore();
+  const aR=Math.min(W,H)*0.32, aCX=W/2, aCY=H-16;
+  ctx.strokeStyle='rgba(0,255,136,0.2)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.arc(aCX,aCY,aR,Math.PI+0.35,-0.35,false); ctx.stroke();
+  for (const a of [-60,-45,-30,-20,-10,0,10,20,30,45,60]) {
+    const maj=a%30===0||a===0;
+    const rad=(a-90)*Math.PI/180;
+    ctx.strokeStyle=maj?'rgba(0,255,136,0.65)':'rgba(0,255,136,0.25)'; ctx.lineWidth=maj?1.5:1;
+    ctx.beginPath();
+    ctx.moveTo(aCX+Math.cos(rad)*(aR+2),aCY+Math.sin(rad)*(aR+2));
+    ctx.lineTo(aCX+Math.cos(rad)*(aR-(maj?10:5)),aCY+Math.sin(rad)*(aR-(maj?10:5)));
+    ctx.stroke();
+  }
+  const rrad=(roll-90)*Math.PI/180;
+  const px=aCX+Math.cos(rrad)*(aR+2), py=aCY+Math.sin(rrad)*(aR+2);
+  const tx=-Math.sin(rrad), ty=Math.cos(rrad);
+  ctx.fillStyle='#00ff88';
+  ctx.beginPath();
+  ctx.moveTo(px,py);
+  ctx.lineTo(px+tx*6-Math.cos(rrad)*10, py+ty*6-Math.sin(rrad)*10);
+  ctx.lineTo(px-tx*6-Math.cos(rrad)*10, py-ty*6-Math.sin(rrad)*10);
+  ctx.closePath(); ctx.fill();
+  const wL=Math.min(W*0.14,42), rY=H/2, rCX=W/2;
+  ctx.strokeStyle='#ffe066'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(rCX-7-wL,rY); ctx.lineTo(rCX-7,rY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(rCX+7,rY); ctx.lineTo(rCX+7+wL,rY); ctx.stroke();
+  ctx.strokeStyle='#ffe066'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(rCX,rY,5,0,Math.PI*2); ctx.stroke();
+  if (App.sessionActive) {
+    const el=Date.now()-App.sessionStart;
+    const ss=Math.floor(el/1000)%60, mm=Math.floor(el/60000)%60, hh=Math.floor(el/3600000);
+    const ts=(hh>0?pad(hh)+':':'')+pad(mm)+':'+pad(ss);
+    ctx.fillStyle='rgba(0,0,0,0.7)'; ctx.fillRect(W/2-48,8,96,22);
+    ctx.strokeStyle='rgba(0,255,136,0.5)'; ctx.lineWidth=1; ctx.strokeRect(W/2-48,8,96,22);
+    ctx.fillStyle='#00ff88'; ctx.font='bold 12px Courier New'; ctx.textAlign='center'; ctx.fillText(ts,W/2,24);
+    if (Math.floor(Date.now()/500)%2===0) {
+      ctx.fillStyle='#00ff88'; ctx.beginPath(); ctx.arc(W/2-58,19,4,0,Math.PI*2); ctx.fill();
+    }
+  }
+}
+
+function _updateCirBottom(roll, spd) {
+  const latG = Math.abs(App.gForce?.lat||0);
+  const totG = Math.sqrt((App.gForce?.long||0)**2+latG**2);
+  const gEl=$('cir-g-val');
+  if (gEl) { gEl.innerHTML=totG.toFixed(1)+'<span class="cir-unit">G</span>'; gEl.style.color=cirColor(totG,0.5,0.8); }
+  const gBar=$('cir-g-bar');
+  if (gBar) { gBar.style.width=Math.min(100,(totG/1.5)*100)+'%'; gBar.style.background=cirColor(totG,0.5,0.8); }
+  const ws=App.weather?.windSpeed||0, wd=App.weather?.windDir||0, hdg=App.gyroData.alpha||0;
+  const rw=((wd-hdg+360)%360);
+  const wEl=$('cir-wind-val');
+  if (wEl) { wEl.textContent=ws||'--'; wEl.style.color=ws?cirColor(ws,30,50):'rgba(0,255,136,0.4)'; }
+  const poly=$('cir-wind-poly'); if (poly) poly.setAttribute('transform','rotate('+rw+',14,14)');
+  const ar=Math.abs(roll);
+  const rEl=$('cir-roll-val');
+  if (rEl) { rEl.textContent=Math.round(ar)+'°'; rEl.style.color=cirColor(ar,30,45); }
+  const sEl=$('cir-spd-val');
+  if (sEl) { sEl.textContent=spd; sEl.style.color=cirColor(spd,120,160); }
 }
 
 function renderReport(r) {
@@ -1530,9 +1764,14 @@ function initReportControls() {
   $('btn-whatsapp')?.addEventListener('click', () => { if (App.sessionReport) shareWhatsApp(App.sessionReport); });
   $('btn-new-route')?.addEventListener('click', () => {
     $('report-panel')?.classList.remove('show');
-    $('pre-ride-controls').style.display = 'flex';
-    const mc = $('map-container'); if (mc) mc.style.display = 'none';
     App.sessionReport = null;
+    if (App.circuitMode) {
+      $('btn-cir-start').style.display = 'flex';
+      $('btn-cir-stop').style.display  = 'none';
+    } else {
+      $('pre-ride-controls').style.display = 'flex';
+      const mc = $('map-container'); if (mc) mc.style.display = 'none';
+    }
   });
 }
 
@@ -1610,6 +1849,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-calibrate2')?.addEventListener('click', doCalibrate);
   $('btn-landscape')?.addEventListener('click', toggleLandscapeMode);
   $('btn-map-landscape')?.addEventListener('click', toggleLandscapeMode);
+  $('btn-open-circuit')?.addEventListener('click', openCircuit);
+  $('btn-cir-start')?.addEventListener('click', startCircuitSession);
+  $('btn-cir-stop')?.addEventListener('click', stopCircuitSession);
+  $('btn-cir-exit')?.addEventListener('click', closeCircuit);
+  $('btn-cir-ls')?.addEventListener('click', () => { toggleLandscapeMode(); $('btn-cir-ls')?.classList.toggle('active', App.landscapeMode); });
   $('btn-tilt-flip')?.addEventListener('click', () => {
     App.tiltFlip = !App.tiltFlip;
     $('btn-tilt-flip')?.classList.toggle('active', App.tiltFlip);
