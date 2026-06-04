@@ -1650,8 +1650,8 @@ body.landscape-mode #circuit-overlay {
 .cir-inv-btn {
   position: absolute;
   top: 48px;
-  right: 8px;
-  z-index: 10;
+  left: 8px;
+  z-index: 20;
   background: rgba(0,0,0,0.8);
   border: 1px solid rgba(0,255,136,0.25);
   color: rgba(0,255,136,0.6);
