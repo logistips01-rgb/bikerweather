@@ -1356,6 +1356,7 @@ function cirColor(v, warn, danger) {
 function openCircuit() {
   App.circuitMode = true;
   _kirkKittPos = 0; _kirkKittDir = 1; _kirkCooldowns = {};
+  document.body.classList.add('circuit-active');
   const ov = $('circuit-overlay');
   if (ov) ov.classList.add('active');
   $('btn-cir-ls')?.classList.toggle('active', App.landscapeMode);
@@ -1370,6 +1371,7 @@ function openCircuit() {
 function closeCircuit() {
   if (App.sessionActive) stopSession();
   App.circuitMode = false;
+  document.body.classList.remove('circuit-active');
   $('circuit-overlay')?.classList.remove('active');
   if (_cirRaf) { cancelAnimationFrame(_cirRaf); _cirRaf = null; }
   window.speechSynthesis?.cancel();

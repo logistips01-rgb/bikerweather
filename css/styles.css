@@ -1482,13 +1482,16 @@ body.landscape-mode .btn-map-landscape {
   display: none;
   position: fixed;
   inset: 0;
-  z-index: 150;
+  z-index: 9000;
   background: #000;
   flex-direction: column;
   font-family: 'Courier New', monospace;
   overflow: hidden;
 }
 #circuit-overlay.active { display: flex; }
+body.circuit-active .bottom-nav   { display: none !important; }
+body.circuit-active .app-header   { display: none !important; }
+body.circuit-active .location-bar { display: none !important; }
 
 #cir-heading-wrap {
   flex-shrink: 0;
