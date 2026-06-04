@@ -84,7 +84,9 @@ async function fetchWeatherData(lat, lon) {
       pressure:    Math.round(c.surface_pressure)
     };
   } catch(_) {
-    return fetchWeatherDataMET(lat, lon);
+    const w = await fetchWeatherDataMET(lat, lon);
+    w._source = 'MET';
+    return w;
   }
 }
 
@@ -439,7 +441,8 @@ async function loadWeather(lat, lon) {
     try { localStorage.setItem('bw_weather', JSON.stringify({ w, ts: Date.now(), lat, lon })); } catch(_) {}
     updateWeatherUI(w);
     updateHazardsUI(weatherHazards(w));
-    setStatusPill('weather', 'active');
+    if (w._source === 'MET') setStatusPill('weather', 'warn'); else setStatusPill('weather', 'active');
+    console.info('[meteo] fuente:', w._source === 'MET' ? 'MET Norway (fallback)' : 'open-meteo');
     computeWindChill();
     if (!App.weatherInterval) {
       App.weatherInterval = setInterval(() => { if (App.position) loadWeather(App.position.lat, App.position.lon); }, REFRESH_MS);
