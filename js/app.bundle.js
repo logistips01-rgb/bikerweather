@@ -144,6 +144,7 @@ const App = {
   gForce:           { long:0, lat:0, peakBrake:0, peakAccel:0, peakLat:0,
                       prevSpeedMs:null, prevSpeedTime:null },
   landscapeMode:    false,
+  tiltFlip:         false,
   sessionActive:    false,
   sessionStart:     null,
   sessionSamples:   [],
@@ -254,25 +255,26 @@ function updateRouteSpeedUI(speed) {
 }
 
 function updateGyroUI(roll, pitch, alpha) {
+  const dr = roll * (App.tiltFlip ? -1 : 1);  // display roll (may be flipped)
   const horizon = $('bike-horizon');
-  if (horizon) horizon.style.transform = 'rotate(' + (-roll) + 'deg)';
-  setEl('gyro-roll',      (roll  > 0 ? '+' : '') + Math.round(roll)  + '°');
+  if (horizon) horizon.style.transform = 'rotate(' + (-dr) + 'deg)';
+  setEl('gyro-roll',      (dr  > 0 ? '+' : '') + Math.round(dr)  + '°');
   setEl('gyro-pitch',     (pitch > 0 ? '+' : '') + Math.round(pitch) + '°');
   setEl('gyro-head',      Math.round(alpha) + '°');
-  updateAxisBar('bar-roll',  roll,  45);
+  updateAxisBar('bar-roll',  dr,  45);
   updateAxisBar('bar-pitch', pitch, 45);
-  setEl('axis-roll-num',  (roll  > 0 ? '+' : '') + Math.round(roll)  + '°');
+  setEl('axis-roll-num',  (dr  > 0 ? '+' : '') + Math.round(dr)  + '°');
   setEl('axis-pitch-num', (pitch > 0 ? '+' : '') + Math.round(pitch) + '°');
   const hudBar = $('hud-horizon-bar');
-  if (hudBar) hudBar.style.transform = 'rotate(' + (-roll) + 'deg)';
-  setEl('hud-roll-val', Math.abs(Math.round(roll)) + '°');
+  if (hudBar) hudBar.style.transform = 'rotate(' + (-dr) + 'deg)';
+  setEl('hud-roll-val', Math.abs(Math.round(dr)) + '°');
   const hudDir = $('hud-roll-dir');
   if (hudDir) {
-    if (Math.abs(roll) < 5)  { hudDir.textContent = '—';      hudDir.style.color = 'var(--text-dim)'; }
-    else if (roll < 0)       { hudDir.textContent = '↰ IZQ'; hudDir.style.color = 'var(--ice)'; }
-    else                     { hudDir.textContent = '↱ DER'; hudDir.style.color = 'var(--orange)'; }
+    if (Math.abs(dr) < 5)  { hudDir.textContent = '—';      hudDir.style.color = 'var(--text-dim)'; }
+    else if (dr < 0)       { hudDir.textContent = '↰ IZQ'; hudDir.style.color = 'var(--ice)'; }
+    else                   { hudDir.textContent = '↱ DER'; hudDir.style.color = 'var(--orange)'; }
   }
-  updateRollOverlay(roll);
+  updateRollOverlay(dr);
 }
 
 function updateAxisBar(id, value, max) {
@@ -1535,6 +1537,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-calibrate')?.addEventListener('click',  doCalibrate);
   $('btn-calibrate2')?.addEventListener('click', doCalibrate);
   $('btn-landscape')?.addEventListener('click', toggleLandscapeMode);
+  $('btn-tilt-flip')?.addEventListener('click', () => {
+    App.tiltFlip = !App.tiltFlip;
+    $('btn-tilt-flip')?.classList.toggle('active', App.tiltFlip);
+    toast(App.tiltFlip ? 'Inclinación invertida ↕' : 'Inclinación normal ↕', 'info');
+  });
 
   // Wake Lock
   $('wakelock-badge')?.addEventListener('click', async () => {

@@ -695,10 +695,19 @@ input[type="text"]::placeholder { color: #8888aa; }
 body.landscape-mode #app                { max-width: 100%; }
 body.landscape-mode main                { padding: 0; gap: 0; }
 body.landscape-mode .bottom-nav         { display: none; }
+body.landscape-mode .app-header         { display: none; }
 body.landscape-mode .location-bar       { display: none; }
 body.landscape-mode .section            { gap: 0; }
 
-body.landscape-mode #map-container      { height: 100dvh !important; }
+body.landscape-mode #map-container {
+  position: fixed !important;
+  inset: 0 !important;
+  height: 100dvh !important;
+  width: 100vw !important;
+  z-index: 50 !important;
+  border-radius: 0 !important;
+  border: none !important;
+}
 body.landscape-mode #leaflet-map        { height: 100% !important; }
 
 /* HUD layout: columna → barra superior compacta */
@@ -759,6 +768,26 @@ body.landscape-mode .session-timer     { display: none; }
 /* Línea de roll: más prominente en landscape */
 body.landscape-mode .roll-line         { height: 2.5px; }
 body.landscape-mode .roll-angle-label  { font-size: 1.3rem; right: 10%; }
+
+/* Botón invertir inclinación — solo visible en landscape */
+.btn-tilt-flip {
+  display: none;
+  padding: 5px 9px;
+  background: rgba(5,5,8,0.75);
+  border: 1px solid var(--border-dim);
+  border-radius: var(--r);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all var(--t);
+}
+.btn-tilt-flip:hover  { border-color: var(--border); color: var(--text); }
+.btn-tilt-flip.active { border-color: rgba(41,217,255,0.4); color: var(--ice); }
+body.landscape-mode .btn-tilt-flip { display: inline-flex; }
 .hud-curve-badge {
   background: rgba(5,5,8,0.85);
   backdrop-filter: blur(8px);
