@@ -1302,8 +1302,9 @@ function _drawKitt(cv) {
   const W = cv.width, H = cv.height;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#050000'; ctx.fillRect(0, 0, W, H);
-  const spd = _kirkSpeaking ? 22 : 14;
+  const spd = _kirkSpeaking ? 24 : 20;
   _kirkKittPos += _kirkKittDir * spd;
+  _kirkKittPos = Math.max(8, Math.min(W - 8, _kirkKittPos));
   if (_kirkKittPos >= W - 8) _kirkKittDir = -1;
   if (_kirkKittPos <= 8)     _kirkKittDir = 1;
   const x = _kirkKittPos, cy = H / 2;
@@ -1414,20 +1415,22 @@ function resizeCircuitCanvases() {
 
 function _cirLoop() {
   if (!App.circuitMode) return;
-  const flip  = App.tiltFlip ? -1 : 1;
-  const roll  = (App.gyroData.gamma || 0) * flip;
-  const pitch = (App.gyroData.beta  || 0) * flip;
-  const hdg   = App.gyroData.alpha || 0;
-  const spd   = App.gpsSpeed       || 0;
-  const alt   = App.circuitAlt     || 0;
-  _drawHdgTape($('cir-hdg-cv'), hdg);
-  _drawVTape($('cir-spd-cv'), spd, 0, 240, 20, 10, 'km/h', false);
-  _drawVTape($('cir-alt-cv'), alt, Math.max(0, alt-100), alt+100, 50, 25, 'm', true);
-  _drawAHI($('cir-ahi-cv'), roll, pitch);
-  _drawKitt($('cir-kitt-cv'));
-  _updateCirBottom(roll, spd);
-  const now = Date.now();
-  if (now - _kirkLastCheck > 2000) { _kirkLastCheck = now; kirkCheckAlerts(); }
+  try {
+    const flip  = App.tiltFlip ? -1 : 1;
+    const roll  = (App.gyroData.gamma || 0) * flip;
+    const pitch = (App.gyroData.beta  || 0) * flip;
+    const hdg   = App.gyroData.alpha || 0;
+    const spd   = App.gpsSpeed       || 0;
+    const alt   = App.circuitAlt     || 0;
+    _drawHdgTape($('cir-hdg-cv'), hdg);
+    _drawVTape($('cir-spd-cv'), spd, 0, 240, 20, 10, 'km/h', false);
+    _drawVTape($('cir-alt-cv'), alt, Math.max(0, alt-100), alt+100, 50, 25, 'm', true);
+    _drawAHI($('cir-ahi-cv'), roll, pitch);
+    _drawKitt($('cir-kitt-cv'));
+    _updateCirBottom(roll, spd);
+    const now = Date.now();
+    if (now - _kirkLastCheck > 2000) { _kirkLastCheck = now; kirkCheckAlerts(); }
+  } catch(e) { /* keep loop alive on any render error */ }
   _cirRaf = requestAnimationFrame(_cirLoop);
 }
 
