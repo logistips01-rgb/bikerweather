@@ -1360,6 +1360,7 @@ function openCircuit() {
   const ov = $('circuit-overlay');
   if (ov) ov.classList.add('active');
   $('btn-cir-ls')?.classList.toggle('active', App.landscapeMode);
+  $('btn-cir-inv')?.classList.toggle('active', App.tiltFlip);
   initKirkVoice();
   setTimeout(() => {
     resizeCircuitCanvases();
@@ -1413,8 +1414,9 @@ function resizeCircuitCanvases() {
 
 function _cirLoop() {
   if (!App.circuitMode) return;
-  const roll  = App.gyroData.gamma || 0;
-  const pitch = App.gyroData.beta  || 0;
+  const flip  = App.tiltFlip ? -1 : 1;
+  const roll  = (App.gyroData.gamma || 0) * flip;
+  const pitch = (App.gyroData.beta  || 0) * flip;
   const hdg   = App.gyroData.alpha || 0;
   const spd   = App.gpsSpeed       || 0;
   const alt   = App.circuitAlt     || 0;
@@ -1974,7 +1976,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-tilt-flip')?.addEventListener('click', () => {
     App.tiltFlip = !App.tiltFlip;
     $('btn-tilt-flip')?.classList.toggle('active', App.tiltFlip);
+    $('btn-cir-inv')?.classList.toggle('active', App.tiltFlip);
     toast(App.tiltFlip ? 'Inclinación invertida ↕' : 'Inclinación normal ↕', 'info');
+  });
+  $('btn-cir-inv')?.addEventListener('click', () => {
+    App.tiltFlip = !App.tiltFlip;
+    $('btn-cir-inv')?.classList.toggle('active', App.tiltFlip);
+    $('btn-tilt-flip')?.classList.toggle('active', App.tiltFlip);
+    if (App.circuitMode) kirkSpeak(App.tiltFlip ? 'Invertido.' : 'Normal.');
   });
 
   // Wake Lock
