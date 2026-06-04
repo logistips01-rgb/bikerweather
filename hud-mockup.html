@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>HUD Mockup – Modo Circuito</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#000; width:390px; height:844px; overflow:hidden; font-family:'Courier New',monospace; position:relative; }
+
+  /* Scanlines overlay */
+  body::after {
+    content:''; position:absolute; inset:0; pointer-events:none; z-index:100;
+    background:repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
+  }
+
+  /* Vignette */
+  body::before {
+    content:''; position:absolute; inset:0; pointer-events:none; z-index:99;
+    background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.7) 100%);
+  }
+
+  /* ── COLOR VARS ── */
+  :root {
+    --g: #00ff88;       /* verde HUD principal */
+    --ga: rgba(0,255,136,0.15);
+    --gb: rgba(0,255,136,0.06);
+    --y: #ffe066;       /* amarillo advertencia */
+    --r: #ff4444;       /* rojo peligro */
+    --w: rgba(0,255,136,0.5);
+    --dim: rgba(0,255,136,0.35);
+  }
+
+  /* ══════════════════════════════
+     HEADING TAPE  (top)
+  ══════════════════════════════ */
+  #heading-tape {
+    position:absolute; top:0; left:0; right:0; height:48px;
+    background:rgba(0,0,0,0.6); border-bottom:1px solid var(--w);
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
+  .hdg-ticks { display:flex; align-items:flex-end; gap:0; position:relative; }
+  .hdg-mark {
+    display:flex; flex-direction:column; align-items:center;
+    width:26px; font-size:9px; color:var(--dim); line-height:1;
+  }
+  .hdg-mark.major { color:var(--g); font-size:10px; font-weight:bold; }
+  .hdg-mark .tick { width:1px; background:var(--dim); margin-bottom:3px; }
+  .hdg-mark.major .tick { background:var(--g); }
+  .hdg-mark.minor .tick { height:6px; }
+  .hdg-mark.major .tick { height:10px; }
+  /* Current heading pointer */
+  #hdg-pointer {
+    position:absolute; bottom:0; left:50%; transform:translateX(-50%);
+    width:0; height:0;
+    border-left:7px solid transparent;
+    border-right:7px solid transparent;
+    border-bottom:9px solid var(--g);
+  }
+  #hdg-value {
+    position:absolute; bottom:2px; left:50%; transform:translateX(-50%);
+    background:rgba(0,0,0,0.8); border:1px solid var(--g);
+    color:var(--g); font-size:14px; font-weight:bold;
+    padding:1px 8px; letter-spacing:2px;
+    margin-bottom:12px;
+  }
+  .hdg-center-line {
+    position:absolute; top:0; bottom:0; left:50%;
+    width:1px; background:rgba(0,255,136,0.3); pointer-events:none;
+  }
+
+  /* ══════════════════════════════
+     SPEED TAPE  (left)
+  ══════════════════════════════ */
+  #speed-tape {
+    position:absolute; top:48px; left:0; bottom:120px; width:72px;
+    background:rgba(0,0,0,0.55); border-right:1px solid var(--w);
+    overflow:hidden; display:flex; flex-direction:column; justify-content:center;
+  }
+  .tape-inner { position:relative; height:100%; }
+  .s-tick {
+    position:absolute; right:0; display:flex; align-items:center;
+    font-size:9px; color:var(--dim); gap:3px;
+  }
+  .s-tick .tl { height:1px; background:var(--dim); }
+  .s-tick.major { color:var(--g); font-size:11px; }
+  .s-tick.major .tl { background:var(--g); }
+  #spd-box {
+    position:absolute; right:-1px; top:50%; transform:translateY(-50%);
+    background:#000; border:1px solid var(--g); border-right:none;
+    color:var(--g); font-size:22px; font-weight:bold;
+    padding:4px 6px; text-align:right; min-width:60px;
+    letter-spacing:1px;
+  }
+  #spd-label {
+    position:absolute; bottom:6px; left:0; right:0;
+    text-align:center; font-size:9px; color:var(--dim); letter-spacing:2px;
+  }
+  #spd-pointer {
+    position:absolute; right:0; top:50%; transform:translateY(-50%);
+    width:0; height:0;
+    border-top:6px solid transparent;
+    border-bottom:6px solid transparent;
+    border-right:8px solid var(--g);
+  }
+
+  /* ══════════════════════════════
+     ALTITUDE TAPE  (right)
+  ══════════════════════════════ */
+  #alt-tape {
+    position:absolute; top:48px; right:0; bottom:120px; width:72px;
+    background:rgba(0,0,0,0.55); border-left:1px solid var(--w);
+    overflow:hidden; display:flex; flex-direction:column; justify-content:center;
+  }
+  .a-tick {
+    position:absolute; left:0; display:flex; align-items:center;
+    font-size:9px; color:var(--dim); gap:3px; flex-direction:row-reverse;
+  }
+  .a-tick .tl { height:1px; background:var(--dim); }
+  .a-tick.major { color:var(--g); font-size:11px; }
+  .a-tick.major .tl { background:var(--g); }
+  #alt-box {
+    position:absolute; left:-1px; top:50%; transform:translateY(-50%);
+    background:#000; border:1px solid var(--g); border-left:none;
+    color:var(--g); font-size:18px; font-weight:bold;
+    padding:4px 6px; text-align:left; min-width:60px;
+    letter-spacing:1px;
+  }
+  #alt-label {
+    position:absolute; bottom:6px; left:0; right:0;
+    text-align:center; font-size:9px; color:var(--dim); letter-spacing:2px;
+  }
+
+  /* ══════════════════════════════
+     ARTIFICIAL HORIZON  (center)
+  ══════════════════════════════ */
+  #ahi-wrap {
+    position:absolute; top:48px; left:72px; right:72px; bottom:120px;
+    overflow:hidden; display:flex; align-items:center; justify-content:center;
+  }
+  #ahi-canvas { position:absolute; }
+
+  /* Fixed aircraft reference */
+  #aircraft-ref {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    pointer-events:none; z-index:10;
+  }
+  .ref-wing {
+    position:absolute; top:50%; width:50px; height:3px;
+    background:var(--y); transform:translateY(-50%);
+  }
+  .ref-wing.left { right:calc(50% + 6px); }
+  .ref-wing.right { left:calc(50% + 6px); }
+  .ref-center { width:10px; height:10px; border:2px solid var(--y); border-radius:50%; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
+  .ref-center::after { content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:3px; height:3px; background:var(--y); border-radius:50%; }
+
+  /* Roll arc indicator */
+  #roll-arc {
+    position:absolute; bottom:20px; left:50%; transform:translateX(-50%);
+    display:flex; align-items:center; gap:4px; z-index:10;
+  }
+  .roll-tick { width:1px; height:8px; background:var(--dim); transform-origin:bottom center; }
+  .roll-tick.major { height:12px; background:var(--g); }
+  #roll-ptr {
+    position:absolute; bottom:14px; left:50%; transform:translateX(-50%);
+    width:0; height:0;
+    border-left:6px solid transparent;
+    border-right:6px solid transparent;
+    border-top:10px solid var(--g);
+  }
+
+  /* ══════════════════════════════
+     BOTTOM STRIP
+  ══════════════════════════════ */
+  #bottom-strip {
+    position:absolute; bottom:0; left:0; right:0; height:120px;
+    background:rgba(0,0,0,0.7); border-top:1px solid var(--w);
+    display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:0;
+  }
+  .b-cell {
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    border-right:1px solid rgba(0,255,136,0.15); padding:8px 4px; gap:2px;
+  }
+  .b-cell:last-child { border-right:none; }
+  .b-val { font-size:22px; font-weight:bold; color:var(--g); line-height:1; letter-spacing:1px; }
+  .b-val.warn { color:var(--y); }
+  .b-val.danger { color:var(--r); }
+  .b-lbl { font-size:8px; color:var(--dim); letter-spacing:2px; text-transform:uppercase; }
+  .b-unit { font-size:9px; color:var(--dim); }
+
+  /* G-force bar */
+  #gbar-wrap { width:48px; height:4px; background:rgba(0,255,136,0.15); border-radius:2px; margin-top:3px; }
+  #gbar { height:100%; background:var(--g); border-radius:2px; width:25%; transition:width 0.2s; }
+
+  /* Wind cell */
+  #wind-arrow-wrap { position:relative; width:32px; height:32px; }
+  #wind-arrow-wrap svg { position:absolute; inset:0; }
+
+  /* Mode label */
+  #mode-label {
+    position:absolute; top:52px; left:50%; transform:translateX(-50%);
+    font-size:9px; color:var(--dim); letter-spacing:3px;
+    border:1px solid rgba(0,255,136,0.2); padding:2px 8px;
+    background:rgba(0,0,0,0.5);
+  }
+
+  /* Meteo top-right */
+  #meteo-top {
+    position:absolute; top:52px; right:76px;
+    font-size:9px; color:var(--dim); letter-spacing:1px; text-align:right;
+    line-height:1.6;
+  }
+  #meteo-top .em { font-size:14px; }
+
+  /* GPS status */
+  #gps-dot {
+    position:absolute; top:52px; left:76px;
+    display:flex; align-items:center; gap:4px;
+    font-size:9px; color:var(--dim); letter-spacing:1px;
+  }
+  .dot { width:6px; height:6px; border-radius:50%; background:var(--g); animation:blink 1.5s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+</style>
+</head>
+<body>
+
+<!-- HEADING TAPE -->
+<div id="heading-tape">
+  <div class="hdg-center-line"></div>
+  <div class="hdg-ticks" id="hdg-ticks"></div>
+  <div id="hdg-value">121°</div>
+  <div id="hdg-pointer"></div>
+</div>
+
+<!-- SPEED TAPE -->
+<div id="speed-tape">
+  <div class="tape-inner" id="spd-inner"></div>
+  <div id="spd-box">87</div>
+  <div id="spd-pointer"></div>
+  <div id="spd-label">KM/H</div>
+</div>
+
+<!-- ALTITUDE TAPE -->
+<div id="alt-tape">
+  <div class="tape-inner" id="alt-inner"></div>
+  <div id="alt-box">342<br/><span style="font-size:11px;color:var(--dim)">m</span></div>
+  <div id="alt-label">ALT</div>
+</div>
+
+<!-- ARTIFICIAL HORIZON -->
+<div id="ahi-wrap">
+  <canvas id="ahi-canvas"></canvas>
+  <!-- Fixed aircraft reference -->
+  <div id="aircraft-ref">
+    <div class="ref-wing left"></div>
+    <div class="ref-center"></div>
+    <div class="ref-wing right"></div>
+  </div>
+</div>
+
+<!-- MODE LABEL -->
+<div id="mode-label">MODO CIRCUITO</div>
+
+<!-- GPS -->
+<div id="gps-dot"><div class="dot"></div> GPS 8 SAT</div>
+
+<!-- METEO -->
+<div id="meteo-top">
+  <span class="em">⛅</span> 19°C<br/>
+  <span style="color:rgba(0,255,136,0.5)">💨 14 km/h NW</span>
+</div>
+
+<!-- BOTTOM STRIP -->
+<div id="bottom-strip">
+  <div class="b-cell">
+    <div class="b-val" id="gforce-val">1.8</div>
+    <div id="gbar-wrap"><div id="gbar"></div></div>
+    <div class="b-lbl">G-FORCE</div>
+  </div>
+  <div class="b-cell">
+    <div id="wind-arrow-wrap">
+      <svg viewBox="0 0 32 32" width="32" height="32">
+        <circle cx="16" cy="16" r="14" fill="none" stroke="rgba(0,255,136,0.2)" stroke-width="1"/>
+        <line x1="16" y1="4" x2="16" y2="28" stroke="rgba(0,255,136,0.15)" stroke-width="1"/>
+        <line x1="4" y1="16" x2="28" y2="16" stroke="rgba(0,255,136,0.15)" stroke-width="1"/>
+        <!-- Wind arrow pointing NW relative to heading -->
+        <polygon id="wind-poly" points="16,5 13,14 16,12 19,14" fill="#00ff88" transform="rotate(-35, 16, 16)"/>
+      </svg>
+    </div>
+    <div class="b-val" style="font-size:16px">14</div>
+    <div class="b-lbl">VIENTO km/h</div>
+  </div>
+  <div class="b-cell">
+    <div class="b-val warn">19°</div>
+    <div class="b-unit">SENS 16°</div>
+    <div class="b-lbl">TEMP</div>
+  </div>
+  <div class="b-cell">
+    <div class="b-val" id="roll-val">−12°</div>
+    <div class="b-unit" style="color:var(--dim)">ROLL</div>
+    <div class="b-lbl">INCLIN</div>
+  </div>
+</div>
+
+<script>
+// ── HEADING TAPE ──
+const hdgTicks = document.getElementById('hdg-ticks');
+const HDG = 121;
+for (let d = HDG - 30; d <= HDG + 30; d += 5) {
+  const el = document.createElement('div');
+  const isMajor = d % 10 === 0;
+  el.className = 'hdg-mark ' + (isMajor ? 'major' : 'minor');
+  const tick = document.createElement('div');
+  tick.className = 'tick';
+  const lbl = document.createElement('span');
+  if (isMajor) {
+    const n = ((d % 360) + 360) % 360;
+    const labels = {0:'N',45:'NE',90:'E',135:'SE',180:'S',225:'SW',270:'W',315:'NW'};
+    lbl.textContent = labels[n] || n;
+  }
+  el.appendChild(tick);
+  el.appendChild(lbl);
+  hdgTicks.appendChild(el);
+}
+
+// ── SPEED TAPE ──
+const spdInner = document.getElementById('spd-inner');
+const SPD = 87;
+const tapeH = document.getElementById('speed-tape').offsetHeight || 676;
+for (let s = 0; s <= 200; s += 10) {
+  const el = document.createElement('div');
+  el.className = 's-tick ' + (s % 20 === 0 ? 'major' : '');
+  const pct = 1 - s / 200;
+  el.style.bottom = (pct * tapeH - tapeH * (1 - SPD/200)) + 'px';
+  const tl = document.createElement('div');
+  tl.className = 'tl';
+  tl.style.width = s % 20 === 0 ? '12px' : '7px';
+  const lbl = document.createElement('span');
+  if (s % 20 === 0) lbl.textContent = s;
+  el.style.right = '0';
+  el.style.flexDirection = 'row-reverse';
+  el.appendChild(lbl);
+  el.appendChild(tl);
+  spdInner.appendChild(el);
+}
+
+// ── ARTIFICIAL HORIZON ──
+const canvas = document.getElementById('ahi-canvas');
+const ahibox = document.getElementById('ahi-wrap');
+const W = ahibox.offsetWidth || 246;
+const H = ahibox.offsetHeight || 676;
+canvas.width = W;
+canvas.height = H;
+const ctx = canvas.getContext('2d');
+
+const ROLL = -12; // degrees
+const PITCH = 2;  // degrees
+
+function drawAHI(roll, pitch) {
+  ctx.clearRect(0, 0, W, H);
+  ctx.save();
+  ctx.translate(W/2, H/2);
+  ctx.rotate(roll * Math.PI / 180);
+
+  const pitchPx = pitch * (H / 60); // 60° total range
+  const skyH = H * 1.5;
+
+  // Sky
+  const skyGrad = ctx.createLinearGradient(0, -skyH/2 + pitchPx, 0, pitchPx);
+  skyGrad.addColorStop(0, 'rgba(0,40,80,0.9)');
+  skyGrad.addColorStop(1, 'rgba(0,60,120,0.8)');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(-W, -skyH/2 + pitchPx, W*2, skyH/2);
+
+  // Ground
+  const gndGrad = ctx.createLinearGradient(0, pitchPx, 0, skyH/2 + pitchPx);
+  gndGrad.addColorStop(0, 'rgba(60,30,0,0.85)');
+  gndGrad.addColorStop(1, 'rgba(40,20,0,0.9)');
+  ctx.fillStyle = gndGrad;
+  ctx.fillRect(-W, pitchPx, W*2, skyH/2);
+
+  // Horizon line
+  ctx.strokeStyle = 'rgba(0,255,136,0.9)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-W, pitchPx);
+  ctx.lineTo(W, pitchPx);
+  ctx.stroke();
+
+  // Pitch ladder
+  ctx.font = 'bold 10px Courier New';
+  ctx.textAlign = 'right';
+  for (let p = -30; p <= 30; p += 5) {
+    if (p === 0) continue;
+    const y = pitchPx - p * (H / 60);
+    const len = p % 10 === 0 ? 40 : 20;
+    const color = p > 0 ? 'rgba(0,255,136,0.7)' : 'rgba(0,255,136,0.5)';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = p % 10 === 0 ? 1.5 : 1;
+    ctx.beginPath();
+    ctx.moveTo(-len/2, y);
+    ctx.lineTo(len/2, y);
+    ctx.stroke();
+    if (p % 10 === 0) {
+      ctx.fillStyle = 'rgba(0,255,136,0.7)';
+      ctx.fillText(Math.abs(p), -len/2 - 4, y + 4);
+      ctx.textAlign = 'left';
+      ctx.fillText(Math.abs(p), len/2 + 4, y + 4);
+      ctx.textAlign = 'right';
+    }
+  }
+
+  ctx.restore();
+
+  // Roll arc at bottom of AHI
+  ctx.save();
+  ctx.translate(W/2, H - 30);
+  // arc
+  ctx.strokeStyle = 'rgba(0,255,136,0.3)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(0, 0, 60, Math.PI + 0.3, -0.3, false);
+  ctx.stroke();
+  // roll ticks on arc
+  for (const a of [-60,-45,-30,-20,-10,0,10,20,30,45,60]) {
+    const rad = (a - 90) * Math.PI / 180;
+    const isMaj = a % 30 === 0 || a === 0;
+    const r1 = 62, r2 = isMaj ? 50 : 56;
+    ctx.strokeStyle = isMaj ? 'rgba(0,255,136,0.8)' : 'rgba(0,255,136,0.4)';
+    ctx.lineWidth = isMaj ? 1.5 : 1;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(rad)*r1, Math.sin(rad)*r1);
+    ctx.lineTo(Math.cos(rad)*r2, Math.sin(rad)*r2);
+    ctx.stroke();
+  }
+  // roll pointer
+  const rrad = (roll - 90) * Math.PI / 180;
+  ctx.fillStyle = 'var(--g)';
+  ctx.strokeStyle = '#00ff88';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  const px = Math.cos(rrad)*62, py = Math.sin(rrad)*62;
+  const tangX = -Math.sin(rrad), tangY = Math.cos(rrad);
+  ctx.moveTo(px, py);
+  ctx.lineTo(px + tangX*7 - Math.cos(rrad)*10, py + tangY*7 - Math.sin(rrad)*10);
+  ctx.lineTo(px - tangX*7 - Math.cos(rrad)*10, py - tangY*7 - Math.sin(rrad)*10);
+  ctx.closePath();
+  ctx.fillStyle = '#00ff88';
+  ctx.fill();
+
+  ctx.restore();
+}
+
+drawAHI(ROLL, PITCH);
+
+// G-force bar
+document.getElementById('gbar').style.width = Math.min(100, (1.8 / 5) * 100) + '%';
+
+// Animate slight drift for realism
+let t = 0;
+function animate() {
+  t += 0.012;
+  const roll = ROLL + Math.sin(t * 0.7) * 0.8;
+  const pitch = PITCH + Math.sin(t * 0.4) * 0.3;
+  drawAHI(roll, pitch);
+  document.getElementById('roll-val').textContent = (roll < 0 ? '−' : '+') + Math.abs(Math.round(roll)) + '°';
+  requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>
