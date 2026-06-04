@@ -66,7 +66,9 @@ async function fetchWeatherData(lat, lon) {
     wind_speed_unit: 'kmh', timezone: 'auto'
   });
   const res  = await fetch('https://api.open-meteo.com/v1/forecast?' + params);
+  if (!res.ok) throw new Error('API meteo ' + res.status);
   const data = await res.json();
+  if (data.error) throw new Error(data.reason || 'API error');
   const c    = data.current;
   const wmo  = WMO[c.weather_code] || { d:'Desconocido', emoji:'🌡' };
   return {
@@ -401,7 +403,10 @@ async function loadWeather(lat, lon) {
     }
   } catch(err) {
     setStatusPill('weather', 'error');
-    toast('Error meteo: ' + err.message, 'error');
+    // Evitar spam: próximo intento en 30s (no en cada update GPS)
+    App.lastWeatherFetch = Date.now() - REFRESH_MS + 30_000;
+    const msg = !navigator.onLine ? 'Sin conexión para datos meteo' : 'Error meteo, reintentando...';
+    toast(msg, 'error');
   }
 }
 
