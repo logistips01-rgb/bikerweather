@@ -668,6 +668,19 @@ function updateRollOverlay(roll) {
     `inset ${weakX} 0 ${rad}px 0 ${gd}`;
 }
 
+function applyLandscapeMapDims() {
+  const mc = $('map-container');
+  if (!mc) return;
+  if (App.landscapeMode) {
+    // portrait innerWidth = landscape height, portrait innerHeight = landscape width
+    mc.style.height = window.innerWidth  + 'px';
+    mc.style.width  = window.innerHeight + 'px';
+  } else {
+    mc.style.height = '';
+    mc.style.width  = '';
+  }
+}
+
 function toggleLandscapeMode() {
   App.landscapeMode = !App.landscapeMode;
   document.body.classList.toggle('landscape-mode', App.landscapeMode);
@@ -678,6 +691,9 @@ function toggleLandscapeMode() {
   if (btn) { btn.textContent = on ? '⊡ PORTRAIT' : '⊞ HORIZONTAL'; btn.classList.toggle('active', on); }
   const btnMap = $('btn-map-landscape');
   if (btnMap) { btnMap.textContent = on ? '⊡' : '⊞'; btnMap.classList.toggle('active', on); btnMap.title = on ? 'Salir modo horizontal' : 'Modo horizontal'; }
+
+  // Fijar dimensiones del mapa directamente (evita conflictos de cascada CSS)
+  applyLandscapeMapDims();
 
   // Re-bootstrap del CF con los ejes correctos para la nueva orientación
   App.tiltFilter.gyroReady = false;
@@ -1444,6 +1460,7 @@ function initRidingControls() {
     if (App.rideMode === 'route' && !App.rideDestination) { toast('Introduce un destino', 'info'); return; }
     $('pre-ride-controls').style.display = 'none';
     const mc = $('map-container'); if (mc) mc.style.display = 'block';
+    applyLandscapeMapDims();
     if (!App.mapInitialized) initMap(); else mapClear();
     if (App.position) mapUpdatePosition(App.position.lat, App.position.lon);
     setTimeout(() => { if (App.leafletMap) { App.leafletMap.invalidateSize(); App.leafletMap.setView([App.position.lat, App.position.lon], 15); } }, 200);

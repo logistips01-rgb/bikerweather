@@ -721,14 +721,12 @@ body.landscape-mode .app-header        { display: none; }
 body.landscape-mode .location-bar      { display: none; }
 body.landscape-mode .section           { gap: 0; }
 
-/* Mapa ocupa todo el espacio disponible (ya no necesita position:fixed) */
+/* Mapa ocupa todo el espacio disponible — dimensiones fijadas por JS vía inline style */
 body.landscape-mode #map-container {
   position: relative !important;
   inset: auto !important;
   flex: 1 !important;
   min-height: 0 !important;
-  height: 100dvw !important;   /* = ancho del portrait = alto del landscape */
-  width: 100dvh !important;    /* = alto del portrait = ancho del landscape */
   border-radius: 0 !important;
   border: none !important;
 }
