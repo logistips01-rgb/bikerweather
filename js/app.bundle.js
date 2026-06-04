@@ -369,7 +369,8 @@ async function onGPSPosition(pos) {
   }
 
   const now = Date.now();
-  if (!App.weather || (now - App.lastWeatherFetch > REFRESH_MS)) {
+  const retryWait = App.weather ? REFRESH_MS : 30_000;
+  if (now - App.lastWeatherFetch > retryWait) {
     await loadWeather(App.position.lat, App.position.lon);
   } else {
     computeWindChill();
@@ -403,8 +404,7 @@ async function loadWeather(lat, lon) {
     }
   } catch(err) {
     setStatusPill('weather', 'error');
-    // Evitar spam: próximo intento en 30s (no en cada update GPS)
-    App.lastWeatherFetch = Date.now() - REFRESH_MS + 30_000;
+    App.lastWeatherFetch = Date.now(); // throttle: retryWait=30s cuando !App.weather
     const msg = !navigator.onLine ? 'Sin conexión para datos meteo' : 'Error meteo, reintentando...';
     toast(msg, 'error');
   }
