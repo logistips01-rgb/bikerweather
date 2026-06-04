@@ -630,16 +630,8 @@ function updateRollOverlay(roll) {
 
   // Rotar línea
   line.style.transform = `rotate(${-roll}deg)`;
-  if (App.landscapeMode) {
-    // En landscape la línea es vertical en CSS (→ horizontal visual tras rotación 90°)
-    // CSS controla height/width; JS solo pone el gradiente y el filtro
-    line.style.height = '';
-    line.style.width  = '';
-    line.style.background = `linear-gradient(to bottom,transparent 0%,${dim} 6%,${css} 28%,${css} 72%,${dim} 94%,transparent 100%)`;
-  } else {
-    line.style.height     = abs > 30 ? '4px' : abs > 15 ? '3px' : '2px';
-    line.style.background = `linear-gradient(to right,transparent 0%,${dim} 6%,${css} 28%,${css} 72%,${dim} 94%,transparent 100%)`;
-  }
+  line.style.height     = abs > 30 ? '4px' : abs > 15 ? '3px' : '2px';
+  line.style.background = `linear-gradient(to right,transparent 0%,${dim} 6%,${css} 28%,${css} 72%,${dim} 94%,transparent 100%)`;
   line.style.filter = abs > 8 ? `drop-shadow(0 0 ${Math.min(abs * 0.35, 14)}px ${css})` : 'none';
 
   // Etiqueta de ángulo
@@ -668,18 +660,6 @@ function updateRollOverlay(roll) {
     `inset ${weakX} 0 ${rad}px 0 ${gd}`;
 }
 
-function applyLandscapeMapDims() {
-  const mc = $('map-container');
-  if (!mc) return;
-  if (App.landscapeMode) {
-    // portrait innerWidth = landscape height, portrait innerHeight = landscape width
-    mc.style.height = window.innerWidth  + 'px';
-    mc.style.width  = window.innerHeight + 'px';
-  } else {
-    mc.style.height = '';
-    mc.style.width  = '';
-  }
-}
 
 function toggleLandscapeMode() {
   App.landscapeMode = !App.landscapeMode;
@@ -691,9 +671,6 @@ function toggleLandscapeMode() {
   if (btn) { btn.textContent = on ? '⊡ PORTRAIT' : '⊞ HORIZONTAL'; btn.classList.toggle('active', on); }
   const btnMap = $('btn-map-landscape');
   if (btnMap) { btnMap.textContent = on ? '⊡' : '⊞'; btnMap.classList.toggle('active', on); btnMap.title = on ? 'Salir modo horizontal' : 'Modo horizontal'; }
-
-  // Fijar dimensiones del mapa directamente (evita conflictos de cascada CSS)
-  applyLandscapeMapDims();
 
   // Re-bootstrap del CF con los ejes correctos para la nueva orientación
   App.tiltFilter.gyroReady = false;
@@ -1460,7 +1437,6 @@ function initRidingControls() {
     if (App.rideMode === 'route' && !App.rideDestination) { toast('Introduce un destino', 'info'); return; }
     $('pre-ride-controls').style.display = 'none';
     const mc = $('map-container'); if (mc) mc.style.display = 'block';
-    applyLandscapeMapDims();
     if (!App.mapInitialized) initMap(); else mapClear();
     if (App.position) mapUpdatePosition(App.position.lat, App.position.lon);
     setTimeout(() => { if (App.leafletMap) { App.leafletMap.invalidateSize(); App.leafletMap.setView([App.position.lat, App.position.lon], 15); } }, 200);

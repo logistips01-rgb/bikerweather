@@ -721,12 +721,13 @@ body.landscape-mode .app-header        { display: none; }
 body.landscape-mode .location-bar      { display: none; }
 body.landscape-mode .section           { gap: 0; }
 
-/* Mapa ocupa todo el espacio disponible — dimensiones fijadas por JS vía inline style */
+/* Mapa: position:fixed dentro del #app transformado =
+   se posiciona relativo al #app (por el transform) y lo llena exactamente */
 body.landscape-mode #map-container {
-  position: relative !important;
-  inset: auto !important;
-  flex: 1 !important;
-  min-height: 0 !important;
+  position: fixed !important;
+  inset: 0 !important;
+  height: auto !important;
+  width: auto !important;
   border-radius: 0 !important;
   border: none !important;
 }
@@ -779,24 +780,6 @@ body.landscape-mode .hud-g-lbl         { font-size: 0.46rem; }
 body.landscape-mode .hud-curves        { display: none; }
 body.landscape-mode .btn-stop-route    { padding: 6px 11px !important; font-size: 0.65rem !important; }
 body.landscape-mode .session-timer     { display: none; }
-
-/* Línea de roll: vertical en CSS portrait → horizontal en landscape tras rotación 90° CW */
-body.landscape-mode .roll-line {
-  top: 7.5% !important;
-  left: 50% !important;
-  height: 85% !important;
-  width: 3px !important;
-  margin-top: 0 !important;
-  margin-left: -1.5px !important;
-  transform-origin: center center !important;
-}
-/* Etiqueta de ángulo: junto al extremo superior de la línea vertical */
-body.landscape-mode .roll-angle-label {
-  font-size: 1.3rem !important;
-  right: auto !important;
-  top: 4% !important;
-  left: calc(50% + 12px) !important;
-}
 
 /* Botón invertir inclinación — solo visible en landscape */
 .btn-tilt-flip {
