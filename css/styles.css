@@ -1644,3 +1644,20 @@ body.landscape-mode .btn-map-landscape {
 body.landscape-mode #circuit-overlay {
   border-radius: 0;
 }
+.cir-cal-btn {
+  position: absolute;
+  bottom: 138px;
+  right: 8px;
+  z-index: 10;
+  background: rgba(0,0,0,0.8);
+  border: 1px solid rgba(0,255,136,0.25);
+  color: rgba(0,255,136,0.6);
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 6px 10px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  border-radius: 2px;
+}
+.cir-cal-btn:active { background: rgba(0,255,136,0.15); color: #00ff88; }

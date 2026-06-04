@@ -1234,6 +1234,17 @@ function fmtDur(ms) {
   return h>0?h+'h '+m%60+'m':m>0?m+'m '+s%60+'s':s+'s';
 }
 
+function doCalibrate() {
+  if (App.tiltFilter.gyroReady) {
+    App.tiltFilter.rollOffset  = App.tiltFilter.roll;
+    App.tiltFilter.pitchOffset = App.tiltFilter.pitch;
+  } else {
+    App.tiltFilter.rollOffset  = App.gyroData._rawRoll  || 0;
+    App.tiltFilter.pitchOffset = App.gyroData._rawPitch || 0;
+  }
+  toast('Calibrado ✓ — Horizonte a cero', 'ok');
+}
+
 /* ═══════════════════════════════════════
    MODO CIRCUITO
 ═══════════════════════════════════════ */
@@ -1834,19 +1845,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (confirm('¿Borrar todo el historial de rutas?')) { localStorage.removeItem(HISTORY_KEY); renderHistory(); }
   });
 
-  // Calibrar: fija el offset al ángulo actual (punto cero con moto recta)
-  const doCalibrate = () => {
-    if (App.tiltFilter.gyroReady) {
-      App.tiltFilter.rollOffset  = App.tiltFilter.roll;
-      App.tiltFilter.pitchOffset = App.tiltFilter.pitch;
-    } else {
-      App.tiltFilter.rollOffset  = App.gyroData._rawRoll  || 0;
-      App.tiltFilter.pitchOffset = App.gyroData._rawPitch || 0;
-    }
-    toast('Calibrado ✓ — Roll y Pitch a cero', 'ok');
-  };
   $('btn-calibrate')?.addEventListener('click',  doCalibrate);
   $('btn-calibrate2')?.addEventListener('click', doCalibrate);
+  $('btn-cir-cal')?.addEventListener('click', doCalibrate);
   $('btn-landscape')?.addEventListener('click', toggleLandscapeMode);
   $('btn-map-landscape')?.addEventListener('click', toggleLandscapeMode);
   $('btn-open-circuit')?.addEventListener('click', openCircuit);
