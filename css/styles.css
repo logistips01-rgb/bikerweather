@@ -1661,3 +1661,59 @@ body.landscape-mode #circuit-overlay {
   border-radius: 2px;
 }
 .cir-cal-btn:active { background: rgba(0,255,136,0.15); color: #00ff88; }
+
+/* ── KIRK / KITT ── */
+#cir-kirk-wrap {
+  flex-shrink: 0;
+  height: 20px;
+  position: relative;
+  background: #050000;
+  border-top: 1px solid rgba(255,30,0,0.15);
+  border-bottom: 1px solid rgba(255,30,0,0.1);
+}
+#cir-kitt-cv { width: 100%; height: 100%; display: block; }
+#cir-kirk-msg {
+  position: absolute;
+  bottom: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.82);
+  border: 1px solid rgba(255,30,0,0.35);
+  color: rgba(255,60,20,0.95);
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 5px 14px;
+  white-space: nowrap;
+  max-width: 88%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 5;
+}
+#cir-kirk-msg.show { opacity: 1; }
+.cir-mic-btn {
+  position: absolute;
+  bottom: 138px;
+  left: 8px;
+  z-index: 10;
+  background: rgba(0,0,0,0.8);
+  border: 1px solid rgba(255,30,0,0.2);
+  color: rgba(255,50,20,0.5);
+  font-size: 14px;
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border-radius: 2px;
+}
+.cir-mic-btn.active {
+  border-color: rgba(255,30,0,0.9);
+  color: #ff2200;
+  box-shadow: 0 0 10px rgba(255,30,0,0.4);
+  animation: kirkmicpulse 0.8s ease-in-out infinite;
+}
+@keyframes kirkmicpulse {
+  0%,100% { box-shadow: 0 0 6px rgba(255,30,0,0.4); }
+  50%      { box-shadow: 0 0 16px rgba(255,30,0,0.7); }
+}

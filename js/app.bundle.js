@@ -1242,13 +1242,110 @@ function doCalibrate() {
     App.tiltFilter.rollOffset  = App.gyroData._rawRoll  || 0;
     App.tiltFilter.pitchOffset = App.gyroData._rawPitch || 0;
   }
-  toast('Calibrado ✓ — Horizonte a cero', 'ok');
+  if (App.circuitMode) kirkSpeak('Calibrado.'); else toast('Calibrado ✓ — Horizonte a cero', 'ok');
 }
 
 /* ═══════════════════════════════════════
    MODO CIRCUITO
 ═══════════════════════════════════════ */
 let _cirRaf = null;
+
+/* ── Kirk state ── */
+let _kirkSpeaking  = false;
+let _kirkKittPos   = 0;
+let _kirkKittDir   = 1;
+let _kirkLastCheck = 0;
+let _kirkCooldowns = {};
+let _kirkRec       = null;
+
+function kirkSpeak(text) {
+  if (!text || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utt    = new SpeechSynthesisUtterance(text);
+  utt.lang     = 'es-ES';
+  utt.pitch    = 0.72;
+  utt.rate     = 0.92;
+  _kirkSpeaking = true;
+  const msg = $('cir-kirk-msg');
+  if (msg) { msg.textContent = text; msg.classList.add('show'); }
+  utt.onend = () => {
+    _kirkSpeaking = false;
+    if (msg) setTimeout(() => msg.classList.remove('show'), 2000);
+  };
+  window.speechSynthesis.speak(utt);
+}
+
+function _kirkCanAlert(key, ms) {
+  const now = Date.now();
+  if (!_kirkCooldowns[key] || now - _kirkCooldowns[key] > ms) {
+    _kirkCooldowns[key] = now;
+    return true;
+  }
+  return false;
+}
+
+function kirkCheckAlerts() {
+  if (!App.circuitMode || !App.sessionActive) return;
+  const spd  = App.gpsSpeed || 0;
+  const roll = Math.abs(App.gyroData.gamma || 0);
+  const totG = Math.sqrt((App.gForce?.long||0)**2 + (App.gForce?.lat||0)**2);
+  const ws   = App.weather?.windSpeed || 0;
+  if      (spd  > 140 && _kirkCanAlert('spd',  30000)) kirkSpeak('Velocidad ' + spd + '.');
+  else if (roll > 43  && _kirkCanAlert('roll', 10000)) kirkSpeak('Inclinación crítica.');
+  else if (totG > 0.85 && _kirkCanAlert('g',   15000)) kirkSpeak('Fuerzas G elevadas.');
+  else if (ws   > 50  && _kirkCanAlert('wind', 60000)) kirkSpeak('Viento fuerte, ' + ws + ' kilómetros.');
+}
+
+function _drawKitt(cv) {
+  if (!cv || cv.width < 2) return;
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#050000'; ctx.fillRect(0, 0, W, H);
+  const spd = _kirkSpeaking ? 5 : 2.5;
+  _kirkKittPos += _kirkKittDir * spd;
+  if (_kirkKittPos >= W - 8) _kirkKittDir = -1;
+  if (_kirkKittPos <= 8)     _kirkKittDir = 1;
+  const x = _kirkKittPos, cy = H / 2;
+  const gW = _kirkSpeaking ? 110 : 70;
+  const outer = ctx.createRadialGradient(x, cy, 0, x, cy, gW);
+  outer.addColorStop(0, 'rgba(255,30,0,0.3)'); outer.addColorStop(1, 'rgba(255,30,0,0)');
+  ctx.fillStyle = outer; ctx.fillRect(x - gW, 0, gW * 2, H);
+  const core = ctx.createLinearGradient(x - 36, 0, x + 36, 0);
+  core.addColorStop(0, 'rgba(255,30,0,0)');
+  core.addColorStop(0.35, 'rgba(255,60,0,0.7)');
+  core.addColorStop(0.5, 'rgba(255,90,30,1)');
+  core.addColorStop(0.65, 'rgba(255,60,0,0.7)');
+  core.addColorStop(1, 'rgba(255,30,0,0)');
+  ctx.fillStyle = core; ctx.fillRect(x - 36, cy - 4, 72, 8);
+  const ctr = ctx.createLinearGradient(x - 10, 0, x + 10, 0);
+  ctr.addColorStop(0, 'rgba(255,100,0,0)');
+  ctr.addColorStop(0.5, 'rgba(255,210,160,1)');
+  ctr.addColorStop(1, 'rgba(255,100,0,0)');
+  ctx.fillStyle = ctr; ctx.fillRect(x - 10, cy - 2, 20, 4);
+}
+
+function initKirkVoice() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return;
+  _kirkRec = new SR();
+  _kirkRec.lang           = 'es-ES';
+  _kirkRec.continuous     = false;
+  _kirkRec.interimResults = false;
+  _kirkRec.onresult = e => {
+    const t = e.results[0][0].transcript.toLowerCase().trim();
+    handleKirkCommand(t);
+  };
+  _kirkRec.onend = () => { $('btn-cir-mic')?.classList.remove('active'); };
+}
+
+function handleKirkCommand(text) {
+  if      (text.includes('calibr'))                            doCalibrate();
+  else if ((text.includes('inici') || text.includes('start')) && !App.sessionActive) startCircuitSession();
+  else if ((text.includes('para')  || text.includes('fin') || text.includes('stop')) && App.sessionActive)  stopCircuitSession();
+  else if (text.includes('sal') || text.includes('cerr'))     closeCircuit();
+  else kirkSpeak('No entendido.');
+}
 
 function cirColor(v, warn, danger) {
   if (v >= danger) return '#ff3333';
@@ -1258,19 +1355,25 @@ function cirColor(v, warn, danger) {
 
 function openCircuit() {
   App.circuitMode = true;
+  _kirkKittPos = 0; _kirkKittDir = 1; _kirkCooldowns = {};
   const ov = $('circuit-overlay');
   if (ov) ov.classList.add('active');
-  const lsBtn = $('btn-cir-ls');
-  if (lsBtn) lsBtn.classList.toggle('active', App.landscapeMode);
-  setTimeout(() => { resizeCircuitCanvases(); _cirLoop(); }, 50);
+  $('btn-cir-ls')?.classList.toggle('active', App.landscapeMode);
+  initKirkVoice();
+  setTimeout(() => {
+    resizeCircuitCanvases();
+    _cirLoop();
+    kirkSpeak('Kirk activo. Listo.');
+  }, 80);
 }
 
 function closeCircuit() {
   if (App.sessionActive) stopSession();
   App.circuitMode = false;
-  const ov = $('circuit-overlay');
-  if (ov) ov.classList.remove('active');
+  $('circuit-overlay')?.classList.remove('active');
   if (_cirRaf) { cancelAnimationFrame(_cirRaf); _cirRaf = null; }
+  window.speechSynthesis?.cancel();
+  _kirkRec = null;
 }
 
 function startCircuitSession() {
@@ -1279,20 +1382,23 @@ function startCircuitSession() {
   startSession();
   $('btn-cir-start').style.display = 'none';
   $('btn-cir-stop').style.display  = 'flex';
+  kirkSpeak('Sesión iniciada.');
 }
 
 function stopCircuitSession() {
-  stopSession();
+  kirkSpeak('Sesión finalizada. Informe disponible.');
+  setTimeout(() => stopSession(), 1200);
   $('btn-cir-start').style.display = 'flex';
   $('btn-cir-stop').style.display  = 'none';
 }
 
 function resizeCircuitCanvases() {
   const pairs = [
-    ['cir-hdg-cv', 'cir-heading-wrap'],
-    ['cir-spd-cv', 'cir-spd-wrap'],
-    ['cir-alt-cv', 'cir-alt-wrap'],
-    ['cir-ahi-cv', 'cir-ahi-wrap']
+    ['cir-hdg-cv',  'cir-heading-wrap'],
+    ['cir-spd-cv',  'cir-spd-wrap'],
+    ['cir-alt-cv',  'cir-alt-wrap'],
+    ['cir-ahi-cv',  'cir-ahi-wrap'],
+    ['cir-kitt-cv', 'cir-kirk-wrap']
   ];
   pairs.forEach(([cvId, wrapId]) => {
     const cv   = $(cvId);
@@ -1314,7 +1420,10 @@ function _cirLoop() {
   _drawVTape($('cir-spd-cv'), spd, 0, 240, 20, 10, 'km/h', false);
   _drawVTape($('cir-alt-cv'), alt, Math.max(0, alt-100), alt+100, 50, 25, 'm', true);
   _drawAHI($('cir-ahi-cv'), roll, pitch);
+  _drawKitt($('cir-kitt-cv'));
   _updateCirBottom(roll, spd);
+  const now = Date.now();
+  if (now - _kirkLastCheck > 2000) { _kirkLastCheck = now; kirkCheckAlerts(); }
   _cirRaf = requestAnimationFrame(_cirLoop);
 }
 
@@ -1855,6 +1964,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-cir-stop')?.addEventListener('click', stopCircuitSession);
   $('btn-cir-exit')?.addEventListener('click', closeCircuit);
   $('btn-cir-ls')?.addEventListener('click', () => { toggleLandscapeMode(); $('btn-cir-ls')?.classList.toggle('active', App.landscapeMode); });
+  $('btn-cir-mic')?.addEventListener('click', () => {
+    if (!_kirkRec) { toast('Voz no disponible', 'info'); return; }
+    $('btn-cir-mic').classList.add('active');
+    try { _kirkRec.start(); } catch(e) { $('btn-cir-mic').classList.remove('active'); }
+  });
   $('btn-tilt-flip')?.addEventListener('click', () => {
     App.tiltFlip = !App.tiltFlip;
     $('btn-tilt-flip')?.classList.toggle('active', App.tiltFlip);
