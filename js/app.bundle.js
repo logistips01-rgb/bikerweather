@@ -143,6 +143,7 @@ const App = {
                       lastGpsHeading:null, lastGpsHeadingTime:null, gpsLean:null },
   gForce:           { long:0, lat:0, peakBrake:0, peakAccel:0, peakLat:0,
                       prevSpeedMs:null, prevSpeedTime:null },
+  landscapeMode:    false,
   sessionActive:    false,
   sessionStart:     null,
   sessionSamples:   [],
@@ -271,6 +272,7 @@ function updateGyroUI(roll, pitch, alpha) {
     else if (roll < 0)       { hudDir.textContent = '↰ IZQ'; hudDir.style.color = 'var(--ice)'; }
     else                     { hudDir.textContent = '↱ DER'; hudDir.style.color = 'var(--orange)'; }
   }
+  updateRollOverlay(roll);
 }
 
 function updateAxisBar(id, value, max) {
@@ -479,12 +481,13 @@ function startGyro() {
     window.addEventListener('deviceorientation', e => {
       const alpha = e.alpha || 0, beta = e.beta || 0, gamma = e.gamma || 0;
       App.gyroData.alpha     = alpha;
-      App.gyroData._rawRoll  = -gamma;
-      App.gyroData._rawPitch = beta;
+      // En landscape el eje de lean físico es beta en lugar de gamma
+      App.gyroData._rawRoll  = App.landscapeMode ? beta   : -gamma;
+      App.gyroData._rawPitch = App.landscapeMode ? -gamma : beta;
       // Fallback directo cuando DeviceMotion no está disponible
       if (!App.tiltFilter.gyroReady) {
-        const roll  = -gamma - App.tiltFilter.rollOffset;
-        const pitch = beta   - App.tiltFilter.pitchOffset;
+        const roll  = App.gyroData._rawRoll  - App.tiltFilter.rollOffset;
+        const pitch = App.gyroData._rawPitch - App.tiltFilter.pitchOffset;
         App.gyroData.gamma = roll;
         App.gyroData.beta  = pitch;
         updateGyroUI(roll, pitch, alpha);
@@ -519,8 +522,9 @@ function onMotionTilt(e) {
 
   // hasRealGyro: rotationRate disponible con valores reales (no todos los navegadores lo proveen)
   const hasRealGyro = !!(rr && rr.gamma !== null && rr.beta !== null);
-  const gyroRollRate  = hasRealGyro ? -(rr.gamma || 0) : 0;
-  const gyroPitchRate = hasRealGyro ?  (rr.beta  || 0) : 0;
+  // En landscape los ejes de roll y pitch se invierten (beta↔gamma)
+  const gyroRollRate  = hasRealGyro ? (App.landscapeMode ?  (rr.beta  || 0) : -(rr.gamma || 0)) : 0;
+  const gyroPitchRate = hasRealGyro ? (App.landscapeMode ? -(rr.gamma || 0) :  (rr.beta  || 0)) : 0;
 
   if (!App.tiltFilter.gyroReady) {
     App.tiltFilter.gyroReady = true;
@@ -596,6 +600,81 @@ function applyGpsLeanCorrection() {
 
   App.tiltFilter.lastGpsHeading     = pos.heading;
   App.tiltFilter.lastGpsHeadingTime = now;
+}
+
+/* ═══════════════════════════════════════
+   OVERLAY DE INCLINACIÓN (CABINA DE CAZA)
+   Línea de roll + glow ambiental lateral
+═══════════════════════════════════════ */
+function updateRollOverlay(roll) {
+  const overlay = $('roll-overlay');
+  const line    = $('roll-line');
+  const label   = $('roll-angle-label');
+  if (!overlay || !line) return;
+
+  const abs = Math.abs(roll);
+
+  // Paleta de color según ángulo — mismos umbrales que detección de curvas
+  let r, g, b;
+  if      (abs < 8)  { r=255; g= 85; b=  0; }  // naranja tenue
+  else if (abs < 15) { r=  0; g=240; b=160; }  // verde
+  else if (abs < 25) { r=255; g=179; b=  0; }  // amarillo
+  else if (abs < 35) { r=255; g= 85; b=  0; }  // naranja
+  else               { r=255; g= 34; b= 85; }  // rojo
+
+  const alpha = abs < 8 ? 0.4 : 0.92;
+  const css   = `rgba(${r},${g},${b},${alpha})`;
+  const dim   = `rgba(${r},${g},${b},0.12)`;
+
+  // Rotar línea
+  line.style.transform  = `rotate(${-roll}deg)`;
+  line.style.height     = abs > 30 ? '4px' : abs > 15 ? '3px' : '2px';
+  line.style.background = `linear-gradient(to right,transparent 0%,${dim} 6%,${css} 28%,${css} 72%,${dim} 94%,transparent 100%)`;
+  line.style.filter     = abs > 8 ? `drop-shadow(0 0 ${Math.min(abs * 0.35, 14)}px ${css})` : 'none';
+
+  // Etiqueta de ángulo
+  if (label) {
+    label.textContent   = abs < 1 ? '0°' : Math.abs(Math.round(roll)) + '°';
+    label.style.color   = css;
+    label.style.opacity = abs < 3 ? '0' : '1';
+    label.style.textShadow = abs > 8 ? `0 0 10px ${css}` : 'none';
+  }
+
+  // Glow ambiental direccional — solo en modo landscape
+  if (!App.landscapeMode || abs < 8) { overlay.style.boxShadow = ''; return; }
+
+  const t   = Math.min(1, (abs - 8) / 30);        // 0→1 entre 8° y 38°
+  const op  = (t * 0.50).toFixed(2);
+  const opD = (t * 0.15).toFixed(2);
+  const rad = Math.round(80 + abs * 3);
+  const gc  = `rgba(${r},${g},${b},${op})`;
+  const gd  = `rgba(${r},${g},${b},${opD})`;
+
+  // Más intenso en el lado hacia el que se inclina, tenue en el opuesto
+  const strongX = roll > 0 ? `-${rad}px` : `${rad}px`;
+  const weakX   = roll > 0 ? `${Math.round(rad*0.35)}px` : `-${Math.round(rad*0.35)}px`;
+  overlay.style.boxShadow =
+    `inset ${strongX} 0 ${rad*2}px 0 ${gc},` +
+    `inset ${weakX} 0 ${rad}px 0 ${gd}`;
+}
+
+function toggleLandscapeMode() {
+  App.landscapeMode = !App.landscapeMode;
+  document.body.classList.toggle('landscape-mode', App.landscapeMode);
+
+  const btn = $('btn-landscape');
+  if (btn) { btn.textContent = App.landscapeMode ? '⊡ PORTRAIT' : '⊞ HORIZONTAL'; btn.classList.toggle('active', App.landscapeMode); }
+
+  // Re-bootstrap del CF con los ejes correctos para la nueva orientación
+  App.tiltFilter.gyroReady = false;
+  App.tiltFilter.roll      = 0;
+  App.tiltFilter.pitch     = 0;
+  App.tiltFilter.lastTime  = null;
+
+  // Leaflet necesita saber que cambió el tamaño del contenedor
+  if (App.mapInitialized) setTimeout(() => App.leafletMap.invalidateSize(), 120);
+
+  updateRollOverlay(App.gyroData.gamma || 0);
 }
 
 /* ═══════════════════════════════════════
@@ -913,6 +992,9 @@ function onCurveDetected(curve) {
   if (curve.dir === 'L') { App.curveCountL++; setEl('hud-curves-l', App.curveCountL); }
   else                   { App.curveCountR++; setEl('hud-curves-r', App.curveCountR); }
   mapMarkCurve(curve.lat, curve.lon, curve.dir);
+  // Pulso de brillo en la línea de roll al detectar curva
+  const line = $('roll-line');
+  if (line) { line.classList.add('roll-line-pulse'); setTimeout(() => line.classList.remove('roll-line-pulse'), 400); }
   const flash = $('curve-flash');
   if (flash) {
     flash.textContent = curve.dir === 'L' ? '↰ ' + curve.maxAngle + '°' : '↱ ' + curve.maxAngle + '°';
@@ -941,7 +1023,9 @@ function startSession() {
   App.sessionTimer = setInterval(() => {
     const elapsed = Date.now() - App.sessionStart;
     const s = Math.floor(elapsed/1000)%60, m = Math.floor(elapsed/60000)%60, h = Math.floor(elapsed/3600000);
-    setEl('session-time', (h>0?pad(h)+':':'') + pad(m) + ':' + pad(s));
+    const timeStr = (h>0?pad(h)+':':'') + pad(m) + ':' + pad(s);
+    setEl('session-time', timeStr);
+    setEl('hud-ls-time',  timeStr);
     App.sessionSamples.push({
       t: elapsed, lat: App.position?.lat, lon: App.position?.lon,
       speed: App.gpsSpeed, roll: App.gyroData.gamma, wc: App.windChill, temp: App.weather?.temp,
@@ -1450,6 +1534,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
   $('btn-calibrate')?.addEventListener('click',  doCalibrate);
   $('btn-calibrate2')?.addEventListener('click', doCalibrate);
+  $('btn-landscape')?.addEventListener('click', toggleLandscapeMode);
 
   // Wake Lock
   $('wakelock-badge')?.addEventListener('click', async () => {

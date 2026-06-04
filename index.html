@@ -281,12 +281,19 @@
 
         <!-- Botón iniciar -->
         <button class="btn-start-route" id="btn-start-route">▶ INICIAR RUTA</button>
+        <button id="btn-landscape" class="btn btn-landscape-toggle">⊞ HORIZONTAL</button>
       </div>
 
       <!-- Mapa con HUD (visible durante la sesión) -->
       <div id="map-container" style="display:none;position:relative;">
         <!-- El mapa se renderiza aquí por Leaflet -->
         <div id="leaflet-map" style="width:100%;height:100%;"></div>
+
+        <!-- Overlay de inclinación — línea de roll + glow ambiental (cabina de caza) -->
+        <div id="roll-overlay" class="roll-overlay">
+          <div id="roll-line" class="roll-line"></div>
+          <div id="roll-angle-label" class="roll-angle-label">0°</div>
+        </div>
 
         <!-- Timer sesión -->
         <div id="session-timer" class="session-timer">
@@ -312,6 +319,7 @@
               </div>
               <div id="hud-roll-val" class="hud-roll-val">0°</div>
               <div id="hud-roll-dir" class="hud-roll-dir">—</div>
+              <div id="hud-ls-time" class="hud-ls-time">00:00</div>
             </div>
           </div>
 
