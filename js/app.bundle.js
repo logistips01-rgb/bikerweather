@@ -1294,14 +1294,19 @@ function _pickKirkVoice() {
     if (v) { _kirkVoice = v; return v; }
   }
   // Male Spanish names (device-dependent)
-  const malePref = ['Jorge', 'Diego', 'Carlos', 'Pablo', 'Miguel', 'Enrique',
-                    'Google español hombre', 'Microsoft Pablo', 'es-ES-AlvaroNeural'];
+  const malePref = ['Jorge', 'Alvaro', 'Diego', 'Carlos', 'Pablo', 'Miguel', 'Enrique',
+                    'hombre', 'male', 'Google español', 'Microsoft Pablo', 'es-ES-AlvaroNeural'];
+  const femaleNames = ['Monica','Mónica','Laura','Maria','María','Lucia','Lucía','Elena','Sara','Isabel','Rosa','Paula'];
+  const isFemale = v => femaleNames.some(f => v.name.toLowerCase().includes(f.toLowerCase()));
   for (const name of malePref) {
-    const v = voices.find(v => v.name.toLowerCase().includes(name.toLowerCase()) && v.lang.startsWith('es'));
+    const v = voices.find(v => v.name.toLowerCase().includes(name.toLowerCase()) && v.lang.startsWith('es') && !isFemale(v));
     if (v) { _kirkVoice = v; return v; }
   }
-  // Any Spanish voice
-  const esVoice = voices.find(v => v.lang === 'es-ES') || voices.find(v => v.lang.startsWith('es'));
+  // Any Spanish voice that doesn't sound female
+  const esVoice = voices.find(v => v.lang === 'es-ES' && !isFemale(v))
+               || voices.find(v => v.lang.startsWith('es') && !isFemale(v))
+               || voices.find(v => v.lang === 'es-ES')
+               || voices.find(v => v.lang.startsWith('es'));
   if (esVoice) { _kirkVoice = esVoice; return esVoice; }
   return null;
 }
@@ -1494,11 +1499,15 @@ ${telemetry}${histLine}`;
 }
 
 function handleKirkCommand(text) {
-  if      (text.includes('calibr'))                                                    { doCalibrate(); return; }
-  if      ((text.includes('inici') || text.includes('start')) && !App.sessionActive)  { startCircuitSession(); return; }
-  if      ((text.includes('para')  || text.includes('fin') || text.includes('stop')) && App.sessionActive) { stopCircuitSession(); return; }
-  if      (text.includes('sal') || text.includes('cerr'))                             { closeCircuit(); return; }
-  // No es un comando → conversación con Groq
+  // Match whole words only to avoid false triggers ("para mí", "al final", "resulta"...)
+  const w = text.trim().split(/\s+/);
+  const has = (...keys) => w.some(word => keys.some(k => word === k || word.startsWith(k + ' ')));
+
+  if (has('calibra', 'calibrar', 'calibr'))                              { doCalibrate(); return; }
+  if (has('inicio', 'iniciar', 'start', 'arranca', 'arrancar') && !App.sessionActive) { startCircuitSession(); return; }
+  if (has('parar', 'para', 'stop', 'fin', 'finalizar', 'terminar') && App.sessionActive && w.length <= 3) { stopCircuitSession(); return; }
+  if (has('salir', 'cerrar', 'exit') && w.length <= 3)                  { closeCircuit(); return; }
+  // Cualquier otra frase → Groq
   askKirk(text);
 }
 
