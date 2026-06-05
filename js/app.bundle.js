@@ -1312,8 +1312,8 @@ function kirkSpeak(text) {
   window.speechSynthesis.cancel();
   const utt    = new SpeechSynthesisUtterance(text);
   utt.lang     = 'es-ES';
-  utt.pitch    = 0.72;
-  utt.rate     = 0.92;
+  utt.pitch    = 0.45;
+  utt.rate     = 0.88;
   const voice  = _pickKirkVoice();
   if (voice) utt.voice = voice;
   _kirkSpeaking = true;
