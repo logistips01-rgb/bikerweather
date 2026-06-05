@@ -1302,28 +1302,47 @@ function _drawKitt(cv) {
   const W = cv.width, H = cv.height;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#050000'; ctx.fillRect(0, 0, W, H);
+
   const spd = _kirkSpeaking ? 24 : 20;
   _kirkKittPos += _kirkKittDir * spd;
   _kirkKittPos = Math.max(8, Math.min(W - 8, _kirkKittPos));
   if (_kirkKittPos >= W - 8) _kirkKittDir = -1;
   if (_kirkKittPos <= 8)     _kirkKittDir = 1;
   const x = _kirkKittPos, cy = H / 2;
-  const gW = _kirkSpeaking ? 110 : 70;
-  const outer = ctx.createRadialGradient(x, cy, 0, x, cy, gW);
-  outer.addColorStop(0, 'rgba(255,30,0,0.3)'); outer.addColorStop(1, 'rgba(255,30,0,0)');
-  ctx.fillStyle = outer; ctx.fillRect(x - gW, 0, gW * 2, H);
-  const core = ctx.createLinearGradient(x - 36, 0, x + 36, 0);
-  core.addColorStop(0, 'rgba(255,30,0,0)');
-  core.addColorStop(0.35, 'rgba(255,60,0,0.7)');
-  core.addColorStop(0.5, 'rgba(255,90,30,1)');
-  core.addColorStop(0.65, 'rgba(255,60,0,0.7)');
-  core.addColorStop(1, 'rgba(255,30,0,0)');
-  ctx.fillStyle = core; ctx.fillRect(x - 36, cy - 4, 72, 8);
-  const ctr = ctx.createLinearGradient(x - 10, 0, x + 10, 0);
-  ctr.addColorStop(0, 'rgba(255,100,0,0)');
-  ctr.addColorStop(0.5, 'rgba(255,210,160,1)');
-  ctr.addColorStop(1, 'rgba(255,100,0,0)');
-  ctx.fillStyle = ctr; ctx.fillRect(x - 10, cy - 2, 20, 4);
+
+  // 1. Baseline: thin red line across full width (dim, always visible)
+  ctx.fillStyle = 'rgba(180,0,0,0.55)';
+  ctx.fillRect(0, cy - 1, W, 2);
+
+  // 2. Tube glow: wide soft halo that expands the tube at the orb position
+  const haloW = _kirkSpeaking ? 120 : 90;
+  const halo = ctx.createLinearGradient(x - haloW, 0, x + haloW, 0);
+  halo.addColorStop(0,    'rgba(200,0,0,0)');
+  halo.addColorStop(0.35, 'rgba(220,20,0,0.25)');
+  halo.addColorStop(0.5,  'rgba(255,40,0,0.45)');
+  halo.addColorStop(0.65, 'rgba(220,20,0,0.25)');
+  halo.addColorStop(1,    'rgba(200,0,0,0)');
+  ctx.fillStyle = halo;
+  ctx.fillRect(x - haloW, 0, haloW * 2, H);
+
+  // 3. Tube body: the "inflated" red line — wider and brighter where the orb is
+  const tubeW = _kirkSpeaking ? 60 : 44;
+  const tube = ctx.createLinearGradient(x - tubeW, 0, x + tubeW, 0);
+  tube.addColorStop(0,    'rgba(200,0,0,0)');
+  tube.addColorStop(0.3,  'rgba(255,30,0,0.7)');
+  tube.addColorStop(0.5,  'rgba(255,60,10,1)');
+  tube.addColorStop(0.7,  'rgba(255,30,0,0.7)');
+  tube.addColorStop(1,    'rgba(200,0,0,0)');
+  ctx.fillStyle = tube;
+  ctx.fillRect(x - tubeW, cy - 3, tubeW * 2, 6);
+
+  // 4. Hot core: bright white-orange center point
+  const core = ctx.createLinearGradient(x - 14, 0, x + 14, 0);
+  core.addColorStop(0,   'rgba(255,80,0,0)');
+  core.addColorStop(0.5, 'rgba(255,220,180,1)');
+  core.addColorStop(1,   'rgba(255,80,0,0)');
+  ctx.fillStyle = core;
+  ctx.fillRect(x - 14, cy - 1, 28, 3);
 }
 
 function initKirkVoice() {
