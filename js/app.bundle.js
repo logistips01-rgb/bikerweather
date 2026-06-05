@@ -1281,6 +1281,31 @@ function _kirkStartListening() {
   }
 }
 
+let _kirkVoice = null;
+
+function _pickKirkVoice() {
+  if (_kirkVoice) return _kirkVoice;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return null;
+  // Saved preference
+  const saved = localStorage.getItem('bw_kirk_voice');
+  if (saved) {
+    const v = voices.find(v => v.name === saved);
+    if (v) { _kirkVoice = v; return v; }
+  }
+  // Male Spanish names (device-dependent)
+  const malePref = ['Jorge', 'Diego', 'Carlos', 'Pablo', 'Miguel', 'Enrique',
+                    'Google español hombre', 'Microsoft Pablo', 'es-ES-AlvaroNeural'];
+  for (const name of malePref) {
+    const v = voices.find(v => v.name.toLowerCase().includes(name.toLowerCase()) && v.lang.startsWith('es'));
+    if (v) { _kirkVoice = v; return v; }
+  }
+  // Any Spanish voice
+  const esVoice = voices.find(v => v.lang === 'es-ES') || voices.find(v => v.lang.startsWith('es'));
+  if (esVoice) { _kirkVoice = esVoice; return esVoice; }
+  return null;
+}
+
 function kirkSpeak(text) {
   if (!text || !window.speechSynthesis) return;
   _kirkStopListening();
@@ -1289,6 +1314,8 @@ function kirkSpeak(text) {
   utt.lang     = 'es-ES';
   utt.pitch    = 0.72;
   utt.rate     = 0.92;
+  const voice  = _pickKirkVoice();
+  if (voice) utt.voice = voice;
   _kirkSpeaking = true;
   const msg = $('cir-kirk-msg');
   if (msg) { msg.textContent = text; msg.classList.add('show'); }
@@ -2153,6 +2180,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     localStorage.setItem('bw_bike_model', model);
     const bs=$('bike-status'); if(bs) bs.textContent='✓ '+model;
     toast('Moto guardada ✓', 'ok');
+  });
+
+  // Kirk voice selector
+  function _populateVoices() {
+    const sel = $('kirk-voice-select');
+    if (!sel) return;
+    const voices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('es'));
+    if (!voices.length) return;
+    const saved = localStorage.getItem('bw_kirk_voice');
+    // Keep the "Automática" option
+    while (sel.options.length > 1) sel.remove(1);
+    voices.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.name;
+      opt.textContent = v.name + (v.localService ? ' 📱' : ' ☁️');
+      if (v.name === saved) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+  _populateVoices();
+  window.speechSynthesis.onvoiceschanged = _populateVoices;
+  $('kirk-voice-select')?.addEventListener('change', e => {
+    const name = e.target.value;
+    localStorage.setItem('bw_kirk_voice', name);
+    _kirkVoice = null; // reset cache
+  });
+  $('btn-test-voice')?.addEventListener('click', () => {
+    kirkSpeak('Soy Kirk, tu copiloto. Todo bajo control.');
   });
 
   // Groq API key
