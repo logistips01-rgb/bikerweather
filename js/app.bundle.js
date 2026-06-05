@@ -1258,7 +1258,8 @@ let _kirkKittPos     = 0;
 let _kirkKittDir     = 1;
 let _kirkLastCheck   = 0;
 let _kirkCooldowns   = {};
-let _kirkRec       = null;
+let _kirkRec         = null;
+let _kirkHistory     = [];   // conversación con Groq
 
 function _kirkStopListening() {
   if (_kirkListening && _kirkRec) {
@@ -1396,12 +1397,55 @@ function initKirkVoice() {
   };
 }
 
+async function askKirk(userText) {
+  const key = localStorage.getItem('bw_groq_key');
+  if (!key) { kirkSpeak('Necesito una API key de Groq. Configúrala en ajustes.'); return; }
+
+  _kirkHistory.push({ role: 'user', content: userText });
+  if (_kirkHistory.length > 12) _kirkHistory = _kirkHistory.slice(-12);
+
+  const spd  = App.gpsSpeed || 0;
+  const roll = Math.round(Math.abs(App.gyroData.gamma || 0));
+  const hdg  = Math.round(App.gyroData.alpha || 0);
+  const alt  = App.circuitAlt || 0;
+  const telemetry = `Telemetría actual: ${spd}km/h, inclinación ${roll}°, rumbo ${hdg}°, altitud ${alt}m.`;
+
+  const system = `Eres Kirk, copiloto IA de BikerWeather, una app de telemetría para motociclistas. \
+Respondes en español, siempre en 1-2 frases cortas y directas. \
+Personalidad: profesional, alerta, ocasionalmente irónico como un copiloto de rally. \
+${telemetry}`;
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'system', content: system }, ..._kirkHistory],
+        max_tokens: 80,
+        temperature: 0.7
+      })
+    });
+    const data = await res.json();
+    const reply = data.choices?.[0]?.message?.content?.trim();
+    if (reply) {
+      _kirkHistory.push({ role: 'assistant', content: reply });
+      kirkSpeak(reply);
+    } else {
+      kirkSpeak('Sin respuesta.');
+    }
+  } catch(e) {
+    kirkSpeak('Error de conexión con Groq.');
+  }
+}
+
 function handleKirkCommand(text) {
-  if      (text.includes('calibr'))                            doCalibrate();
-  else if ((text.includes('inici') || text.includes('start')) && !App.sessionActive) startCircuitSession();
-  else if ((text.includes('para')  || text.includes('fin') || text.includes('stop')) && App.sessionActive)  stopCircuitSession();
-  else if (text.includes('sal') || text.includes('cerr'))     closeCircuit();
-  else kirkSpeak('No entendido.');
+  if      (text.includes('calibr'))                                                    { doCalibrate(); return; }
+  if      ((text.includes('inici') || text.includes('start')) && !App.sessionActive)  { startCircuitSession(); return; }
+  if      ((text.includes('para')  || text.includes('fin') || text.includes('stop')) && App.sessionActive) { stopCircuitSession(); return; }
+  if      (text.includes('sal') || text.includes('cerr'))                             { closeCircuit(); return; }
+  // No es un comando → conversación con Groq
+  askKirk(text);
 }
 
 function cirColor(v, warn, danger) {
@@ -1413,7 +1457,7 @@ function cirColor(v, warn, danger) {
 function openCircuit() {
   App.circuitMode = true;
   _kirkKittPos = 0; _kirkKittDir = 1; _kirkCooldowns = {};
-  _kirkAutoListen = true; _kirkListening = false;
+  _kirkAutoListen = true; _kirkListening = false; _kirkHistory = [];
   document.body.classList.add('circuit-active');
   const ov = $('circuit-overlay');
   if (ov) ov.classList.add('active');
