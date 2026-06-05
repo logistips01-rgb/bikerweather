@@ -1260,6 +1260,8 @@ let _kirkLastCheck   = 0;
 let _kirkCooldowns   = {};
 let _kirkRec         = null;
 let _kirkHistory     = [];   // conversación con Groq
+let _telBuffer       = [];   // histórico telemetría (últimos 60s)
+let _telLastTs       = 0;
 
 function _kirkStopListening() {
   if (_kirkListening && _kirkRec) {
@@ -1414,16 +1416,28 @@ async function askKirk(userText) {
   _kirkHistory.push({ role: 'user', content: userText });
   if (_kirkHistory.length > 12) _kirkHistory = _kirkHistory.slice(-12);
 
-  const spd  = App.gpsSpeed || 0;
+  const spd  = Math.round(App.gpsSpeed || 0);
   const roll = Math.round(Math.abs(App.gyroData.gamma || 0));
   const hdg  = Math.round(App.gyroData.alpha || 0);
   const alt  = App.circuitAlt || 0;
-  const telemetry = `Telemetría actual: ${spd}km/h, inclinación ${roll}°, rumbo ${hdg}°, altitud ${alt}m.`;
+  const telemetry = `Telemetría ahora: ${spd}km/h, inclinación ${roll}°, rumbo ${hdg}°, altitud ${alt}m.`;
+
+  let histLine = '';
+  if (_telBuffer.length >= 3) {
+    const spds  = _telBuffer.map(p => p.spd);
+    const rolls = _telBuffer.map(p => p.roll);
+    const maxSpd  = Math.max(...spds);
+    const avgSpd  = Math.round(spds.reduce((a,b) => a+b,0) / spds.length);
+    const maxRoll = Math.max(...rolls);
+    const avgRoll = Math.round(rolls.reduce((a,b) => a+b,0) / rolls.length);
+    const secs    = _telBuffer.length * 2;
+    histLine = ` Últimos ${secs}s: velocidad media ${avgSpd}km/h (pico ${maxSpd}), inclinación media ${avgRoll}° (pico ${maxRoll}°).`;
+  }
 
   const system = `Eres Kirk, copiloto IA de BikerWeather, una app de telemetría para motociclistas. \
 Respondes en español, siempre en 1-2 frases cortas y directas. \
 Personalidad: profesional, alerta, ocasionalmente irónico como un copiloto de rally. \
-${telemetry}`;
+${telemetry}${histLine}`;
 
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -1470,7 +1484,7 @@ function cirColor(v, warn, danger) {
 function openCircuit() {
   App.circuitMode = true;
   _kirkKittPos = 0; _kirkKittDir = 1; _kirkCooldowns = {};
-  _kirkAutoListen = true; _kirkListening = false; _kirkHistory = [];
+  _kirkAutoListen = true; _kirkListening = false; _kirkHistory = []; _telBuffer = []; _telLastTs = 0;
   document.body.classList.add('circuit-active');
   const ov = $('circuit-overlay');
   if (ov) ov.classList.add('active');
@@ -1546,7 +1560,16 @@ function _cirLoop() {
     _drawKitt($('cir-kitt-cv'));
     _updateCirBottom(roll, spd);
     const now = Date.now();
-    if (now - _kirkLastCheck > 2000) { _kirkLastCheck = now; kirkCheckAlerts(); }
+    if (now - _kirkLastCheck > 2000) {
+      _kirkLastCheck = now;
+      kirkCheckAlerts();
+      // Grabar telemetría cada 2s (máx 30 puntos = 60s)
+      if (now - _telLastTs >= 2000) {
+        _telLastTs = now;
+        _telBuffer.push({ spd: Math.round(App.gpsSpeed||0), roll: Math.round(Math.abs(App.gyroData.gamma||0)), hdg: Math.round(App.gyroData.alpha||0), alt: App.circuitAlt||0 });
+        if (_telBuffer.length > 30) _telBuffer.shift();
+      }
+    }
   } catch(e) { /* keep loop alive on any render error */ }
   _cirRaf = requestAnimationFrame(_cirLoop);
 }
