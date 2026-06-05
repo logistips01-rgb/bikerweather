@@ -1451,7 +1451,11 @@ async function askKirk(userText) {
   const alt  = App.circuitAlt || 0;
   const pos  = App.position;
   const locLine = _kirkLocation ? `Ubicación: ${_kirkLocation}.` : pos ? `Coordenadas: ${pos.lat.toFixed(5)},${pos.lon.toFixed(5)}.` : '';
-  const telemetry = `${locLine} Telemetría ahora: ${spd}km/h, inclinación ${roll}°, rumbo ${hdg}°, altitud ${alt}m.`;
+  const gLong = App.gForce?.long ? App.gForce.long.toFixed(2) : '0.00';
+  const gLat  = App.tiltFilter?.gpsLean ? App.tiltFilter.gpsLean.toFixed(1) : roll;
+  const wea   = App.weather;
+  const weaLine = wea ? `Temperatura: ${wea.temp}°C, viento: ${Math.round(wea.windSpeed)}km/h. Sensación térmica: ${App.windChill ?? wea.temp}°C.` : '';
+  const telemetry = `${locLine} Telemetría: ${spd}km/h, inclinación ${roll}°, G longitudinal ${gLong}g, rumbo ${hdg}°, altitud ${alt}m. ${weaLine}`;
 
   let histLine = '';
   if (_telBuffer.length >= 3) {
