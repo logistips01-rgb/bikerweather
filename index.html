@@ -551,6 +551,23 @@
         </div>
       </div>
 
+      <!-- Kirk AI -->
+      <div class="sensors-card">
+        <div class="panel-hdr" style="padding:8px 14px 7px">
+          <span class="panel-hdr-lbl">🤖 KIRK — COPILOTO IA</span>
+        </div>
+        <div style="padding:10px 14px 12px;display:flex;flex-direction:column;gap:8px">
+          <p style="font-family:var(--font-mono);font-size:0.68rem;color:#8888aa;line-height:1.6">
+            API key de Groq para activar conversación con Kirk. Se guarda solo en este dispositivo, nunca se sube a ningún servidor.
+          </p>
+          <div class="input-row">
+            <input id="groq-api-key" type="password" placeholder="gsk_..." autocomplete="off" style="font-family:var(--font-mono);font-size:0.7rem;letter-spacing:1px" />
+            <button id="btn-save-groq" class="btn btn-primary">Guardar</button>
+          </div>
+          <div id="groq-key-status" style="font-family:var(--font-mono);font-size:0.65rem;color:#8888aa"></div>
+        </div>
+      </div>
+
     </div><!-- /gyro -->
 
   </main>

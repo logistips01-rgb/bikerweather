@@ -2075,6 +2075,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     toast('Moto guardada ✓', 'ok');
   });
 
+  // Groq API key
+  const savedGroq = localStorage.getItem('bw_groq_key');
+  if (savedGroq) {
+    const el = $('groq-api-key'); if (el) el.value = savedGroq;
+    const st = $('groq-key-status'); if (st) st.textContent = '✓ API key guardada';
+  }
+  $('btn-save-groq')?.addEventListener('click', () => {
+    const key = $('groq-api-key')?.value?.trim();
+    if (!key || !key.startsWith('gsk_')) { toast('Introduce una key válida (empieza por gsk_)', 'info'); return; }
+    localStorage.setItem('bw_groq_key', key);
+    const st = $('groq-key-status'); if (st) st.textContent = '✓ API key guardada';
+    toast('Groq API key guardada ✓', 'ok');
+  });
+
   // Emergencia
   const savedPhone = localStorage.getItem('bw_emergency_phone');
   if (savedPhone) { const ep=$('emergency-phone'); if(ep) ep.value=savedPhone; const es=$('emergency-status'); if(es) es.textContent='✓ Guardado: '+savedPhone; }
