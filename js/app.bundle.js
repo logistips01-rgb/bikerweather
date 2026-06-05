@@ -1397,10 +1397,20 @@ function initKirkVoice() {
   };
 }
 
+function _kirkShowMsg(text) {
+  const msg = $('cir-kirk-msg');
+  if (msg) { msg.textContent = text; msg.classList.add('show'); }
+}
+
 async function askKirk(userText) {
   const key = localStorage.getItem('bw_groq_key');
-  if (!key) { kirkSpeak('Necesito una API key de Groq. Configúrala en ajustes.'); return; }
+  _kirkShowMsg('🎤 ' + userText);
+  if (!key) {
+    kirkSpeak('Necesito una API key de Groq. Configúrala en ajustes.');
+    return;
+  }
 
+  _kirkShowMsg('⏳ ' + userText);
   _kirkHistory.push({ role: 'user', content: userText });
   if (_kirkHistory.length > 12) _kirkHistory = _kirkHistory.slice(-12);
 
@@ -1432,9 +1442,12 @@ ${telemetry}`;
       _kirkHistory.push({ role: 'assistant', content: reply });
       kirkSpeak(reply);
     } else {
-      kirkSpeak('Sin respuesta.');
+      const errDetail = data.error?.message || 'Sin respuesta';
+      _kirkShowMsg('❌ ' + errDetail);
+      kirkSpeak('Error: ' + errDetail);
     }
   } catch(e) {
+    _kirkShowMsg('❌ ' + e.message);
     kirkSpeak('Error de conexión con Groq.');
   }
 }
