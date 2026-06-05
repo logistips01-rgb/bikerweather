@@ -1312,7 +1312,7 @@ function kirkSpeak(text) {
   window.speechSynthesis.cancel();
   const utt    = new SpeechSynthesisUtterance(text);
   utt.lang     = 'es-ES';
-  utt.pitch    = 0.45;
+  utt.pitch    = 0.2;
   utt.rate     = 0.88;
   const voice  = _pickKirkVoice();
   if (voice) utt.voice = voice;
