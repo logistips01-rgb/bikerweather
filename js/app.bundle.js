@@ -1251,15 +1251,36 @@ function doCalibrate() {
 let _cirRaf = null;
 
 /* ── Kirk state ── */
-let _kirkSpeaking  = false;
-let _kirkKittPos   = 0;
-let _kirkKittDir   = 1;
-let _kirkLastCheck = 0;
-let _kirkCooldowns = {};
+let _kirkSpeaking    = false;
+let _kirkListening   = false;
+let _kirkAutoListen  = true;
+let _kirkKittPos     = 0;
+let _kirkKittDir     = 1;
+let _kirkLastCheck   = 0;
+let _kirkCooldowns   = {};
 let _kirkRec       = null;
+
+function _kirkStopListening() {
+  if (_kirkListening && _kirkRec) {
+    try { _kirkRec.abort(); } catch(e) {}
+  }
+  _kirkListening = false;
+}
+
+function _kirkStartListening() {
+  if (!_kirkRec || !App.circuitMode || _kirkSpeaking || _kirkListening || !_kirkAutoListen) return;
+  try {
+    _kirkRec.start();
+    _kirkListening = true;
+    $('btn-cir-mic')?.classList.add('active');
+  } catch(e) {
+    _kirkListening = false;
+  }
+}
 
 function kirkSpeak(text) {
   if (!text || !window.speechSynthesis) return;
+  _kirkStopListening();
   window.speechSynthesis.cancel();
   const utt    = new SpeechSynthesisUtterance(text);
   utt.lang     = 'es-ES';
@@ -1271,6 +1292,7 @@ function kirkSpeak(text) {
   utt.onend = () => {
     _kirkSpeaking = false;
     if (msg) setTimeout(() => msg.classList.remove('show'), 2000);
+    setTimeout(_kirkStartListening, 400);
   };
   window.speechSynthesis.speak(utt);
 }
@@ -1356,7 +1378,22 @@ function initKirkVoice() {
     const t = e.results[0][0].transcript.toLowerCase().trim();
     handleKirkCommand(t);
   };
-  _kirkRec.onend = () => { $('btn-cir-mic')?.classList.remove('active'); };
+  _kirkRec.onend = () => {
+    _kirkListening = false;
+    if (!_kirkAutoListen) $('btn-cir-mic')?.classList.remove('active');
+    // auto-restart unless Kirk is speaking or mode is off
+    if (App.circuitMode && _kirkAutoListen && !_kirkSpeaking) {
+      setTimeout(_kirkStartListening, 300);
+    }
+  };
+  _kirkRec.onerror = e => {
+    _kirkListening = false;
+    // 'no-speech' is normal silence — restart quietly; other errors back off longer
+    const delay = e.error === 'no-speech' ? 300 : 1500;
+    if (App.circuitMode && _kirkAutoListen && !_kirkSpeaking) {
+      setTimeout(_kirkStartListening, delay);
+    }
+  };
 }
 
 function handleKirkCommand(text) {
@@ -1376,11 +1413,13 @@ function cirColor(v, warn, danger) {
 function openCircuit() {
   App.circuitMode = true;
   _kirkKittPos = 0; _kirkKittDir = 1; _kirkCooldowns = {};
+  _kirkAutoListen = true; _kirkListening = false;
   document.body.classList.add('circuit-active');
   const ov = $('circuit-overlay');
   if (ov) ov.classList.add('active');
   $('btn-cir-ls')?.classList.toggle('active', App.landscapeMode);
   $('btn-cir-inv')?.classList.toggle('active', App.tiltFlip);
+  $('btn-cir-mic')?.classList.add('active');
   initKirkVoice();
   setTimeout(() => {
     resizeCircuitCanvases();
@@ -1392,6 +1431,8 @@ function openCircuit() {
 function closeCircuit() {
   if (App.sessionActive) stopSession();
   App.circuitMode = false;
+  _kirkAutoListen = false;
+  _kirkStopListening();
   document.body.classList.remove('circuit-active');
   $('circuit-overlay')?.classList.remove('active');
   if (_cirRaf) { cancelAnimationFrame(_cirRaf); _cirRaf = null; }
@@ -1992,8 +2033,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-cir-ls')?.addEventListener('click', () => { toggleLandscapeMode(); $('btn-cir-ls')?.classList.toggle('active', App.landscapeMode); });
   $('btn-cir-mic')?.addEventListener('click', () => {
     if (!_kirkRec) { toast('Voz no disponible', 'info'); return; }
-    $('btn-cir-mic').classList.add('active');
-    try { _kirkRec.start(); } catch(e) { $('btn-cir-mic').classList.remove('active'); }
+    _kirkAutoListen = !_kirkAutoListen;
+    $('btn-cir-mic')?.classList.toggle('active', _kirkAutoListen);
+    if (_kirkAutoListen) {
+      _kirkStartListening();
+    } else {
+      _kirkStopListening();
+    }
   });
   $('btn-tilt-flip')?.addEventListener('click', () => {
     App.tiltFlip = !App.tiltFlip;
