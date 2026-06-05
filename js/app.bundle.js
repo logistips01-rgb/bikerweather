@@ -1081,6 +1081,8 @@ function onCurveDetected(curve) {
     flash.className   = 'curve-flash show ' + (curve.dir === 'L' ? 'left' : 'right');
     setTimeout(() => flash.classList.remove('show'), 1500);
   }
+  // Kirk coaching: brief AI feedback on this curve (async, fire-and-forget)
+  setTimeout(() => kirkCurveCoach(curve), 800);
 }
 
 /* ═══════════════════════════════════════
@@ -1339,6 +1341,61 @@ function initKirkVoice() {
   _kirkRec.onend = () => { $('btn-cir-mic')?.classList.remove('active'); };
 }
 
+async function kirkCurveCoach(curve) {
+  if (!App.circuitMode || !App.sessionActive) return;
+  if (curve.maxAngle < 15) return;
+  if (!_kirkCanAlert('curveCoach', 20000)) return;
+  const key = localStorage.getItem('bw_groq_key');
+  if (!key) return;
+  const dir = curve.dir === 'L' ? 'izquierda' : 'derecha';
+  const spd = Math.round(curve.speed || 0);
+  const system = `Eres Kirk, copiloto IA de BikerWeather para motociclistas. Respondes siempre en español. Das feedback técnico sobre la última curva en exactamente 1 frase muy corta y directa, como un copiloto de rally.`;
+  const prompt = `Curva a la ${dir}, inclinación máxima ${curve.maxAngle}°, velocidad ${spd}km/h, duración ${curve.duration}s. Curva número ${App.sessionCurves.length} de la sesión. Feedback técnico en 1 frase.`;
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role:'system', content:system },{ role:'user', content:prompt }], max_tokens: 50, temperature: 0.7 })
+    });
+    const data = await res.json();
+    const reply = data.choices?.[0]?.message?.content?.trim();
+    if (reply) kirkSpeak(reply);
+  } catch(e) { /* silent */ }
+}
+
+async function kirkSessionSummary(report) {
+  if (!report) return;
+  const dur    = report.meta.durationFmt;
+  const maxSpd = Math.round(report.speed.max);
+  const avgSpd = Math.round(report.speed.avg);
+  const curves = report.curves.total;
+  const maxAng = report.curves.maxAngle;
+  const avgAng = report.curves.avgAngle;
+  const peakBrk = report.gForces.peakBraking;
+  const peakAcc = report.gForces.peakAccel;
+  const peakLat = report.gForces.peakLateral;
+  const key = localStorage.getItem('bw_groq_key');
+  if (!key) {
+    kirkSpeak(`Sesión de ${dur}. ${curves} curvas, pico ${maxSpd} kilómetros por hora, inclinación máxima ${maxAng} grados.`);
+    return;
+  }
+  const system = `Eres Kirk, copiloto IA de BikerWeather para motociclistas. Respondes en español en 2 frases cortas. Eres profesional, directo, con un toque de ironía como un copiloto de rally. Haz el resumen valorativo de la sesión.`;
+  const prompt = `Sesión completada. Duración: ${dur}. Velocidad máxima: ${maxSpd}km/h, media: ${avgSpd}km/h. Curvas: ${curves} (máx inclinación ${maxAng}°, media ${avgAng}°). G frenada pico: ${peakBrk}g, aceleración pico: ${peakAcc}g, lateral pico: ${peakLat}g. Resumen en 2 frases.`;
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role:'system', content:system },{ role:'user', content:prompt }], max_tokens: 120, temperature: 0.75 })
+    });
+    const data = await res.json();
+    const reply = data.choices?.[0]?.message?.content?.trim();
+    if (reply) kirkSpeak(reply);
+    else kirkSpeak(`Sesión de ${dur}. ${curves} curvas, pico ${maxSpd} kilómetros por hora.`);
+  } catch(e) {
+    kirkSpeak(`Sesión de ${dur}. ${curves} curvas, pico ${maxSpd} kilómetros por hora.`);
+  }
+}
+
 function handleKirkCommand(text) {
   if      (text.includes('calibr'))                            doCalibrate();
   else if ((text.includes('inici') || text.includes('start')) && !App.sessionActive) startCircuitSession();
@@ -1389,10 +1446,11 @@ function startCircuitSession() {
 }
 
 function stopCircuitSession() {
-  kirkSpeak('Sesión finalizada. Informe disponible.');
-  setTimeout(() => stopSession(), 1200);
   $('btn-cir-start').style.display = 'flex';
   $('btn-cir-stop').style.display  = 'none';
+  stopSession();
+  // Brief delay then Kirk summarizes the session with AI coaching
+  setTimeout(() => kirkSessionSummary(App.sessionReport), 600);
 }
 
 function resizeCircuitCanvases() {
