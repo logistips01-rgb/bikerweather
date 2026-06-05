@@ -1262,6 +1262,8 @@ let _kirkRec         = null;
 let _kirkHistory     = [];   // conversación con Groq
 let _telBuffer       = [];   // histórico telemetría (últimos 60s)
 let _telLastTs       = 0;
+let _kirkLocation    = null; // lugar actual (reverse geocode)
+let _kirkLocTs       = 0;
 
 function _kirkStopListening() {
   if (_kirkListening && _kirkRec) {
@@ -1287,39 +1289,18 @@ function _pickKirkVoice() {
   if (_kirkVoice) return _kirkVoice;
   const voices = window.speechSynthesis.getVoices();
   if (!voices.length) return null;
-  // Saved preference
   const saved = localStorage.getItem('bw_kirk_voice');
-  if (saved) {
-    const v = voices.find(v => v.name === saved);
-    if (v) { _kirkVoice = v; return v; }
-  }
-  // Male Spanish names (device-dependent)
-  const malePref = ['Jorge', 'Alvaro', 'Diego', 'Carlos', 'Pablo', 'Miguel', 'Enrique',
-                    'hombre', 'male', 'Google español', 'Microsoft Pablo', 'es-ES-AlvaroNeural'];
-  const femaleNames = ['Monica','Mónica','Laura','Maria','María','Lucia','Lucía','Elena','Sara','Isabel','Rosa','Paula'];
-  const isFemale = v => femaleNames.some(f => v.name.toLowerCase().includes(f.toLowerCase()));
-  for (const name of malePref) {
-    const v = voices.find(v => v.name.toLowerCase().includes(name.toLowerCase()) && v.lang.startsWith('es') && !isFemale(v));
-    if (v) { _kirkVoice = v; return v; }
-  }
-  // Any Spanish voice that doesn't sound female
-  const esVoice = voices.find(v => v.lang === 'es-ES' && !isFemale(v))
-               || voices.find(v => v.lang.startsWith('es') && !isFemale(v))
-               || voices.find(v => v.lang === 'es-ES')
-               || voices.find(v => v.lang.startsWith('es'));
-  if (esVoice) { _kirkVoice = esVoice; return esVoice; }
-  return null;
+  if (saved) { const v = voices.find(v => v.name === saved); if (v) { _kirkVoice = v; return v; } }
+  return null; // usa la voz por defecto del sistema
 }
 
 function kirkSpeak(text) {
   if (!text || !window.speechSynthesis) return;
   _kirkStopListening();
   window.speechSynthesis.cancel();
-  const utt    = new SpeechSynthesisUtterance(text);
-  utt.lang     = 'es-ES';
-  utt.pitch    = 0.2;
-  utt.rate     = 0.88;
-  const voice  = _pickKirkVoice();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang  = 'es-ES';
+  const voice = _pickKirkVoice();
   if (voice) utt.voice = voice;
   _kirkSpeaking = true;
   const msg = $('cir-kirk-msg');
@@ -1436,6 +1417,20 @@ function _kirkShowMsg(text) {
   if (msg) { msg.textContent = text; msg.classList.add('show'); }
 }
 
+async function _updateKirkLocation() {
+  const pos = App.position;
+  if (!pos) return;
+  const now = Date.now();
+  if (now - _kirkLocTs < 30000) return; // cache 30s
+  _kirkLocTs = now;
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.lat}&lon=${pos.lon}&format=json&accept-language=es`, { headers: { 'User-Agent': 'BikerWeather/1.0' } });
+    const d = await r.json();
+    const a = d.address || {};
+    _kirkLocation = [a.road || a.pedestrian, a.town || a.city || a.village || a.municipality, a.state].filter(Boolean).join(', ');
+  } catch(e) { /* sin red, mantener último valor */ }
+}
+
 async function askKirk(userText) {
   const key = localStorage.getItem('bw_groq_key');
   _kirkShowMsg('🎤 ' + userText);
@@ -1448,11 +1443,15 @@ async function askKirk(userText) {
   _kirkHistory.push({ role: 'user', content: userText });
   if (_kirkHistory.length > 12) _kirkHistory = _kirkHistory.slice(-12);
 
+  await _updateKirkLocation();
+
   const spd  = Math.round(App.gpsSpeed || 0);
   const roll = Math.round(Math.abs(App.gyroData.gamma || 0));
   const hdg  = Math.round(App.gyroData.alpha || 0);
   const alt  = App.circuitAlt || 0;
-  const telemetry = `Telemetría ahora: ${spd}km/h, inclinación ${roll}°, rumbo ${hdg}°, altitud ${alt}m.`;
+  const pos  = App.position;
+  const locLine = _kirkLocation ? `Ubicación: ${_kirkLocation}.` : pos ? `Coordenadas: ${pos.lat.toFixed(5)},${pos.lon.toFixed(5)}.` : '';
+  const telemetry = `${locLine} Telemetría ahora: ${spd}km/h, inclinación ${roll}°, rumbo ${hdg}°, altitud ${alt}m.`;
 
   let histLine = '';
   if (_telBuffer.length >= 3) {
