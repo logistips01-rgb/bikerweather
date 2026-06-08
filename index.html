@@ -353,7 +353,11 @@
             </div>
             <button id="btn-roll-flip"  class="btn-tilt-flip">↔ INV R</button>
             <button id="btn-pitch-flip" class="btn-tilt-flip">↕ INV P</button>
-            <button class="btn-stop-route" id="btn-stop-route" style="display:flex;">⏹ FINALIZAR RUTA</button>
+            <div id="hud-kirk-msg" class="hud-kirk-msg"></div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <button id="btn-hud-mic" class="btn-hud-mic">🎤 Kirk</button>
+              <button class="btn-stop-route" id="btn-stop-route" style="display:flex;">⏹ FINALIZAR RUTA</button>
+            </div>
           </div>
         </div>
 
@@ -549,6 +553,29 @@
             <button id="btn-save-emergency" class="btn btn-primary">Guardar</button>
           </div>
           <div id="emergency-status" style="font-family:var(--font-mono);font-size:0.65rem;color:#8888aa"></div>
+        </div>
+      </div>
+
+      <!-- Kirk AI / Groq -->
+      <div class="sensors-card">
+        <div class="panel-hdr" style="padding:8px 14px 7px">
+          <span class="panel-hdr-lbl">🤖 KIRK — COPILOTO IA</span>
+        </div>
+        <div style="padding:10px 14px 14px;display:flex;flex-direction:column;gap:10px">
+          <p style="font-family:var(--font-mono);font-size:0.68rem;color:#8888aa;line-height:1.6">
+            Kirk usa la API de <strong style="color:#ff8800">Groq</strong> (gratis) para mantener conversaciones de voz mientras conduces. Pega tu key en <a href="https://console.groq.com" target="_blank" style="color:var(--ice)">console.groq.com</a>.
+          </p>
+          <div class="input-row">
+            <input id="groq-api-key" type="password" placeholder="gsk_…" autocomplete="off" />
+            <button id="btn-save-groq" class="btn btn-primary">Guardar</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label style="font-family:var(--font-mono);font-size:0.65rem;color:#8888aa">Voz de Kirk:</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select id="kirk-voice-select" style="flex:1;background:rgba(5,5,8,0.9);border:1px solid var(--border-dim);border-radius:var(--r);color:var(--text);font-family:var(--font-mono);font-size:0.68rem;padding:5px 8px"></select>
+              <button id="btn-test-voice" class="btn" style="padding:5px 10px;font-size:0.65rem">▶ Test</button>
+            </div>
+          </div>
         </div>
       </div>
 

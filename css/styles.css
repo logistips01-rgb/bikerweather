@@ -1716,6 +1716,44 @@ body.landscape-mode #circuit-overlay {
   z-index: 5;
 }
 #cir-kirk-msg.show { opacity: 1; }
+
+/* Kirk message in route HUD */
+.hud-kirk-msg {
+  display: none;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--ice);
+  background: rgba(0,0,0,0.75);
+  border: 1px solid rgba(41,217,255,0.2);
+  border-radius: var(--r);
+  padding: 4px 8px;
+  max-width: 100%;
+  word-break: break-word;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.hud-kirk-msg.show { opacity: 1; display: block; }
+
+/* Kirk mic button in route HUD */
+.btn-hud-mic {
+  display: inline-flex;
+  padding: 5px 10px;
+  background: rgba(5,5,8,0.8);
+  border: 1px solid var(--border-dim);
+  border-radius: var(--r);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all var(--t);
+  white-space: nowrap;
+}
+.btn-hud-mic:hover  { border-color: var(--border); color: var(--text); }
+.btn-hud-mic.active { border-color: rgba(255,30,0,0.5); color: #ff3030; }
+
 .cir-mic-btn {
   position: absolute;
   bottom: 138px;
