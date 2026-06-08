@@ -191,7 +191,8 @@ const App = {
   landscapeMode:    false,
   circuitMode:      false,
   circuitAlt:       null,
-  tiltFlip:         false,
+  rollFlip:         false,
+  pitchFlip:        false,
   sessionActive:    false,
   sessionStart:     null,
   sessionSamples:   [],
@@ -302,16 +303,17 @@ function updateRouteSpeedUI(speed) {
 }
 
 function updateGyroUI(roll, pitch, alpha) {
-  const dr = roll * (App.tiltFlip ? -1 : 1);  // display roll (may be flipped)
+  const dr = roll  * (App.rollFlip  ? -1 : 1);
+  const dp = pitch * (App.pitchFlip ? -1 : 1);
   const horizon = $('bike-horizon');
   if (horizon) horizon.style.transform = 'rotate(' + (-dr) + 'deg)';
-  setEl('gyro-roll',      (dr  > 0 ? '+' : '') + Math.round(dr)  + '°');
-  setEl('gyro-pitch',     (pitch > 0 ? '+' : '') + Math.round(pitch) + '°');
+  setEl('gyro-roll',      (dr > 0 ? '+' : '') + Math.round(dr) + '°');
+  setEl('gyro-pitch',     (dp > 0 ? '+' : '') + Math.round(dp) + '°');
   setEl('gyro-head',      Math.round(alpha) + '°');
-  updateAxisBar('bar-roll',  dr,  45);
-  updateAxisBar('bar-pitch', pitch, 45);
-  setEl('axis-roll-num',  (dr  > 0 ? '+' : '') + Math.round(dr)  + '°');
-  setEl('axis-pitch-num', (pitch > 0 ? '+' : '') + Math.round(pitch) + '°');
+  updateAxisBar('bar-roll',  dr, 45);
+  updateAxisBar('bar-pitch', dp, 45);
+  setEl('axis-roll-num',  (dr > 0 ? '+' : '') + Math.round(dr) + '°');
+  setEl('axis-pitch-num', (dp > 0 ? '+' : '') + Math.round(dp) + '°');
   const hudBar = $('hud-horizon-bar');
   if (hudBar) hudBar.style.transform = 'rotate(' + (-dr) + 'deg)';
   setEl('hud-roll-val', Math.abs(Math.round(dr)) + '°');
@@ -754,7 +756,7 @@ function toggleLandscapeMode() {
     setTimeout(() => App.leafletMap.invalidateSize(), 400);
   }
 
-  updateRollOverlay(App.gyroData.gamma || 0);
+  updateRollOverlay((App.gyroData.gamma || 0) * (App.rollFlip ? -1 : 1));
 }
 
 /* ═══════════════════════════════════════
@@ -1417,7 +1419,8 @@ function openCircuit() {
   const ov = $('circuit-overlay');
   if (ov) ov.classList.add('active');
   $('btn-cir-ls')?.classList.toggle('active', App.landscapeMode);
-  $('btn-cir-inv')?.classList.toggle('active', App.tiltFlip);
+  $('btn-cir-inv-r')?.classList.toggle('active', App.rollFlip);
+  $('btn-cir-inv-p')?.classList.toggle('active', App.pitchFlip);
   initKirkVoice();
   setTimeout(() => {
     resizeCircuitCanvases();
@@ -1472,9 +1475,8 @@ function resizeCircuitCanvases() {
 
 function _cirLoop() {
   if (!App.circuitMode) return;
-  const flip  = App.tiltFlip ? -1 : 1;
-  const roll  = (App.gyroData.gamma || 0) * flip;
-  const pitch = (App.gyroData.beta  || 0) * flip;
+  const roll  = (App.gyroData.gamma || 0) * (App.rollFlip  ? -1 : 1);
+  const pitch = (App.gyroData.beta  || 0) * (App.pitchFlip ? -1 : 1);
   const hdg   = App.gyroData.alpha || 0;
   const spd   = App.gpsSpeed       || 0;
   const alt   = App.circuitAlt     || 0;
@@ -2031,17 +2033,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('btn-cir-mic').classList.add('active');
     try { _kirkRec.start(); } catch(e) { $('btn-cir-mic').classList.remove('active'); }
   });
-  $('btn-tilt-flip')?.addEventListener('click', () => {
-    App.tiltFlip = !App.tiltFlip;
-    $('btn-tilt-flip')?.classList.toggle('active', App.tiltFlip);
-    $('btn-cir-inv')?.classList.toggle('active', App.tiltFlip);
-    toast(App.tiltFlip ? 'Inclinación invertida ↕' : 'Inclinación normal ↕', 'info');
+  $('btn-roll-flip')?.addEventListener('click', () => {
+    App.rollFlip = !App.rollFlip;
+    $('btn-roll-flip')?.classList.toggle('active', App.rollFlip);
+    $('btn-cir-inv-r')?.classList.toggle('active', App.rollFlip);
+    toast(App.rollFlip ? 'Roll invertido' : 'Roll normal', 'info');
   });
-  $('btn-cir-inv')?.addEventListener('click', () => {
-    App.tiltFlip = !App.tiltFlip;
-    $('btn-cir-inv')?.classList.toggle('active', App.tiltFlip);
-    $('btn-tilt-flip')?.classList.toggle('active', App.tiltFlip);
-    if (App.circuitMode) kirkSpeak(App.tiltFlip ? 'Invertido.' : 'Normal.');
+  $('btn-pitch-flip')?.addEventListener('click', () => {
+    App.pitchFlip = !App.pitchFlip;
+    $('btn-pitch-flip')?.classList.toggle('active', App.pitchFlip);
+    $('btn-cir-inv-p')?.classList.toggle('active', App.pitchFlip);
+    toast(App.pitchFlip ? 'Pitch invertido' : 'Pitch normal', 'info');
+  });
+  $('btn-cir-inv-r')?.addEventListener('click', () => {
+    App.rollFlip = !App.rollFlip;
+    $('btn-cir-inv-r')?.classList.toggle('active', App.rollFlip);
+    $('btn-roll-flip')?.classList.toggle('active', App.rollFlip);
+    if (App.circuitMode) kirkSpeak(App.rollFlip ? 'Roll invertido.' : 'Roll normal.');
+  });
+  $('btn-cir-inv-p')?.addEventListener('click', () => {
+    App.pitchFlip = !App.pitchFlip;
+    $('btn-cir-inv-p')?.classList.toggle('active', App.pitchFlip);
+    $('btn-pitch-flip')?.classList.toggle('active', App.pitchFlip);
+    if (App.circuitMode) kirkSpeak(App.pitchFlip ? 'Pitch invertido.' : 'Pitch normal.');
   });
 
   // Wake Lock

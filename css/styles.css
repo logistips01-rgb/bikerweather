@@ -1663,6 +1663,7 @@ body.landscape-mode #circuit-overlay {
   letter-spacing: 1px;
   border-radius: 2px;
 }
+.cir-inv-p-btn { top: 80px; }
 .cir-inv-btn:active { background: rgba(0,255,136,0.15); color: #00ff88; }
 .cir-inv-btn.active { border-color: rgba(255,136,0,0.7); color: #ff8800; }
 .cir-cal-btn {
