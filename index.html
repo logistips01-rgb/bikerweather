@@ -615,26 +615,38 @@
   <div id="circuit-overlay">
     <canvas id="cir-arc-cv"></canvas>
     <div class="cir-layout">
+
+      <!-- Arc strip (top — canvas draws here) -->
       <div class="cir-arc-strip">
         <span>0</span><span>40</span><span>80</span><span>120</span><span>160</span><span>200</span>
       </div>
+
+      <!-- Main row -->
       <div class="cir-mid-row">
+
+        <!-- Left: session stats + mini map -->
         <div class="cir-left-panel">
           <div class="cir-stat"><span class="cir-sl">SESIÓN</span><span id="cir-sess-time" class="cir-sv">--:--</span></div>
           <div class="cir-stat"><span class="cir-sl">CURVAS</span><span id="cir-curve-cnt" class="cir-sv">0</span></div>
-          <div class="cir-stat"><span class="cir-sl">V.MÁX</span><span id="cir-spd-max" class="cir-sv" style="color:#ff5500">0</span></div>
+          <div class="cir-stat"><span class="cir-sl">V.MÁX</span><span id="cir-spd-max" class="cir-sv" style="color:#ff6600">0</span></div>
           <div class="cir-stat"><span class="cir-sl">Â.MÁX</span><span id="cir-ang-max" class="cir-sv" style="color:#ffb300">0°</span></div>
           <div class="cir-stat"><span class="cir-sl">TEMP</span><span id="cir-temp-val" class="cir-sv">--°</span></div>
+          <canvas id="cir-map-cv" class="cir-map-cv"></canvas>
         </div>
+
+        <!-- Center: big speed + gear + G-force -->
         <div class="cir-center-col">
           <div id="cir-spd-val" class="cir-big-spd">0</div>
           <div class="cir-spd-unit">KM/H</div>
+          <div id="cir-gear" class="cir-gear-val">—</div>
           <div class="cir-gf-row">
             <span id="cir-g-lon" class="cir-gf-val">0.00</span><span class="cir-gf-icon">↑</span>
             <span id="cir-g-lat" class="cir-gf-val">0.00</span><span class="cir-gf-icon">→</span>
             <span class="cir-gf-unit">G</span>
           </div>
         </div>
+
+        <!-- Right: lean angle -->
         <div class="cir-lean-panel">
           <div class="cir-lean-title">LEANING ANGLE</div>
           <div class="cir-lean-nums">
@@ -651,11 +663,16 @@
             <span id="cir-wind-val" class="cir-wind-num">--</span><span class="cir-wind-lbl">km/h</span>
           </div>
         </div>
+
       </div>
+
+      <!-- Kirk AI bar -->
       <div class="cir-ai-bar">
         <div class="cir-ai-pill">AI</div>
         <span id="cir-kirk-msg" class="cir-kirk-txt">RIDING ASSISTANT READY</span>
       </div>
+
+      <!-- Controls -->
       <div class="cir-ctrl">
         <button id="btn-cir-exit"  class="cir-btn cir-btn-x">✕</button>
         <button id="btn-cir-inv-r" class="cir-btn cir-btn-sm">↔ R</button>
@@ -667,6 +684,7 @@
         <button id="btn-cir-start" class="cir-btn cir-btn-go">▶ INICIO</button>
         <button id="btn-cir-stop"  class="cir-btn cir-btn-stop" style="display:none">⏹ FIN</button>
       </div>
+
     </div>
   </div>
 

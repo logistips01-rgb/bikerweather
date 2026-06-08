@@ -1605,11 +1605,12 @@ function stopCircuitSession() {
 }
 
 function resizeCircuitCanvases() {
-  const cv = $('cir-arc-cv');
   const ov = $('circuit-overlay');
-  if (!cv || !ov) return;
-  cv.width  = ov.offsetWidth  || 1;
-  cv.height = ov.offsetHeight || 1;
+  if (!ov) return;
+  const arc = $('cir-arc-cv');
+  if (arc) { arc.width = ov.offsetWidth || 1; arc.height = ov.offsetHeight || 1; }
+  const map = $('cir-map-cv');
+  if (map) { map.width = map.offsetWidth || 1; map.height = map.offsetHeight || 1; }
 }
 
 function _cirLoop() {
@@ -1617,6 +1618,7 @@ function _cirLoop() {
   const roll = (App.gyroData.gamma || 0) * (App.rollFlip  ? -1 : 1);
   const spd  = App.gpsSpeed || 0;
   _drawSpeedArc($('cir-arc-cv'), spd);
+  _drawMiniMap($('cir-map-cv'));
   _updateCirData(roll, spd);
   const now = Date.now();
   if (now - _kirkLastCheck > 2000) { _kirkLastCheck = now; kirkCheckAlerts(); }
@@ -1629,16 +1631,15 @@ function _drawSpeedArc(cv, spd) {
   const W = cv.width, H = cv.height;
   ctx.clearRect(0, 0, W, H);
 
-  // Compute arc geometry: arc spans from margin to W-margin, peaking at TOP_Y
-  const ARC_H  = Math.min(88, H * 0.13);
-  const TOP_Y  = ARC_H * 0.18;
+  // Compute arc geometry geometrically from desired strip height
+  const ARC_H  = Math.min(115, H * 0.15);
+  const TOP_Y  = ARC_H * 0.15;
   const END_Y  = ARC_H;
-  const MARGIN = W * 0.04;
+  const MARGIN = W * 0.035;
   const CX     = W / 2;
   const dh     = END_Y - TOP_Y;
-  const midY   = (TOP_Y + END_Y) / 2;
   const halfW  = CX - MARGIN;
-  const CY     = midY + halfW * halfW / (2 * dh);
+  const CY     = (TOP_Y + END_Y) / 2 + halfW * halfW / (2 * dh);
   const R      = CY - TOP_Y;
   const SA     = Math.atan2(END_Y - CY, MARGIN - CX);
   const EA     = Math.atan2(END_Y - CY, (W - MARGIN) - CX);
@@ -1647,42 +1648,94 @@ function _drawSpeedArc(cv, spd) {
   const MAX_SPD = 220;
   const frac    = Math.min(Math.max(spd, 0) / MAX_SPD, 1);
 
+  // Atmospheric glow under arc (radial gradient)
+  const glow = ctx.createRadialGradient(CX, CY, R * 0.7, CX, CY, R + 30);
+  glow.addColorStop(0, 'rgba(255,100,0,0.0)');
+  glow.addColorStop(0.7, 'rgba(255,80,0,0.04)');
+  glow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, ARC_H + 10);
+
   // Background track
   ctx.beginPath(); ctx.arc(CX, CY, R, SA, EA);
-  ctx.strokeStyle = 'rgba(255,179,0,0.1)'; ctx.lineWidth = 16; ctx.lineCap = 'butt'; ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,179,0,0.08)'; ctx.lineWidth = 20; ctx.lineCap = 'butt'; ctx.stroke();
 
-  // Colored fill
-  if (frac > 0) {
-    const fillEnd = SA + sweep * frac;
-    const grad = ctx.createLinearGradient(MARGIN, 0, W - MARGIN, 0);
-    grad.addColorStop(0, '#00f0a0'); grad.addColorStop(0.5, '#ff8800');
-    grad.addColorStop(0.8, '#ff5500'); grad.addColorStop(1, '#ff2255');
-    // Outer glow
-    ctx.beginPath(); ctx.arc(CX, CY, R, SA, fillEnd);
-    ctx.strokeStyle = 'rgba(255,100,0,0.2)'; ctx.lineWidth = 30; ctx.stroke();
-    // Fill arc
-    ctx.beginPath(); ctx.arc(CX, CY, R, SA, fillEnd);
-    ctx.strokeStyle = grad; ctx.lineWidth = 16; ctx.lineCap = 'round'; ctx.stroke();
-  }
-
-  // Tick marks (every 20 km/h, major every 40)
+  // Tick marks
   const N = 11;
   for (let i = 0; i <= N; i++) {
     const a = SA + sweep * (i / N);
     const maj = i % 2 === 0;
-    const r1 = R - (maj ? 22 : 12); const r2 = R - 8;
+    const r1 = R - (maj ? 28 : 16); const r2 = R - 9;
     const c = Math.cos(a), s = Math.sin(a);
     ctx.beginPath(); ctx.moveTo(CX + r1*c, CY + r1*s); ctx.lineTo(CX + r2*c, CY + r2*s);
-    ctx.strokeStyle = maj ? 'rgba(255,179,0,0.6)' : 'rgba(255,179,0,0.22)';
+    ctx.strokeStyle = maj ? 'rgba(255,179,0,0.55)' : 'rgba(255,179,0,0.2)';
     ctx.lineWidth = maj ? 2 : 1; ctx.lineCap = 'butt'; ctx.stroke();
+    if (maj) {
+      const lbl = Math.round(i * MAX_SPD / N);
+      const rt = R - 42;
+      ctx.fillStyle = 'rgba(255,179,0,0.45)';
+      ctx.font = 'bold 9px Rajdhani,Arial,sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(lbl, CX + rt*Math.cos(a), CY + rt*Math.sin(a));
+    }
   }
 
-  // Speed value in center of arc
-  ctx.fillStyle = 'rgba(255,179,0,0.32)';
-  ctx.font = 'bold 10px Rajdhani,Arial,sans-serif';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const midA = SA + sweep / 2;
-  ctx.fillText(Math.round(spd), CX + (R - 36) * Math.cos(midA), CY + (R - 36) * Math.sin(midA));
+  // Colored fill arc
+  if (frac > 0) {
+    const fillEnd = SA + sweep * frac;
+    const grad = ctx.createLinearGradient(MARGIN, 0, W - MARGIN, 0);
+    grad.addColorStop(0, '#00f0a0'); grad.addColorStop(0.45, '#ffaa00');
+    grad.addColorStop(0.75, '#ff5500'); grad.addColorStop(1, '#ff2255');
+    // Outer glow
+    ctx.beginPath(); ctx.arc(CX, CY, R, SA, fillEnd);
+    ctx.strokeStyle = 'rgba(255,120,0,0.22)'; ctx.lineWidth = 36; ctx.lineCap = 'round'; ctx.stroke();
+    // Inner glow
+    ctx.beginPath(); ctx.arc(CX, CY, R, SA, fillEnd);
+    ctx.strokeStyle = 'rgba(255,160,0,0.18)'; ctx.lineWidth = 24; ctx.stroke();
+    // Fill arc
+    ctx.beginPath(); ctx.arc(CX, CY, R, SA, fillEnd);
+    ctx.strokeStyle = grad; ctx.lineWidth = 20; ctx.lineCap = 'round'; ctx.stroke();
+    // Tip dot (current position marker)
+    const tipX = CX + R * Math.cos(fillEnd), tipY = CY + R * Math.sin(fillEnd);
+    ctx.beginPath(); ctx.arc(tipX, tipY, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff'; ctx.shadowColor = '#ffaa00'; ctx.shadowBlur = 10; ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+}
+
+function _drawMiniMap(cv) {
+  if (!cv || cv.width < 4) return;
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+  const pts = (App.sessionSamples || []).filter(s => s.lat && s.lon);
+  if (pts.length < 3) {
+    // Placeholder: circuit outline hint
+    ctx.strokeStyle = 'rgba(255,85,0,0.12)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(3, 3, W - 6, H - 6, 4); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,85,0,0.12)'; ctx.font = '8px Rajdhani,Arial,sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('GPS', W/2, H/2);
+    return;
+  }
+  const lats = pts.map(p => p.lat), lons = pts.map(p => p.lon);
+  const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+  const minLon = Math.min(...lons), maxLon = Math.max(...lons);
+  const pad = 5;
+  const scX = (maxLon > minLon) ? (W - pad*2) / (maxLon - minLon) : 1;
+  const scY = (maxLat > minLat) ? (H - pad*2) / (maxLat - minLat) : 1;
+  const sc  = Math.min(scX, scY);
+  const oX  = pad + ((W - pad*2) - (maxLon - minLon) * sc) / 2;
+  const oY  = pad + ((H - pad*2) - (maxLat - minLat) * sc) / 2;
+  const tx  = lon => oX + (lon - minLon) * sc;
+  const ty  = lat => H - (oY + (lat - minLat) * sc);
+  // Track line
+  ctx.beginPath(); ctx.moveTo(tx(pts[0].lon), ty(pts[0].lat));
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(tx(pts[i].lon), ty(pts[i].lat));
+  ctx.strokeStyle = 'rgba(255,85,0,0.55)'; ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.stroke();
+  // Current position dot
+  const last = pts[pts.length - 1];
+  ctx.beginPath(); ctx.arc(tx(last.lon), ty(last.lat), 3, 0, Math.PI * 2);
+  ctx.fillStyle = '#ff5500'; ctx.shadowColor = '#ff5500'; ctx.shadowBlur = 6; ctx.fill(); ctx.shadowBlur = 0;
 }
 
 function _updateCirData(roll, spd) {
@@ -1694,6 +1747,8 @@ function _updateCirData(roll, spd) {
     const st = $('cir-sess-time');
     if (st) { const s=Math.floor(el/1000)%60, m=Math.floor(el/60000); st.textContent=pad(m)+':'+pad(s); }
   }
+  // Gear (placeholder until Carber connected)
+  const gv = $('cir-gear'); if (gv && !App.obd2Gear) { gv.textContent = '—'; }
   const cc = $('cir-curve-cnt'); if (cc) cc.textContent = App.sessionCurves?.length || 0;
   const sm = $('cir-spd-max');   if (sm) sm.textContent = _cirMaxSpd;
   const am = $('cir-ang-max');   if (am) am.textContent = Math.round(_cirMaxAng) + '°';

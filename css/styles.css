@@ -1511,15 +1511,15 @@ body.circuit-active .location-bar { display: none !important; }
 
 /* Arc strip — space for canvas arc */
 .cir-arc-strip {
-  flex-shrink: 0; height: 88px;
+  flex-shrink: 0; height: 118px;
   display: flex; align-items: flex-end;
   justify-content: space-between;
-  padding: 0 6% 10px;
+  padding: 0 6% 12px;
   pointer-events: none;
 }
 .cir-arc-strip span {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px; color: rgba(255,179,0,0.35);
+  font-size: 9px; color: rgba(255,179,0,0.38);
 }
 
 /* Main mid row */
@@ -1528,24 +1528,30 @@ body.circuit-active .location-bar { display: none !important; }
   display: flex; align-items: stretch;
 }
 
-/* ── Left: session stats ── */
+/* ── Left: session stats + mini map ── */
 .cir-left-panel {
-  width: 88px; flex-shrink: 0;
+  width: 92px; flex-shrink: 0;
   display: flex; flex-direction: column;
-  justify-content: center; gap: 7px;
-  padding: 8px 8px 8px 12px;
+  justify-content: flex-start; gap: 5px;
+  padding: 10px 8px 6px 12px;
   border-right: 1px solid rgba(255,85,0,0.1);
   background: rgba(4,5,10,0.65);
 }
-.cir-stat { display: flex; flex-direction: column; gap: 1px; }
+.cir-stat { display: flex; flex-direction: column; gap: 0px; }
 .cir-sl {
   font-family: 'JetBrains Mono', monospace;
   font-size: 7px; color: rgba(255,255,255,0.18);
   letter-spacing: 1.5px; text-transform: uppercase;
 }
 .cir-sv {
-  font-size: 17px; font-weight: 700;
-  color: rgba(255,255,255,0.65); line-height: 1;
+  font-size: 16px; font-weight: 700;
+  color: rgba(255,255,255,0.65); line-height: 1.1;
+}
+.cir-map-cv {
+  width: 100%; flex: 1;
+  min-height: 0; display: block;
+  margin-top: 4px;
+  border-top: 1px solid rgba(255,85,0,0.08);
 }
 
 /* ── Center: big speed ── */
@@ -1564,7 +1570,16 @@ body.circuit-active .location-bar { display: none !important; }
 .cir-spd-unit {
   font-size: 11px; font-weight: 700;
   color: rgba(255,110,0,0.45); letter-spacing: 5px;
-  margin-bottom: 8px;
+}
+/* Gear indicator — big, ready for Carber */
+.cir-gear-val {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 38px; font-weight: 700;
+  color: #00f0a0;
+  line-height: 1; letter-spacing: -1px;
+  text-shadow: 0 0 20px rgba(0,240,160,0.5);
+  transition: color 0.2s, text-shadow 0.2s;
+  margin: 2px 0 4px;
 }
 .cir-gf-row {
   display: flex; align-items: center; gap: 4px;
@@ -1580,7 +1595,7 @@ body.circuit-active .location-bar { display: none !important; }
 
 /* ── Right: lean angle ── */
 .cir-lean-panel {
-  width: 88px; flex-shrink: 0;
+  width: 92px; flex-shrink: 0;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 5px;
   padding: 8px 8px 8px 6px;
@@ -1597,13 +1612,13 @@ body.circuit-active .location-bar { display: none !important; }
   width: 100%; padding: 0 4px;
 }
 .cir-lean-val {
-  font-size: 18px; font-weight: 700; color: #ffb300;
-  text-shadow: 0 0 10px rgba(255,179,0,0.35);
+  font-size: 22px; font-weight: 700; color: #ffb300;
+  text-shadow: 0 0 12px rgba(255,179,0,0.45);
   transition: color 0.2s;
 }
-.cir-lean-bars { display: flex; gap: 8px; align-items: flex-end; height: 58px; }
+.cir-lean-bars { display: flex; gap: 8px; align-items: flex-end; height: 65px; }
 .cir-bar-track {
-  width: 14px; height: 58px;
+  width: 16px; height: 65px;
   background: rgba(255,179,0,0.07);
   border: 1px solid rgba(255,179,0,0.18);
   border-radius: 2px; overflow: hidden;
@@ -1709,12 +1724,14 @@ body.circuit-active .location-bar { display: none !important; }
 .cir-btn-stop:active { background: rgba(255,34,85,0.07); }
 
 /* Landscape adjustments */
-body.landscape-mode .cir-arc-strip { height: 62px; }
-body.landscape-mode .cir-big-spd   { font-size: clamp(55px, 17vh, 115px); }
-body.landscape-mode .cir-lean-bars { height: 42px; }
-body.landscape-mode .cir-bar-track { height: 42px; }
+body.landscape-mode .cir-arc-strip  { height: 72px; }
+body.landscape-mode .cir-big-spd    { font-size: clamp(55px, 17vh, 115px); }
+body.landscape-mode .cir-gear-val   { font-size: 28px; }
+body.landscape-mode .cir-lean-bars  { height: 42px; }
+body.landscape-mode .cir-bar-track  { height: 42px; }
+body.landscape-mode .cir-lean-val   { font-size: 18px; }
 body.landscape-mode .cir-left-panel,
-body.landscape-mode .cir-lean-panel { width: 76px; }
+body.landscape-mode .cir-lean-panel { width: 78px; }
 
 /* Kirk message in route HUD (unchanged) */
 .hud-kirk-msg {
