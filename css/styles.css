@@ -1511,17 +1511,22 @@ body.circuit-active .location-bar { display: none !important; }
   display: flex; flex-direction: column;
 }
 
-/* Arc strip — space for canvas arc */
+/* Arc strip — space for canvas arcs (outer=RPM, inner=speed) */
 .cir-arc-strip {
-  flex-shrink: 0; height: 118px;
-  display: flex; align-items: flex-end;
+  flex-shrink: 0; height: 126px;
+  display: flex; align-items: flex-start;
   justify-content: space-between;
-  padding: 0 6% 12px;
+  padding: 6px 10px 0;
   pointer-events: none;
 }
-.cir-arc-strip span {
+.cas-rpm {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px; color: rgba(255,179,0,0.38);
+  font-size: 8px; color: rgba(255,255,255,0.22); letter-spacing: 0.5px;
+}
+.cas-kmh {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px; letter-spacing: 0.5px;
+  color: hsl(var(--cir-h), 80%, 58%); opacity: 0.55;
 }
 
 /* Main mid row */
@@ -1754,7 +1759,7 @@ body.circuit-active .location-bar { display: none !important; }
 .cir-btn-stop:active { background: rgba(255,34,85,0.07); }
 
 /* Landscape adjustments */
-body.landscape-mode .cir-arc-strip  { height: 72px; }
+body.landscape-mode .cir-arc-strip  { height: 80px; }
 body.landscape-mode .cir-big-spd    { font-size: clamp(55px, 17vh, 115px); }
 body.landscape-mode .cir-gear-val   { font-size: 28px; }
 body.landscape-mode .cir-lean-bars  { height: 52px; }

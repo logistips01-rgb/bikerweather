@@ -1277,6 +1277,7 @@ function doCalibrate() {
 let _cirRaf    = null;
 let _cirMaxSpd = 0;
 let _cirMaxAng = 0;
+let _cirHue    = 20;
 
 /* ── Kirk state ── */
 let _kirkSpeaking  = false;
@@ -1631,7 +1632,7 @@ function _drawSpeedArc(cv, spd) {
   const W = cv.width, H = cv.height;
   ctx.clearRect(0, 0, W, H);
 
-  // Compute arc geometry geometrically from desired strip height
+  // Shared arc geometry
   const ARC_H  = Math.min(115, H * 0.15);
   const TOP_Y  = ARC_H * 0.15;
   const END_Y  = ARC_H;
@@ -1640,64 +1641,102 @@ function _drawSpeedArc(cv, spd) {
   const dh     = END_Y - TOP_Y;
   const halfW  = CX - MARGIN;
   const CY     = (TOP_Y + END_Y) / 2 + halfW * halfW / (2 * dh);
-  const R      = CY - TOP_Y;
+  const R_OUT  = CY - TOP_Y;
+  const R_IN   = R_OUT - 26;
   const SA     = Math.atan2(END_Y - CY, MARGIN - CX);
   const EA     = Math.atan2(END_Y - CY, (W - MARGIN) - CX);
   let sweep    = EA - SA; if (sweep < 0) sweep += 2 * Math.PI;
 
-  const MAX_SPD = 220;
-  const frac    = Math.min(Math.max(spd, 0) / MAX_SPD, 1);
-
-  // Atmospheric glow under arc (radial gradient)
-  const glow = ctx.createRadialGradient(CX, CY, R * 0.7, CX, CY, R + 30);
-  glow.addColorStop(0, 'rgba(255,100,0,0.0)');
-  glow.addColorStop(0.7, 'rgba(255,80,0,0.04)');
-  glow.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, ARC_H + 10);
+  // ── OUTER ARC: RPM (0–12000) ─────────────────────────────────────────────
+  const MAX_RPM = 12000;
+  const rpm     = App.obd2Rpm || 0;
+  const rpmFrac = Math.min(Math.max(rpm, 0) / MAX_RPM, 1);
 
   // Background track
-  ctx.beginPath(); ctx.arc(CX, CY, R, SA, EA);
-  ctx.strokeStyle = 'rgba(255,179,0,0.08)'; ctx.lineWidth = 20; ctx.lineCap = 'butt'; ctx.stroke();
+  ctx.beginPath(); ctx.arc(CX, CY, R_OUT, SA, EA);
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 17; ctx.lineCap = 'butt'; ctx.stroke();
 
-  // Tick marks
-  const N = 11;
-  for (let i = 0; i <= N; i++) {
-    const a = SA + sweep * (i / N);
+  // RPM ticks — 12 major (every 1000 RPM), minor every 500
+  for (let i = 0; i <= 24; i++) {
+    const a   = SA + sweep * (i / 24);
     const maj = i % 2 === 0;
-    const r1 = R - (maj ? 28 : 16); const r2 = R - 9;
+    const redZone = (i / 24) >= (10000 / MAX_RPM);
+    const r1  = R_OUT - (maj ? 20 : 11);
+    const r2  = R_OUT - 8;
     const c = Math.cos(a), s = Math.sin(a);
     ctx.beginPath(); ctx.moveTo(CX + r1*c, CY + r1*s); ctx.lineTo(CX + r2*c, CY + r2*s);
-    ctx.strokeStyle = maj ? 'rgba(255,179,0,0.55)' : 'rgba(255,179,0,0.2)';
-    ctx.lineWidth = maj ? 2 : 1; ctx.lineCap = 'butt'; ctx.stroke();
+    ctx.strokeStyle = redZone ? (maj ? 'rgba(255,40,40,0.75)' : 'rgba(255,40,40,0.35)')
+                               : (maj ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.18)');
+    ctx.lineWidth = maj ? 1.5 : 1; ctx.lineCap = 'butt'; ctx.stroke();
     if (maj) {
-      const lbl = Math.round(i * MAX_SPD / N);
-      const rt = R - 42;
-      ctx.fillStyle = 'rgba(255,179,0,0.45)';
-      ctx.font = 'bold 9px Rajdhani,Arial,sans-serif';
+      const lbl = (i / 2).toString();
+      const rt  = R_OUT - 32;
+      ctx.fillStyle = redZone ? 'rgba(255,60,60,0.7)' : 'rgba(255,255,255,0.38)';
+      ctx.font = 'bold 8px Rajdhani,Arial,sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(lbl, CX + rt*Math.cos(a), CY + rt*Math.sin(a));
     }
   }
 
-  // Colored fill arc
-  if (frac > 0) {
-    const fillEnd = SA + sweep * frac;
-    const grad = ctx.createLinearGradient(MARGIN, 0, W - MARGIN, 0);
-    grad.addColorStop(0, '#00f0a0'); grad.addColorStop(0.45, '#ffaa00');
-    grad.addColorStop(0.75, '#ff5500'); grad.addColorStop(1, '#ff2255');
-    // Outer glow
-    ctx.beginPath(); ctx.arc(CX, CY, R, SA, fillEnd);
-    ctx.strokeStyle = 'rgba(255,120,0,0.22)'; ctx.lineWidth = 36; ctx.lineCap = 'round'; ctx.stroke();
-    // Inner glow
-    ctx.beginPath(); ctx.arc(CX, CY, R, SA, fillEnd);
-    ctx.strokeStyle = 'rgba(255,160,0,0.18)'; ctx.lineWidth = 24; ctx.stroke();
-    // Fill arc
-    ctx.beginPath(); ctx.arc(CX, CY, R, SA, fillEnd);
-    ctx.strokeStyle = grad; ctx.lineWidth = 20; ctx.lineCap = 'round'; ctx.stroke();
-    // Tip dot (current position marker)
-    const tipX = CX + R * Math.cos(fillEnd), tipY = CY + R * Math.sin(fillEnd);
-    ctx.beginPath(); ctx.arc(tipX, tipY, 5, 0, Math.PI * 2);
-    ctx.fillStyle = '#fff'; ctx.shadowColor = '#ffaa00'; ctx.shadowBlur = 10; ctx.fill();
+  // RPM fill (only when Carber connected)
+  if (rpmFrac > 0) {
+    const fillEnd = SA + sweep * rpmFrac;
+    const rpmGrad = ctx.createLinearGradient(MARGIN, 0, W - MARGIN, 0);
+    rpmGrad.addColorStop(0,    '#00e060');
+    rpmGrad.addColorStop(0.55, '#ffaa00');
+    rpmGrad.addColorStop(0.80, '#ff4400');
+    rpmGrad.addColorStop(1,    '#ff0022');
+    ctx.beginPath(); ctx.arc(CX, CY, R_OUT, SA, fillEnd);
+    ctx.strokeStyle = 'rgba(255,120,0,0.18)'; ctx.lineWidth = 30; ctx.lineCap = 'round'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(CX, CY, R_OUT, SA, fillEnd);
+    ctx.strokeStyle = rpmGrad; ctx.lineWidth = 17; ctx.lineCap = 'round'; ctx.stroke();
+    const tipX = CX + R_OUT * Math.cos(fillEnd), tipY = CY + R_OUT * Math.sin(fillEnd);
+    ctx.beginPath(); ctx.arc(tipX, tipY, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff'; ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 8; ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  // ── GAP separator between arcs ───────────────────────────────────────────
+  ctx.beginPath(); ctx.arc(CX, CY, R_IN + 5, SA, EA);
+  ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = 4; ctx.lineCap = 'butt'; ctx.stroke();
+
+  // ── INNER ARC: Speed GPS (0–220) ─────────────────────────────────────────
+  const MAX_SPD = 220;
+  const spdFrac = Math.min(Math.max(spd, 0) / MAX_SPD, 1);
+  const h = _cirHue;
+
+  // Background track
+  ctx.beginPath(); ctx.arc(CX, CY, R_IN, SA, EA);
+  ctx.strokeStyle = `hsla(${h},80%,50%,0.08)`; ctx.lineWidth = 14; ctx.lineCap = 'butt'; ctx.stroke();
+
+  // Speed ticks — 11 intervals (0, 20, 40 … 220)
+  const NS = 11;
+  for (let i = 0; i <= NS; i++) {
+    const a   = SA + sweep * (i / NS);
+    const maj = i % 1 === 0;
+    const r1  = R_IN - (i % 2 === 0 ? 14 : 8);
+    const r2  = R_IN - 5;
+    const c = Math.cos(a), s = Math.sin(a);
+    ctx.beginPath(); ctx.moveTo(CX + r1*c, CY + r1*s); ctx.lineTo(CX + r2*c, CY + r2*s);
+    ctx.strokeStyle = i % 2 === 0 ? `hsla(${h},90%,62%,0.6)` : `hsla(${h},80%,55%,0.22)`;
+    ctx.lineWidth = i % 2 === 0 ? 1.5 : 1; ctx.lineCap = 'butt'; ctx.stroke();
+  }
+
+  // Speed fill
+  if (spdFrac > 0) {
+    const fillEnd = SA + sweep * spdFrac;
+    const h2 = (h + 28) % 360;
+    const spdGrad = ctx.createLinearGradient(MARGIN, 0, W - MARGIN, 0);
+    spdGrad.addColorStop(0,   `hsl(${h},100%,50%)`);
+    spdGrad.addColorStop(0.5, `hsl(${(h + 14) % 360},100%,58%)`);
+    spdGrad.addColorStop(1,   `hsl(${h2},100%,64%)`);
+    ctx.beginPath(); ctx.arc(CX, CY, R_IN, SA, fillEnd);
+    ctx.strokeStyle = `hsla(${h},100%,55%,0.2)`; ctx.lineWidth = 24; ctx.lineCap = 'round'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(CX, CY, R_IN, SA, fillEnd);
+    ctx.strokeStyle = spdGrad; ctx.lineWidth = 14; ctx.lineCap = 'round'; ctx.stroke();
+    const tipX = CX + R_IN * Math.cos(fillEnd), tipY = CY + R_IN * Math.sin(fillEnd);
+    ctx.beginPath(); ctx.arc(tipX, tipY, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff'; ctx.shadowColor = `hsl(${h},100%,60%)`; ctx.shadowBlur = 8; ctx.fill();
     ctx.shadowBlur = 0;
   }
 }
@@ -2475,11 +2514,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Circuit HUD accent hue
   const savedHue = localStorage.getItem('bw_cir_hue') || '20';
+  _cirHue = parseInt(savedHue);
   document.documentElement.style.setProperty('--cir-h', savedHue);
   const hueSlider = $('cir-hue');
   if (hueSlider) {
     hueSlider.value = savedHue;
     hueSlider.addEventListener('input', e => {
+      _cirHue = parseInt(e.target.value);
       document.documentElement.style.setProperty('--cir-h', e.target.value);
       localStorage.setItem('bw_cir_hue', e.target.value);
     });
