@@ -1274,7 +1274,9 @@ function doCalibrate() {
 /* ═══════════════════════════════════════
    MODO CIRCUITO
 ═══════════════════════════════════════ */
-let _cirRaf = null;
+let _cirRaf    = null;
+let _cirMaxSpd = 0;
+let _cirMaxAng = 0;
 
 /* ── Kirk state ── */
 let _kirkSpeaking  = false;
@@ -1309,9 +1311,10 @@ function _kirkShowMsg(text) {
 }
 
 function _kirkHideMsg() {
-  [$('cir-kirk-msg'), $('hud-kirk-msg')].forEach(el => {
-    if (el) el.classList.remove('show');
-  });
+  const cirMsg = $('cir-kirk-msg');
+  if (cirMsg) cirMsg.textContent = 'RIDING ASSISTANT READY';
+  const hudMsg = $('hud-kirk-msg');
+  if (hudMsg) hudMsg.classList.remove('show');
 }
 
 function _kirkStartListening() {
@@ -1588,6 +1591,7 @@ function closeCircuit() {
 function startCircuitSession() {
   App.rideMode = 'circuit';
   App.rideDestination = 'Sesión de circuito';
+  _cirMaxSpd = 0; _cirMaxAng = 0;
   startSession();
   $('btn-cir-start').style.display = 'none';
   $('btn-cir-stop').style.display  = 'flex';
@@ -1601,38 +1605,122 @@ function stopCircuitSession() {
 }
 
 function resizeCircuitCanvases() {
-  const pairs = [
-    ['cir-hdg-cv',  'cir-heading-wrap'],
-    ['cir-spd-cv',  'cir-spd-wrap'],
-    ['cir-alt-cv',  'cir-alt-wrap'],
-    ['cir-ahi-cv',  'cir-ahi-wrap'],
-    ['cir-kitt-cv', 'cir-kirk-wrap']
-  ];
-  pairs.forEach(([cvId, wrapId]) => {
-    const cv   = $(cvId);
-    const wrap = $(wrapId);
-    if (!cv || !wrap) return;
-    cv.width  = wrap.offsetWidth  || 1;
-    cv.height = wrap.offsetHeight || 1;
-  });
+  const cv = $('cir-arc-cv');
+  const ov = $('circuit-overlay');
+  if (!cv || !ov) return;
+  cv.width  = ov.offsetWidth  || 1;
+  cv.height = ov.offsetHeight || 1;
 }
 
 function _cirLoop() {
   if (!App.circuitMode) return;
-  const roll  = (App.gyroData.gamma || 0) * (App.rollFlip  ? -1 : 1);
-  const pitch = (App.gyroData.beta  || 0) * (App.pitchFlip ? -1 : 1);
-  const hdg   = App.gyroData.alpha || 0;
-  const spd   = App.gpsSpeed       || 0;
-  const alt   = App.circuitAlt     || 0;
-  _drawHdgTape($('cir-hdg-cv'), hdg);
-  _drawVTape($('cir-spd-cv'), spd, 0, 240, 20, 10, 'km/h', false);
-  _drawVTape($('cir-alt-cv'), alt, Math.max(0, alt-100), alt+100, 50, 25, 'm', true);
-  _drawAHI($('cir-ahi-cv'), roll, pitch);
-  _drawKitt($('cir-kitt-cv'));
-  _updateCirBottom(roll, spd);
+  const roll = (App.gyroData.gamma || 0) * (App.rollFlip  ? -1 : 1);
+  const spd  = App.gpsSpeed || 0;
+  _drawSpeedArc($('cir-arc-cv'), spd);
+  _updateCirData(roll, spd);
   const now = Date.now();
   if (now - _kirkLastCheck > 2000) { _kirkLastCheck = now; kirkCheckAlerts(); }
   _cirRaf = requestAnimationFrame(_cirLoop);
+}
+
+function _drawSpeedArc(cv, spd) {
+  if (!cv || cv.width < 10) return;
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // Compute arc geometry: arc spans from margin to W-margin, peaking at TOP_Y
+  const ARC_H  = Math.min(88, H * 0.13);
+  const TOP_Y  = ARC_H * 0.18;
+  const END_Y  = ARC_H;
+  const MARGIN = W * 0.04;
+  const CX     = W / 2;
+  const dh     = END_Y - TOP_Y;
+  const midY   = (TOP_Y + END_Y) / 2;
+  const halfW  = CX - MARGIN;
+  const CY     = midY + halfW * halfW / (2 * dh);
+  const R      = CY - TOP_Y;
+  const SA     = Math.atan2(END_Y - CY, MARGIN - CX);
+  const EA     = Math.atan2(END_Y - CY, (W - MARGIN) - CX);
+  let sweep    = EA - SA; if (sweep < 0) sweep += 2 * Math.PI;
+
+  const MAX_SPD = 220;
+  const frac    = Math.min(Math.max(spd, 0) / MAX_SPD, 1);
+
+  // Background track
+  ctx.beginPath(); ctx.arc(CX, CY, R, SA, EA);
+  ctx.strokeStyle = 'rgba(255,179,0,0.1)'; ctx.lineWidth = 16; ctx.lineCap = 'butt'; ctx.stroke();
+
+  // Colored fill
+  if (frac > 0) {
+    const fillEnd = SA + sweep * frac;
+    const grad = ctx.createLinearGradient(MARGIN, 0, W - MARGIN, 0);
+    grad.addColorStop(0, '#00f0a0'); grad.addColorStop(0.5, '#ff8800');
+    grad.addColorStop(0.8, '#ff5500'); grad.addColorStop(1, '#ff2255');
+    // Outer glow
+    ctx.beginPath(); ctx.arc(CX, CY, R, SA, fillEnd);
+    ctx.strokeStyle = 'rgba(255,100,0,0.2)'; ctx.lineWidth = 30; ctx.stroke();
+    // Fill arc
+    ctx.beginPath(); ctx.arc(CX, CY, R, SA, fillEnd);
+    ctx.strokeStyle = grad; ctx.lineWidth = 16; ctx.lineCap = 'round'; ctx.stroke();
+  }
+
+  // Tick marks (every 20 km/h, major every 40)
+  const N = 11;
+  for (let i = 0; i <= N; i++) {
+    const a = SA + sweep * (i / N);
+    const maj = i % 2 === 0;
+    const r1 = R - (maj ? 22 : 12); const r2 = R - 8;
+    const c = Math.cos(a), s = Math.sin(a);
+    ctx.beginPath(); ctx.moveTo(CX + r1*c, CY + r1*s); ctx.lineTo(CX + r2*c, CY + r2*s);
+    ctx.strokeStyle = maj ? 'rgba(255,179,0,0.6)' : 'rgba(255,179,0,0.22)';
+    ctx.lineWidth = maj ? 2 : 1; ctx.lineCap = 'butt'; ctx.stroke();
+  }
+
+  // Speed value in center of arc
+  ctx.fillStyle = 'rgba(255,179,0,0.32)';
+  ctx.font = 'bold 10px Rajdhani,Arial,sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const midA = SA + sweep / 2;
+  ctx.fillText(Math.round(spd), CX + (R - 36) * Math.cos(midA), CY + (R - 36) * Math.sin(midA));
+}
+
+function _updateCirData(roll, spd) {
+  const ar = Math.abs(roll);
+  if (App.sessionActive) {
+    if (spd > _cirMaxSpd) _cirMaxSpd = Math.round(spd);
+    if (ar  > _cirMaxAng) _cirMaxAng = ar;
+    const el = App.sessionStart ? Date.now() - App.sessionStart : 0;
+    const st = $('cir-sess-time');
+    if (st) { const s=Math.floor(el/1000)%60, m=Math.floor(el/60000); st.textContent=pad(m)+':'+pad(s); }
+  }
+  const cc = $('cir-curve-cnt'); if (cc) cc.textContent = App.sessionCurves?.length || 0;
+  const sm = $('cir-spd-max');   if (sm) sm.textContent = _cirMaxSpd;
+  const am = $('cir-ang-max');   if (am) am.textContent = Math.round(_cirMaxAng) + '°';
+  const tv = $('cir-temp-val');  if (tv) tv.textContent = App.weather ? App.weather.temp + '°' : '--°';
+
+  // Big speed
+  const sv = $('cir-spd-val');
+  if (sv) { sv.textContent = Math.round(spd); sv.style.color = cirColor(spd, 120, 160); sv.style.textShadow = spd > 120 ? '0 0 40px rgba(255,80,0,0.7),0 0 80px rgba(255,50,0,0.3)' : '0 0 40px rgba(255,100,0,0.55)'; }
+
+  // G-forces
+  const longG = App.gForce?.long || 0, latG = App.gForce?.lat || 0;
+  const gl = $('cir-g-lon'); if (gl) { gl.textContent = Math.abs(longG).toFixed(2); gl.style.color = longG < -0.2 ? '#ff2255' : longG > 0.2 ? '#00f0a0' : '#ffb300'; }
+  const gt = $('cir-g-lat'); if (gt) { gt.textContent = Math.abs(latG).toFixed(2); gt.style.color = cirColor(Math.abs(latG), 0.4, 0.7); }
+
+  // Lean angle bars
+  const leanL = roll < 0 ? ar : 0, leanR = roll > 0 ? ar : 0;
+  const maxL = 55;
+  const ll = $('cir-lean-l'); if (ll) { ll.textContent = Math.round(leanL) + '°'; ll.style.color = cirColor(leanL, 30, 45); }
+  const lr = $('cir-lean-r'); if (lr) { lr.textContent = Math.round(leanR) + '°'; lr.style.color = cirColor(leanR, 30, 45); }
+  const bl = $('cir-bar-l');  if (bl) bl.style.height = Math.min(leanL / maxL * 100, 100) + '%';
+  const br = $('cir-bar-r');  if (br) br.style.height = Math.min(leanR / maxL * 100, 100) + '%';
+
+  // Wind
+  const ws = App.weather?.windSpeed || 0, wd = App.weather?.windDir || 0;
+  const rw = ((wd - (App.gyroData.alpha || 0) + 360) % 360);
+  const wv = $('cir-wind-val'); if (wv) { wv.textContent = ws || '--'; wv.style.color = ws ? cirColor(ws, 30, 50) : 'rgba(41,217,255,0.4)'; }
+  const wp = $('cir-wind-poly'); if (wp) wp.setAttribute('transform', 'rotate(' + rw + ',12,12)');
 }
 
 function _drawHdgTape(cv, hdg) {
@@ -1824,24 +1912,6 @@ function _drawAHI(cv, roll, pitch) {
   }
 }
 
-function _updateCirBottom(roll, spd) {
-  const latG = Math.abs(App.gForce?.lat||0);
-  const totG = Math.sqrt((App.gForce?.long||0)**2+latG**2);
-  const gEl=$('cir-g-val');
-  if (gEl) { gEl.innerHTML=totG.toFixed(1)+'<span class="cir-unit">G</span>'; gEl.style.color=cirColor(totG,0.5,0.8); }
-  const gBar=$('cir-g-bar');
-  if (gBar) { gBar.style.width=Math.min(100,(totG/1.5)*100)+'%'; gBar.style.background=cirColor(totG,0.5,0.8); }
-  const ws=App.weather?.windSpeed||0, wd=App.weather?.windDir||0, hdg=App.gyroData.alpha||0;
-  const rw=((wd-hdg+360)%360);
-  const wEl=$('cir-wind-val');
-  if (wEl) { wEl.textContent=ws||'--'; wEl.style.color=ws?cirColor(ws,30,50):'rgba(0,255,136,0.4)'; }
-  const poly=$('cir-wind-poly'); if (poly) poly.setAttribute('transform','rotate('+rw+',14,14)');
-  const ar=Math.abs(roll);
-  const rEl=$('cir-roll-val');
-  if (rEl) { rEl.textContent=Math.round(ar)+'°'; rEl.style.color=cirColor(ar,30,45); }
-  const sEl=$('cir-spd-val');
-  if (sEl) { sEl.textContent=spd; sEl.style.color=cirColor(spd,120,160); }
-}
 
 function renderReport(r) {
   const c = $('report-content');

@@ -613,49 +613,61 @@
 
   <!-- ══ CIRCUIT HUD OVERLAY ══ -->
   <div id="circuit-overlay">
-    <div id="cir-heading-wrap"><canvas id="cir-hdg-cv"></canvas></div>
-    <div id="cir-mid">
-      <div id="cir-spd-wrap"><canvas id="cir-spd-cv"></canvas></div>
-      <div id="cir-ahi-wrap">
-        <canvas id="cir-ahi-cv"></canvas>
-        <div id="cir-mode-label">MODO CIRCUITO</div>
-        <div id="cir-kirk-msg"></div>
+    <canvas id="cir-arc-cv"></canvas>
+    <div class="cir-layout">
+      <div class="cir-arc-strip">
+        <span>0</span><span>40</span><span>80</span><span>120</span><span>160</span><span>200</span>
       </div>
-      <div id="cir-alt-wrap"><canvas id="cir-alt-cv"></canvas></div>
+      <div class="cir-mid-row">
+        <div class="cir-left-panel">
+          <div class="cir-stat"><span class="cir-sl">SESIÓN</span><span id="cir-sess-time" class="cir-sv">--:--</span></div>
+          <div class="cir-stat"><span class="cir-sl">CURVAS</span><span id="cir-curve-cnt" class="cir-sv">0</span></div>
+          <div class="cir-stat"><span class="cir-sl">V.MÁX</span><span id="cir-spd-max" class="cir-sv" style="color:#ff5500">0</span></div>
+          <div class="cir-stat"><span class="cir-sl">Â.MÁX</span><span id="cir-ang-max" class="cir-sv" style="color:#ffb300">0°</span></div>
+          <div class="cir-stat"><span class="cir-sl">TEMP</span><span id="cir-temp-val" class="cir-sv">--°</span></div>
+        </div>
+        <div class="cir-center-col">
+          <div id="cir-spd-val" class="cir-big-spd">0</div>
+          <div class="cir-spd-unit">KM/H</div>
+          <div class="cir-gf-row">
+            <span id="cir-g-lon" class="cir-gf-val">0.00</span><span class="cir-gf-icon">↑</span>
+            <span id="cir-g-lat" class="cir-gf-val">0.00</span><span class="cir-gf-icon">→</span>
+            <span class="cir-gf-unit">G</span>
+          </div>
+        </div>
+        <div class="cir-lean-panel">
+          <div class="cir-lean-title">LEANING ANGLE</div>
+          <div class="cir-lean-nums">
+            <span id="cir-lean-l" class="cir-lean-val">0°</span>
+            <span id="cir-lean-r" class="cir-lean-val">0°</span>
+          </div>
+          <div class="cir-lean-bars">
+            <div class="cir-bar-track"><div id="cir-bar-l" class="cir-bar-fill"></div></div>
+            <div class="cir-bar-track"><div id="cir-bar-r" class="cir-bar-fill cir-bar-r"></div></div>
+          </div>
+          <div class="cir-lr-lbl"><span>L</span><span>R</span></div>
+          <div class="cir-wind-mini">
+            <svg id="cir-wind-svg" viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="12" r="10" fill="none" stroke="rgba(41,217,255,0.2)" stroke-width="1"/><polygon id="cir-wind-poly" points="12,3 10,10 12,8.5 14,10" fill="#29d9ff"/></svg>
+            <span id="cir-wind-val" class="cir-wind-num">--</span><span class="cir-wind-lbl">km/h</span>
+          </div>
+        </div>
+      </div>
+      <div class="cir-ai-bar">
+        <div class="cir-ai-pill">AI</div>
+        <span id="cir-kirk-msg" class="cir-kirk-txt">RIDING ASSISTANT READY</span>
+      </div>
+      <div class="cir-ctrl">
+        <button id="btn-cir-exit"  class="cir-btn cir-btn-x">✕</button>
+        <button id="btn-cir-inv-r" class="cir-btn cir-btn-sm">↔ R</button>
+        <button id="btn-cir-inv-p" class="cir-btn cir-btn-sm">↕ P</button>
+        <button id="btn-cir-cal"   class="cir-btn cir-btn-sm">⊕</button>
+        <button id="btn-cir-ls"    class="cir-btn cir-btn-sm">⊞</button>
+        <div class="cir-ctrl-gap"></div>
+        <button id="btn-cir-mic"   class="cir-btn cir-btn-mic">🎤</button>
+        <button id="btn-cir-start" class="cir-btn cir-btn-go">▶ INICIO</button>
+        <button id="btn-cir-stop"  class="cir-btn cir-btn-stop" style="display:none">⏹ FIN</button>
+      </div>
     </div>
-    <!-- KITT bar -->
-    <div id="cir-kirk-wrap"><canvas id="cir-kitt-cv"></canvas></div>
-    <div id="cir-bottom">
-      <div class="cir-cell">
-        <div id="cir-g-val" class="cir-big">0.0<span class="cir-unit">G</span></div>
-        <div id="cir-g-bar-wrap"><div id="cir-g-bar"></div></div>
-        <div class="cir-lbl">G-FORCE</div>
-      </div>
-      <div class="cir-cell">
-        <svg id="cir-wind-svg" viewBox="0 0 28 28" width="28" height="28">
-          <circle cx="14" cy="14" r="12" fill="none" stroke="rgba(0,255,136,0.2)" stroke-width="1"/>
-          <polygon id="cir-wind-poly" points="14,3 11,12 14,10 17,12" fill="#00ff88"/>
-        </svg>
-        <div id="cir-wind-val" class="cir-med">--</div>
-        <div class="cir-lbl">VIENTO km/h</div>
-      </div>
-      <div class="cir-cell">
-        <div id="cir-roll-val" class="cir-big">0°</div>
-        <div class="cir-lbl">ROLL</div>
-      </div>
-      <div class="cir-cell">
-        <div id="cir-spd-val" class="cir-xl">0</div>
-        <div class="cir-lbl">km/h</div>
-      </div>
-    </div>
-    <button id="btn-cir-start" class="cir-start-btn">🏁 INICIO</button>
-    <button id="btn-cir-stop" class="cir-stop-btn" style="display:none">⏹ FIN</button>
-    <button id="btn-cir-exit" class="cir-exit-btn">✕</button>
-    <button id="btn-cir-ls" class="cir-ls-btn">⊞</button>
-    <button id="btn-cir-inv-r" class="cir-inv-btn">↔ R</button>
-    <button id="btn-cir-inv-p" class="cir-inv-btn cir-inv-p-btn">↕ P</button>
-    <button id="btn-cir-cal" class="cir-cal-btn">⊕ CAL</button>
-    <button id="btn-cir-mic" class="cir-mic-btn">🎤</button>
   </div>
 
 </div><!-- /app -->
