@@ -191,7 +191,8 @@ const App = {
   landscapeMode:    false,
   circuitMode:      false,
   circuitAlt:       null,
-  tiltFlip:         false,
+  rollFlip:         false,
+  pitchFlip:        false,
   sessionActive:    false,
   sessionStart:     null,
   sessionSamples:   [],
@@ -302,16 +303,17 @@ function updateRouteSpeedUI(speed) {
 }
 
 function updateGyroUI(roll, pitch, alpha) {
-  const dr = roll * (App.tiltFlip ? -1 : 1);  // display roll (may be flipped)
+  const dr = roll  * (App.rollFlip  ? -1 : 1);
+  const dp = pitch * (App.pitchFlip ? -1 : 1);
   const horizon = $('bike-horizon');
   if (horizon) horizon.style.transform = 'rotate(' + (-dr) + 'deg)';
-  setEl('gyro-roll',      (dr  > 0 ? '+' : '') + Math.round(dr)  + '°');
-  setEl('gyro-pitch',     (pitch > 0 ? '+' : '') + Math.round(pitch) + '°');
+  setEl('gyro-roll',      (dr > 0 ? '+' : '') + Math.round(dr) + '°');
+  setEl('gyro-pitch',     (dp > 0 ? '+' : '') + Math.round(dp) + '°');
   setEl('gyro-head',      Math.round(alpha) + '°');
-  updateAxisBar('bar-roll',  dr,  45);
-  updateAxisBar('bar-pitch', pitch, 45);
-  setEl('axis-roll-num',  (dr  > 0 ? '+' : '') + Math.round(dr)  + '°');
-  setEl('axis-pitch-num', (pitch > 0 ? '+' : '') + Math.round(pitch) + '°');
+  updateAxisBar('bar-roll',  dr, 45);
+  updateAxisBar('bar-pitch', dp, 45);
+  setEl('axis-roll-num',  (dr > 0 ? '+' : '') + Math.round(dr) + '°');
+  setEl('axis-pitch-num', (dp > 0 ? '+' : '') + Math.round(dp) + '°');
   const hudBar = $('hud-horizon-bar');
   if (hudBar) hudBar.style.transform = 'rotate(' + (-dr) + 'deg)';
   setEl('hud-roll-val', Math.abs(Math.round(dr)) + '°');
@@ -754,7 +756,7 @@ function toggleLandscapeMode() {
     setTimeout(() => App.leafletMap.invalidateSize(), 400);
   }
 
-  updateRollOverlay(App.gyroData.gamma || 0);
+  updateRollOverlay((App.gyroData.gamma || 0) * (App.rollFlip ? -1 : 1));
 }
 
 /* ═══════════════════════════════════════
@@ -1081,6 +1083,8 @@ function onCurveDetected(curve) {
     flash.className   = 'curve-flash show ' + (curve.dir === 'L' ? 'left' : 'right');
     setTimeout(() => flash.classList.remove('show'), 1500);
   }
+  // Kirk coaching: brief AI feedback on this curve (async, fire-and-forget)
+  setTimeout(() => kirkCurveCoach(curve), 800);
 }
 
 /* ═══════════════════════════════════════
@@ -1097,9 +1101,18 @@ function startSession() {
   App.gForce.peakBrake = 0;
   App.gForce.peakAccel = 0;
   App.gForce.peakLat   = 0;
+  _kirkHistory   = [];
+  _telBuffer     = [];
+  _telLastTs     = 0;
+  _kirkAutoListen = true;
   setEl('hud-curves-l', '0');
   setEl('hud-curves-r', '0');
   $('session-timer')?.classList.add('show');
+  // Init Kirk voice if not already done (route mode — circuit mode handles it in openCircuit)
+  if (!App.circuitMode) {
+    initKirkVoice();
+    setTimeout(() => { kirkSpeak('Kirk activo.'); }, 400);
+  }
   App.sessionTimer = setInterval(() => {
     const elapsed = Date.now() - App.sessionStart;
     const s = Math.floor(elapsed/1000)%60, m = Math.floor(elapsed/60000)%60, h = Math.floor(elapsed/3600000);
@@ -1113,6 +1126,16 @@ function startSession() {
       gLong: Math.round(App.gForce.long * 100) / 100,
       gLat:  Math.round(App.gForce.lat  * 100) / 100
     });
+    // Route mode: update telemetry buffer + run Kirk alerts every 2s
+    if (!App.circuitMode) {
+      const now = Date.now();
+      if (now - _telLastTs >= 2000) {
+        _telLastTs = now;
+        _telBuffer.push({ spd: Math.round(App.gpsSpeed||0), roll: Math.round(Math.abs(App.gyroData.gamma||0)), hdg: Math.round(App.gyroData.alpha||0), alt: App.circuitAlt||0 });
+        if (_telBuffer.length > 30) _telBuffer.shift();
+        kirkCheckAlerts();
+      }
+    }
   }, 1000);
 }
 
@@ -1120,6 +1143,8 @@ function pad(n) { return String(n).padStart(2,'0'); }
 
 function stopSession() {
   App.sessionActive = false;
+  _kirkAutoListen   = false;
+  _kirkStopListening();
   clearInterval(App.sessionTimer);
   $('session-timer')?.classList.remove('show');
   const report = buildReport();
@@ -1128,6 +1153,7 @@ function stopSession() {
   uploadRouteToRanking(report);
   renderReport(report);
   $('report-panel')?.classList.add('show');
+  setTimeout(() => kirkSessionSummary(report), 600);
 }
 
 /* ═══════════════════════════════════════
@@ -1251,47 +1277,54 @@ function doCalibrate() {
 let _cirRaf = null;
 
 /* ── Kirk state ── */
-let _kirkSpeaking    = false;
-let _kirkListening   = false;
-let _kirkAutoListen  = true;
-let _kirkKittPos     = 0;
-let _kirkKittDir     = 1;
-let _kirkLastCheck   = 0;
-let _kirkCooldowns   = {};
-let _kirkRec         = null;
-let _kirkHistory     = [];   // conversación con Groq
-let _telBuffer       = [];   // histórico telemetría (últimos 60s)
-let _telLastTs       = 0;
-let _kirkLocation    = null; // lugar actual (reverse geocode)
-let _kirkLocTs       = 0;
-
-function _kirkStopListening() {
-  if (_kirkListening && _kirkRec) {
-    try { _kirkRec.abort(); } catch(e) {}
-  }
-  _kirkListening = false;
-}
-
-function _kirkStartListening() {
-  if (!_kirkRec || !App.circuitMode || _kirkSpeaking || _kirkListening || !_kirkAutoListen) return;
-  try {
-    _kirkRec.start();
-    _kirkListening = true;
-    $('btn-cir-mic')?.classList.add('active');
-  } catch(e) {
-    _kirkListening = false;
-  }
-}
-
-let _kirkVoice = null;
+let _kirkSpeaking  = false;
+let _kirkListening = false;
+let _kirkAutoListen = true;
+let _kirkKittPos   = 0;
+let _kirkKittDir   = 1;
+let _kirkLastCheck = 0;
+let _kirkCooldowns = {};
+let _kirkRec       = null;
+let _kirkHistory   = [];
+let _telBuffer     = [];
+let _telLastTs     = 0;
+let _kirkLocation  = null;
+let _kirkLocTs     = 0;
+let _kirkVoice     = null;
 
 function _pickKirkVoice() {
   if (_kirkVoice) return _kirkVoice;
-  const voices = window.speechSynthesis.getVoices();
-  if (!voices.length) return null;
-  const saved = localStorage.getItem('bw_kirk_voice');
+  const voices = window.speechSynthesis?.getVoices() || [];
+  const saved  = localStorage.getItem('bw_kirk_voice');
   if (saved) { const v = voices.find(v => v.name === saved); if (v) { _kirkVoice = v; return v; } }
-  return null; // usa la voz por defecto del sistema
+  return null;
+}
+
+function _kirkShowMsg(text) {
+  [$('cir-kirk-msg'), $('hud-kirk-msg')].forEach(el => {
+    if (!el) return;
+    el.textContent = text;
+    el.classList.add('show');
+  });
+}
+
+function _kirkHideMsg() {
+  [$('cir-kirk-msg'), $('hud-kirk-msg')].forEach(el => {
+    if (el) el.classList.remove('show');
+  });
+}
+
+function _kirkStartListening() {
+  if (!_kirkRec || _kirkListening || _kirkSpeaking) return;
+  try { _kirkRec.start(); _kirkListening = true; $('btn-hud-mic')?.classList.add('active'); } catch(e) {}
+}
+
+function _kirkStopListening() {
+  if (!_kirkRec || !_kirkListening) return;
+  try { _kirkRec.stop(); } catch(e) {}
+  _kirkListening = false;
+  $('btn-hud-mic')?.classList.remove('active');
+  $('btn-cir-mic')?.classList.remove('active');
 }
 
 function kirkSpeak(text) {
@@ -1303,12 +1336,11 @@ function kirkSpeak(text) {
   const voice = _pickKirkVoice();
   if (voice) utt.voice = voice;
   _kirkSpeaking = true;
-  const msg = $('cir-kirk-msg');
-  if (msg) { msg.textContent = text; msg.classList.add('show'); }
+  _kirkShowMsg(text);
   utt.onend = () => {
     _kirkSpeaking = false;
-    if (msg) setTimeout(() => msg.classList.remove('show'), 2000);
-    setTimeout(_kirkStartListening, 400);
+    setTimeout(_kirkHideMsg, 2000);
+    if ((App.circuitMode || App.sessionActive) && _kirkAutoListen) setTimeout(_kirkStartListening, 400);
   };
   window.speechSynthesis.speak(utt);
 }
@@ -1323,7 +1355,7 @@ function _kirkCanAlert(key, ms) {
 }
 
 function kirkCheckAlerts() {
-  if (!App.circuitMode || !App.sessionActive) return;
+  if (!App.sessionActive) return;
   const spd  = App.gpsSpeed || 0;
   const roll = Math.abs(App.gyroData.gamma || 0);
   const totG = Math.sqrt((App.gForce?.long||0)**2 + (App.gForce?.lat||0)**2);
@@ -1340,50 +1372,31 @@ function _drawKitt(cv) {
   const W = cv.width, H = cv.height;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#050000'; ctx.fillRect(0, 0, W, H);
-
-  const spd = _kirkSpeaking ? 24 : 20;
+  const spd = _kirkSpeaking ? 5 : 2.5;
   _kirkKittPos += _kirkKittDir * spd;
-  _kirkKittPos = Math.max(8, Math.min(W - 8, _kirkKittPos));
   if (_kirkKittPos >= W - 8) _kirkKittDir = -1;
   if (_kirkKittPos <= 8)     _kirkKittDir = 1;
   const x = _kirkKittPos, cy = H / 2;
-
-  // 1. Baseline: thin red line across full width (dim, always visible)
-  ctx.fillStyle = 'rgba(180,0,0,0.55)';
-  ctx.fillRect(0, cy - 1, W, 2);
-
-  // 2. Tube glow: wide soft halo that expands the tube at the orb position
-  const haloW = _kirkSpeaking ? 120 : 90;
-  const halo = ctx.createLinearGradient(x - haloW, 0, x + haloW, 0);
-  halo.addColorStop(0,    'rgba(200,0,0,0)');
-  halo.addColorStop(0.35, 'rgba(220,20,0,0.25)');
-  halo.addColorStop(0.5,  'rgba(255,40,0,0.45)');
-  halo.addColorStop(0.65, 'rgba(220,20,0,0.25)');
-  halo.addColorStop(1,    'rgba(200,0,0,0)');
-  ctx.fillStyle = halo;
-  ctx.fillRect(x - haloW, 0, haloW * 2, H);
-
-  // 3. Tube body: the "inflated" red line — wider and brighter where the orb is
-  const tubeW = _kirkSpeaking ? 60 : 44;
-  const tube = ctx.createLinearGradient(x - tubeW, 0, x + tubeW, 0);
-  tube.addColorStop(0,    'rgba(200,0,0,0)');
-  tube.addColorStop(0.3,  'rgba(255,30,0,0.7)');
-  tube.addColorStop(0.5,  'rgba(255,60,10,1)');
-  tube.addColorStop(0.7,  'rgba(255,30,0,0.7)');
-  tube.addColorStop(1,    'rgba(200,0,0,0)');
-  ctx.fillStyle = tube;
-  ctx.fillRect(x - tubeW, cy - 3, tubeW * 2, 6);
-
-  // 4. Hot core: bright white-orange center point
-  const core = ctx.createLinearGradient(x - 14, 0, x + 14, 0);
-  core.addColorStop(0,   'rgba(255,80,0,0)');
-  core.addColorStop(0.5, 'rgba(255,220,180,1)');
-  core.addColorStop(1,   'rgba(255,80,0,0)');
-  ctx.fillStyle = core;
-  ctx.fillRect(x - 14, cy - 1, 28, 3);
+  const gW = _kirkSpeaking ? 110 : 70;
+  const outer = ctx.createRadialGradient(x, cy, 0, x, cy, gW);
+  outer.addColorStop(0, 'rgba(255,30,0,0.3)'); outer.addColorStop(1, 'rgba(255,30,0,0)');
+  ctx.fillStyle = outer; ctx.fillRect(x - gW, 0, gW * 2, H);
+  const core = ctx.createLinearGradient(x - 36, 0, x + 36, 0);
+  core.addColorStop(0, 'rgba(255,30,0,0)');
+  core.addColorStop(0.35, 'rgba(255,60,0,0.7)');
+  core.addColorStop(0.5, 'rgba(255,90,30,1)');
+  core.addColorStop(0.65, 'rgba(255,60,0,0.7)');
+  core.addColorStop(1, 'rgba(255,30,0,0)');
+  ctx.fillStyle = core; ctx.fillRect(x - 36, cy - 4, 72, 8);
+  const ctr = ctx.createLinearGradient(x - 10, 0, x + 10, 0);
+  ctr.addColorStop(0, 'rgba(255,100,0,0)');
+  ctr.addColorStop(0.5, 'rgba(255,210,160,1)');
+  ctr.addColorStop(1, 'rgba(255,100,0,0)');
+  ctx.fillStyle = ctr; ctx.fillRect(x - 10, cy - 2, 20, 4);
 }
 
 function initKirkVoice() {
+  if (_kirkRec) return;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) return;
   _kirkRec = new SR();
@@ -1396,32 +1409,26 @@ function initKirkVoice() {
   };
   _kirkRec.onend = () => {
     _kirkListening = false;
-    if (!_kirkAutoListen) $('btn-cir-mic')?.classList.remove('active');
-    // auto-restart unless Kirk is speaking or mode is off
-    if (App.circuitMode && _kirkAutoListen && !_kirkSpeaking) {
+    $('btn-cir-mic')?.classList.remove('active');
+    $('btn-hud-mic')?.classList.remove('active');
+    if ((App.circuitMode || App.sessionActive) && _kirkAutoListen && !_kirkSpeaking) {
       setTimeout(_kirkStartListening, 300);
     }
   };
   _kirkRec.onerror = e => {
     _kirkListening = false;
-    // 'no-speech' is normal silence — restart quietly; other errors back off longer
     const delay = e.error === 'no-speech' ? 300 : 1500;
-    if (App.circuitMode && _kirkAutoListen && !_kirkSpeaking) {
+    if ((App.circuitMode || App.sessionActive) && _kirkAutoListen && !_kirkSpeaking) {
       setTimeout(_kirkStartListening, delay);
     }
   };
-}
-
-function _kirkShowMsg(text) {
-  const msg = $('cir-kirk-msg');
-  if (msg) { msg.textContent = text; msg.classList.add('show'); }
 }
 
 async function _updateKirkLocation() {
   const pos = App.position;
   if (!pos) return;
   const now = Date.now();
-  if (now - _kirkLocTs < 30000) return; // cache 30s
+  if (now - _kirkLocTs < 30000) return;
   _kirkLocTs = now;
   try {
     const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.lat}&lon=${pos.lon}&format=json&accept-language=es`, { headers: { 'User-Agent': 'BikerWeather/1.0' } });
@@ -1434,83 +1441,110 @@ async function _updateKirkLocation() {
 async function askKirk(userText) {
   const key = localStorage.getItem('bw_groq_key');
   _kirkShowMsg('🎤 ' + userText);
-  if (!key) {
-    kirkSpeak('Necesito una API key de Groq. Configúrala en ajustes.');
-    return;
-  }
-
-  _kirkShowMsg('⏳ ' + userText);
+  if (!key) { kirkSpeak('Necesito una API key de Groq. Configúrala en ajustes.'); return; }
+  _kirkShowMsg('⏳');
   _kirkHistory.push({ role: 'user', content: userText });
   if (_kirkHistory.length > 12) _kirkHistory = _kirkHistory.slice(-12);
-
   await _updateKirkLocation();
-
-  const spd  = Math.round(App.gpsSpeed || 0);
-  const roll = Math.round(Math.abs(App.gyroData.gamma || 0));
-  const hdg  = Math.round(App.gyroData.alpha || 0);
-  const alt  = App.circuitAlt || 0;
-  const pos  = App.position;
-  const locLine = _kirkLocation ? `Ubicación: ${_kirkLocation}.` : pos ? `Coordenadas: ${pos.lat.toFixed(5)},${pos.lon.toFixed(5)}.` : '';
+  const spd   = Math.round(App.gpsSpeed || 0);
+  const roll  = Math.round(Math.abs(App.gyroData.gamma || 0));
+  const hdg   = Math.round(App.gyroData.alpha || 0);
+  const alt   = App.circuitAlt || 0;
+  const pos   = App.position;
+  const locLine = _kirkLocation ? `Ubicación: ${_kirkLocation}.` : pos ? `Coords: ${pos.lat.toFixed(4)},${pos.lon.toFixed(4)}.` : '';
   const gLong = App.gForce?.long ? App.gForce.long.toFixed(2) : '0.00';
-  const gLat  = App.tiltFilter?.gpsLean ? App.tiltFilter.gpsLean.toFixed(1) : roll;
   const wea   = App.weather;
-  const weaLine = wea ? `Temperatura: ${wea.temp}°C, viento: ${Math.round(wea.windSpeed)}km/h. Sensación térmica: ${App.windChill ?? wea.temp}°C.` : '';
-  const telemetry = `${locLine} Telemetría: ${spd}km/h, inclinación ${roll}°, G longitudinal ${gLong}g, rumbo ${hdg}°, altitud ${alt}m. ${weaLine}`;
-
+  const weaLine = wea ? `Temp: ${wea.temp}°C, viento: ${Math.round(wea.windSpeed)}km/h, sensación: ${App.windChill ?? wea.temp}°C.` : '';
+  const telemetry = `${locLine} ${spd}km/h, inclinación ${roll}°, G longitudinal ${gLong}g, rumbo ${hdg}°, altitud ${alt}m. ${weaLine}`;
   let histLine = '';
   if (_telBuffer.length >= 3) {
     const spds  = _telBuffer.map(p => p.spd);
     const rolls = _telBuffer.map(p => p.roll);
-    const maxSpd  = Math.max(...spds);
-    const avgSpd  = Math.round(spds.reduce((a,b) => a+b,0) / spds.length);
-    const maxRoll = Math.max(...rolls);
-    const avgRoll = Math.round(rolls.reduce((a,b) => a+b,0) / rolls.length);
-    const secs    = _telBuffer.length * 2;
-    histLine = ` Últimos ${secs}s: velocidad media ${avgSpd}km/h (pico ${maxSpd}), inclinación media ${avgRoll}° (pico ${maxRoll}°).`;
+    histLine = ` Últimos ${_telBuffer.length*2}s: vel media ${Math.round(spds.reduce((a,b)=>a+b,0)/spds.length)}km/h (pico ${Math.max(...spds)}), incl media ${Math.round(rolls.reduce((a,b)=>a+b,0)/rolls.length)}° (pico ${Math.max(...rolls)}°).`;
   }
-
-  const system = `Eres Kirk, copiloto IA de BikerWeather, una app de telemetría para motociclistas. \
-Respondes en español, siempre en 1-2 frases cortas y directas. \
-Personalidad: profesional, alerta, ocasionalmente irónico como un copiloto de rally. \
-${telemetry}${histLine}`;
-
+  const system = `Eres Kirk, copiloto IA de BikerWeather para motociclistas. Respondes en español, en 1-2 frases cortas y directas. Profesional, alerta, ocasionalmente irónico como copiloto de rally. Telemetría actual: ${telemetry}${histLine}`;
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{ role: 'system', content: system }, ..._kirkHistory],
-        max_tokens: 80,
-        temperature: 0.7
-      })
+      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role:'system', content:system }, ..._kirkHistory], max_tokens: 80, temperature: 0.7 })
     });
     const data = await res.json();
     const reply = data.choices?.[0]?.message?.content?.trim();
-    if (reply) {
-      _kirkHistory.push({ role: 'assistant', content: reply });
-      kirkSpeak(reply);
-    } else {
-      const errDetail = data.error?.message || 'Sin respuesta';
-      _kirkShowMsg('❌ ' + errDetail);
-      kirkSpeak('Error: ' + errDetail);
-    }
+    if (reply) { _kirkHistory.push({ role:'assistant', content:reply }); kirkSpeak(reply); }
+    else { _kirkShowMsg('❌ ' + (data.error?.message || 'Sin respuesta')); setTimeout(_kirkStartListening, 500); }
   } catch(e) {
-    _kirkShowMsg('❌ ' + e.message);
-    kirkSpeak('Error de conexión con Groq.');
+    _kirkShowMsg('❌ Sin conexión');
+    setTimeout(_kirkStartListening, 1000);
+  }
+}
+
+async function kirkCurveCoach(curve) {
+  if (!App.sessionActive) return;
+  if (curve.maxAngle < 15) return;
+  if (!_kirkCanAlert('curveCoach', 20000)) return;
+  const key = localStorage.getItem('bw_groq_key');
+  if (!key) return;
+  const dir = curve.dir === 'L' ? 'izquierda' : 'derecha';
+  const spd = Math.round(curve.speed || 0);
+  const system = `Eres Kirk, copiloto IA de BikerWeather para motociclistas. Respondes siempre en español. Das feedback técnico sobre la última curva en exactamente 1 frase muy corta y directa, como un copiloto de rally.`;
+  const prompt = `Curva a la ${dir}, inclinación máxima ${curve.maxAngle}°, velocidad ${spd}km/h, duración ${curve.duration}s. Curva número ${App.sessionCurves.length} de la sesión. Feedback técnico en 1 frase.`;
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role:'system', content:system },{ role:'user', content:prompt }], max_tokens: 50, temperature: 0.7 })
+    });
+    const data = await res.json();
+    const reply = data.choices?.[0]?.message?.content?.trim();
+    if (reply) kirkSpeak(reply);
+  } catch(e) { /* silent */ }
+}
+
+async function kirkSessionSummary(report) {
+  if (!report) return;
+  const dur    = report.meta.durationFmt;
+  const maxSpd = Math.round(report.speed.max);
+  const avgSpd = Math.round(report.speed.avg);
+  const curves = report.curves.total;
+  const maxAng = report.curves.maxAngle;
+  const avgAng = report.curves.avgAngle;
+  const peakBrk = report.gForces.peakBraking;
+  const peakAcc = report.gForces.peakAccel;
+  const peakLat = report.gForces.peakLateral;
+  const key = localStorage.getItem('bw_groq_key');
+  if (!key) {
+    kirkSpeak(`Sesión de ${dur}. ${curves} curvas, pico ${maxSpd} kilómetros por hora, inclinación máxima ${maxAng} grados.`);
+    return;
+  }
+  const system = `Eres Kirk, copiloto IA de BikerWeather para motociclistas. Respondes en español en 2 frases cortas. Eres profesional, directo, con un toque de ironía como un copiloto de rally. Haz el resumen valorativo de la sesión.`;
+  const prompt = `Sesión completada. Duración: ${dur}. Velocidad máxima: ${maxSpd}km/h, media: ${avgSpd}km/h. Curvas: ${curves} (máx inclinación ${maxAng}°, media ${avgAng}°). G frenada pico: ${peakBrk}g, aceleración pico: ${peakAcc}g, lateral pico: ${peakLat}g. Resumen en 2 frases.`;
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role:'system', content:system },{ role:'user', content:prompt }], max_tokens: 120, temperature: 0.75 })
+    });
+    const data = await res.json();
+    const reply = data.choices?.[0]?.message?.content?.trim();
+    if (reply) kirkSpeak(reply);
+    else kirkSpeak(`Sesión de ${dur}. ${curves} curvas, pico ${maxSpd} kilómetros por hora.`);
+  } catch(e) {
+    kirkSpeak(`Sesión de ${dur}. ${curves} curvas, pico ${maxSpd} kilómetros por hora.`);
   }
 }
 
 function handleKirkCommand(text) {
-  // Match whole words only to avoid false triggers ("para mí", "al final", "resulta"...)
   const w = text.trim().split(/\s+/);
-  const has = (...keys) => w.some(word => keys.some(k => word === k || word.startsWith(k + ' ')));
-
-  if (has('calibra', 'calibrar', 'calibr'))                              { doCalibrate(); return; }
-  if (has('inicio', 'iniciar', 'start', 'arranca', 'arrancar') && !App.sessionActive) { startCircuitSession(); return; }
-  if (has('parar', 'para', 'stop', 'fin', 'finalizar', 'terminar') && App.sessionActive && w.length <= 3) { stopCircuitSession(); return; }
-  if (has('salir', 'cerrar', 'exit') && w.length <= 3)                  { closeCircuit(); return; }
-  // Cualquier otra frase → Groq
+  const has = (...keys) => w.some(word => keys.some(k => word === k || word.startsWith(k)));
+  if (has('calibra', 'calibrar', 'calibr')) { doCalibrate(); return; }
+  if (App.circuitMode) {
+    if (has('inicio', 'iniciar', 'start', 'arranca', 'arrancar') && !App.sessionActive) { startCircuitSession(); return; }
+    if (has('parar', 'para', 'stop', 'fin', 'finalizar', 'terminar') && App.sessionActive && w.length <= 3) { stopCircuitSession(); return; }
+    if (has('salir', 'cerrar', 'exit') && w.length <= 3) { closeCircuit(); return; }
+  } else if (App.sessionActive) {
+    if (has('parar', 'para', 'stop', 'fin', 'finalizar', 'terminar') && w.length <= 3) { stopSession(); return; }
+  }
   askKirk(text);
 }
 
@@ -1521,15 +1555,16 @@ function cirColor(v, warn, danger) {
 }
 
 function openCircuit() {
-  App.circuitMode = true;
-  _kirkKittPos = 0; _kirkKittDir = 1; _kirkCooldowns = {};
-  _kirkAutoListen = true; _kirkListening = false; _kirkHistory = []; _telBuffer = []; _telLastTs = 0;
+  App.circuitMode  = true;
+  _kirkKittPos     = 0; _kirkKittDir = 1; _kirkCooldowns = {};
+  _kirkHistory     = []; _telBuffer = []; _telLastTs = 0;
+  _kirkAutoListen  = true; _kirkListening = false;
   document.body.classList.add('circuit-active');
   const ov = $('circuit-overlay');
   if (ov) ov.classList.add('active');
   $('btn-cir-ls')?.classList.toggle('active', App.landscapeMode);
-  $('btn-cir-inv')?.classList.toggle('active', App.tiltFlip);
-  $('btn-cir-mic')?.classList.add('active');
+  $('btn-cir-inv-r')?.classList.toggle('active', App.rollFlip);
+  $('btn-cir-inv-p')?.classList.toggle('active', App.pitchFlip);
   initKirkVoice();
   setTimeout(() => {
     resizeCircuitCanvases();
@@ -1539,15 +1574,15 @@ function openCircuit() {
 }
 
 function closeCircuit() {
-  if (App.sessionActive) stopSession();
-  App.circuitMode = false;
   _kirkAutoListen = false;
   _kirkStopListening();
+  if (App.sessionActive) stopSession();
+  App.circuitMode = false;
   document.body.classList.remove('circuit-active');
   $('circuit-overlay')?.classList.remove('active');
   if (_cirRaf) { cancelAnimationFrame(_cirRaf); _cirRaf = null; }
   window.speechSynthesis?.cancel();
-  _kirkRec = null;
+  _kirkRec = null; _kirkListening = false;
 }
 
 function startCircuitSession() {
@@ -1560,10 +1595,9 @@ function startCircuitSession() {
 }
 
 function stopCircuitSession() {
-  kirkSpeak('Sesión finalizada. Informe disponible.');
-  setTimeout(() => stopSession(), 1200);
   $('btn-cir-start').style.display = 'flex';
   $('btn-cir-stop').style.display  = 'none';
+  stopSession();
 }
 
 function resizeCircuitCanvases() {
@@ -1585,31 +1619,19 @@ function resizeCircuitCanvases() {
 
 function _cirLoop() {
   if (!App.circuitMode) return;
-  try {
-    const flip  = App.tiltFlip ? -1 : 1;
-    const roll  = (App.gyroData.gamma || 0) * flip;
-    const pitch = (App.gyroData.beta  || 0) * flip;
-    const hdg   = App.gyroData.alpha || 0;
-    const spd   = App.gpsSpeed       || 0;
-    const alt   = App.circuitAlt     || 0;
-    _drawHdgTape($('cir-hdg-cv'), hdg);
-    _drawVTape($('cir-spd-cv'), spd, 0, 240, 20, 10, 'km/h', false);
-    _drawVTape($('cir-alt-cv'), alt, Math.max(0, alt-100), alt+100, 50, 25, 'm', true);
-    _drawAHI($('cir-ahi-cv'), roll, pitch);
-    _drawKitt($('cir-kitt-cv'));
-    _updateCirBottom(roll, spd);
-    const now = Date.now();
-    if (now - _kirkLastCheck > 2000) {
-      _kirkLastCheck = now;
-      kirkCheckAlerts();
-      // Grabar telemetría cada 2s (máx 30 puntos = 60s)
-      if (now - _telLastTs >= 2000) {
-        _telLastTs = now;
-        _telBuffer.push({ spd: Math.round(App.gpsSpeed||0), roll: Math.round(Math.abs(App.gyroData.gamma||0)), hdg: Math.round(App.gyroData.alpha||0), alt: App.circuitAlt||0 });
-        if (_telBuffer.length > 30) _telBuffer.shift();
-      }
-    }
-  } catch(e) { /* keep loop alive on any render error */ }
+  const roll  = (App.gyroData.gamma || 0) * (App.rollFlip  ? -1 : 1);
+  const pitch = (App.gyroData.beta  || 0) * (App.pitchFlip ? -1 : 1);
+  const hdg   = App.gyroData.alpha || 0;
+  const spd   = App.gpsSpeed       || 0;
+  const alt   = App.circuitAlt     || 0;
+  _drawHdgTape($('cir-hdg-cv'), hdg);
+  _drawVTape($('cir-spd-cv'), spd, 0, 240, 20, 10, 'km/h', false);
+  _drawVTape($('cir-alt-cv'), alt, Math.max(0, alt-100), alt+100, 50, 25, 'm', true);
+  _drawAHI($('cir-ahi-cv'), roll, pitch);
+  _drawKitt($('cir-kitt-cv'));
+  _updateCirBottom(roll, spd);
+  const now = Date.now();
+  if (now - _kirkLastCheck > 2000) { _kirkLastCheck = now; kirkCheckAlerts(); }
   _cirRaf = requestAnimationFrame(_cirLoop);
 }
 
@@ -2152,25 +2174,32 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-cir-ls')?.addEventListener('click', () => { toggleLandscapeMode(); $('btn-cir-ls')?.classList.toggle('active', App.landscapeMode); });
   $('btn-cir-mic')?.addEventListener('click', () => {
     if (!_kirkRec) { toast('Voz no disponible', 'info'); return; }
-    _kirkAutoListen = !_kirkAutoListen;
-    $('btn-cir-mic')?.classList.toggle('active', _kirkAutoListen);
-    if (_kirkAutoListen) {
-      _kirkStartListening();
-    } else {
-      _kirkStopListening();
-    }
+    $('btn-cir-mic').classList.add('active');
+    try { _kirkRec.start(); } catch(e) { $('btn-cir-mic').classList.remove('active'); }
   });
-  $('btn-tilt-flip')?.addEventListener('click', () => {
-    App.tiltFlip = !App.tiltFlip;
-    $('btn-tilt-flip')?.classList.toggle('active', App.tiltFlip);
-    $('btn-cir-inv')?.classList.toggle('active', App.tiltFlip);
-    toast(App.tiltFlip ? 'Inclinación invertida ↕' : 'Inclinación normal ↕', 'info');
+  $('btn-roll-flip')?.addEventListener('click', () => {
+    App.rollFlip = !App.rollFlip;
+    $('btn-roll-flip')?.classList.toggle('active', App.rollFlip);
+    $('btn-cir-inv-r')?.classList.toggle('active', App.rollFlip);
+    toast(App.rollFlip ? 'Roll invertido' : 'Roll normal', 'info');
   });
-  $('btn-cir-inv')?.addEventListener('click', () => {
-    App.tiltFlip = !App.tiltFlip;
-    $('btn-cir-inv')?.classList.toggle('active', App.tiltFlip);
-    $('btn-tilt-flip')?.classList.toggle('active', App.tiltFlip);
-    if (App.circuitMode) kirkSpeak(App.tiltFlip ? 'Invertido.' : 'Normal.');
+  $('btn-pitch-flip')?.addEventListener('click', () => {
+    App.pitchFlip = !App.pitchFlip;
+    $('btn-pitch-flip')?.classList.toggle('active', App.pitchFlip);
+    $('btn-cir-inv-p')?.classList.toggle('active', App.pitchFlip);
+    toast(App.pitchFlip ? 'Pitch invertido' : 'Pitch normal', 'info');
+  });
+  $('btn-cir-inv-r')?.addEventListener('click', () => {
+    App.rollFlip = !App.rollFlip;
+    $('btn-cir-inv-r')?.classList.toggle('active', App.rollFlip);
+    $('btn-roll-flip')?.classList.toggle('active', App.rollFlip);
+    if (App.circuitMode) kirkSpeak(App.rollFlip ? 'Roll invertido.' : 'Roll normal.');
+  });
+  $('btn-cir-inv-p')?.addEventListener('click', () => {
+    App.pitchFlip = !App.pitchFlip;
+    $('btn-cir-inv-p')?.classList.toggle('active', App.pitchFlip);
+    $('btn-pitch-flip')?.classList.toggle('active', App.pitchFlip);
+    if (App.circuitMode) kirkSpeak(App.pitchFlip ? 'Pitch invertido.' : 'Pitch normal.');
   });
 
   // Wake Lock
@@ -2183,6 +2212,39 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.addEventListener('online',  () => { const b=$('offline-banner'); if(b) b.classList.remove('show'); });
   window.addEventListener('offline', () => { const b=$('offline-banner'); if(b) b.classList.add('show'); });
 
+  // Kirk / Groq
+  const savedGroqKey = localStorage.getItem('bw_groq_key');
+  if (savedGroqKey) { const gk=$('groq-api-key'); if(gk) gk.value=savedGroqKey; }
+  $('btn-save-groq')?.addEventListener('click', () => {
+    const key = $('groq-api-key')?.value?.trim();
+    if (!key) { localStorage.removeItem('bw_groq_key'); toast('API key eliminada', 'info'); return; }
+    if (!key.startsWith('gsk_')) { toast('La key debe empezar por gsk_', 'error'); return; }
+    localStorage.setItem('bw_groq_key', key);
+    toast('Groq API key guardada ✓', 'ok');
+  });
+  const populateVoicePicker = () => {
+    const sel = $('kirk-voice-select');
+    if (!sel) return;
+    const voices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('es'));
+    const saved  = localStorage.getItem('bw_kirk_voice');
+    sel.innerHTML = '<option value="">— Sistema por defecto —</option>' +
+      voices.map(v => `<option value="${v.name}"${v.name===saved?' selected':''}>${v.name}</option>`).join('');
+  };
+  window.speechSynthesis?.addEventListener('voiceschanged', populateVoicePicker);
+  populateVoicePicker();
+  $('kirk-voice-select')?.addEventListener('change', e => {
+    const val = e.target.value;
+    _kirkVoice = null;
+    if (val) localStorage.setItem('bw_kirk_voice', val); else localStorage.removeItem('bw_kirk_voice');
+  });
+  $('btn-test-voice')?.addEventListener('click', () => { _kirkVoice = null; kirkSpeak('Kirk activo. Copiloto listo.'); });
+
+  // Ruta: botón mic Kirk
+  $('btn-hud-mic')?.addEventListener('click', () => {
+    if (!_kirkRec) { toast('Voz no disponible', 'info'); return; }
+    if (_kirkListening) _kirkStopListening(); else _kirkStartListening();
+  });
+
   // Moto
   const savedBike = localStorage.getItem('bw_bike_model');
   if (savedBike) { const bm=$('bike-model'); if(bm) bm.value=savedBike; const bs=$('bike-status'); if(bs) bs.textContent='✓ '+savedBike; }
@@ -2192,48 +2254,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     localStorage.setItem('bw_bike_model', model);
     const bs=$('bike-status'); if(bs) bs.textContent='✓ '+model;
     toast('Moto guardada ✓', 'ok');
-  });
-
-  // Kirk voice selector
-  function _populateVoices() {
-    const sel = $('kirk-voice-select');
-    if (!sel) return;
-    const voices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('es'));
-    if (!voices.length) return;
-    const saved = localStorage.getItem('bw_kirk_voice');
-    // Keep the "Automática" option
-    while (sel.options.length > 1) sel.remove(1);
-    voices.forEach(v => {
-      const opt = document.createElement('option');
-      opt.value = v.name;
-      opt.textContent = v.name + (v.localService ? ' 📱' : ' ☁️');
-      if (v.name === saved) opt.selected = true;
-      sel.appendChild(opt);
-    });
-  }
-  _populateVoices();
-  window.speechSynthesis.onvoiceschanged = _populateVoices;
-  $('kirk-voice-select')?.addEventListener('change', e => {
-    const name = e.target.value;
-    localStorage.setItem('bw_kirk_voice', name);
-    _kirkVoice = null; // reset cache
-  });
-  $('btn-test-voice')?.addEventListener('click', () => {
-    kirkSpeak('Soy Kirk, tu copiloto. Todo bajo control.');
-  });
-
-  // Groq API key
-  const savedGroq = localStorage.getItem('bw_groq_key');
-  if (savedGroq) {
-    const el = $('groq-api-key'); if (el) el.value = savedGroq;
-    const st = $('groq-key-status'); if (st) st.textContent = '✓ API key guardada';
-  }
-  $('btn-save-groq')?.addEventListener('click', () => {
-    const key = $('groq-api-key')?.value?.trim();
-    if (!key || !key.startsWith('gsk_')) { toast('Introduce una key válida (empieza por gsk_)', 'info'); return; }
-    localStorage.setItem('bw_groq_key', key);
-    const st = $('groq-key-status'); if (st) st.textContent = '✓ API key guardada';
-    toast('Groq API key guardada ✓', 'ok');
   });
 
   // Emergencia
