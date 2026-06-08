@@ -1481,6 +1481,8 @@ body.landscape-mode .btn-map-landscape {
 /* ═══════════════════════════════════════════════════════════
    CIRCUIT HUD — Premium Dashboard
    ═══════════════════════════════════════════════════════════ */
+:root { --cir-h: 20; }   /* accent hue: 0=red, 20=orange, 120=green, 200=blue, 270=purple */
+
 #circuit-overlay {
   display: none;
   position: fixed;
@@ -1612,24 +1614,27 @@ body.circuit-active .location-bar { display: none !important; }
   width: 100%; padding: 0 4px;
 }
 .cir-lean-val {
-  font-size: 22px; font-weight: 700; color: #ffb300;
-  text-shadow: 0 0 12px rgba(255,179,0,0.45);
-  transition: color 0.2s;
+  font-size: 22px; font-weight: 700;
+  color: hsl(var(--cir-h), 100%, 62%);
+  text-shadow: 0 0 14px hsla(var(--cir-h), 100%, 60%, 0.5);
+  transition: color 0.2s, text-shadow 0.2s;
 }
-.cir-lean-bars { display: flex; gap: 8px; align-items: flex-end; height: 65px; }
+.cir-lean-bars { display: flex; gap: 8px; align-items: flex-end; height: 82px; }
 .cir-bar-track {
-  width: 16px; height: 65px;
-  background: rgba(255,179,0,0.07);
-  border: 1px solid rgba(255,179,0,0.18);
+  width: 20px; height: 82px;
+  background: hsla(var(--cir-h), 100%, 50%, 0.06);
+  border: 1px solid hsla(var(--cir-h), 100%, 55%, 0.22);
   border-radius: 2px; overflow: hidden;
   display: flex; flex-direction: column; justify-content: flex-end;
 }
 .cir-bar-fill {
   width: 100%; height: 0%;
-  background: linear-gradient(to top, #ff5500, #ffb300);
+  background: linear-gradient(to top,
+    hsl(var(--cir-h), 100%, 50%),
+    hsl(calc(var(--cir-h) + 28), 100%, 64%));
   border-radius: 2px 2px 0 0;
   transition: height 0.1s ease-out;
-  box-shadow: 0 0 8px rgba(255,100,0,0.45);
+  box-shadow: 0 0 10px hsla(var(--cir-h), 100%, 55%, 0.5);
 }
 .cir-lr-lbl {
   display: flex; justify-content: space-between;
@@ -1680,8 +1685,8 @@ body.circuit-active .location-bar { display: none !important; }
 .cir-ctrl-gap { flex: 1; }
 .cir-btn {
   background: rgba(4,5,10,0.92);
-  border: 1px solid rgba(255,255,255,0.07);
-  color: rgba(255,255,255,0.28);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.62);
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px; font-weight: 700;
   letter-spacing: 0.5px; cursor: pointer;
@@ -1689,10 +1694,35 @@ body.circuit-active .location-bar { display: none !important; }
   display: flex; align-items: center; justify-content: center;
   transition: border-color 0.15s, color 0.15s;
 }
-.cir-btn-x { border-color: rgba(255,34,85,0.18); color: rgba(255,34,85,0.38); width: 32px; }
-.cir-btn-x:active { color: #ff2255; border-color: rgba(255,34,85,0.5); }
+.cir-btn:active { color: #fff; border-color: rgba(255,255,255,0.35); }
+.cir-btn-x { border-color: rgba(255,60,60,0.35); color: rgba(255,100,100,0.7); width: 32px; }
+.cir-btn-x:active { color: #ff4466; border-color: rgba(255,34,85,0.6); }
 .cir-btn-sm { font-size: 9px; padding: 0 7px; }
-.cir-btn-sm.active { border-color: rgba(255,179,0,0.5); color: #ffb300; }
+.cir-btn-sm.active {
+  border-color: hsl(var(--cir-h), 80%, 55%);
+  color: hsl(var(--cir-h), 100%, 68%);
+}
+
+/* Hue slider */
+.cir-hue-slider {
+  width: 52px; height: 4px;
+  -webkit-appearance: none; appearance: none;
+  border-radius: 2px; cursor: pointer; outline: none;
+  background: linear-gradient(to right,
+    hsl(0,90%,55%), hsl(40,90%,55%), hsl(90,90%,50%),
+    hsl(180,90%,45%), hsl(240,90%,60%), hsl(300,90%,55%), hsl(360,90%,55%));
+  border: 1px solid rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+.cir-hue-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: hsl(var(--cir-h), 100%, 62%);
+  border: 2px solid rgba(255,255,255,0.8);
+  box-shadow: 0 0 6px hsla(var(--cir-h), 100%, 55%, 0.7);
+  cursor: pointer;
+}
 .cir-btn-mic {
   font-size: 15px; width: 36px;
   border-color: rgba(180,0,0,0.22); color: rgba(255,60,30,0.42);
@@ -1727,8 +1757,8 @@ body.circuit-active .location-bar { display: none !important; }
 body.landscape-mode .cir-arc-strip  { height: 72px; }
 body.landscape-mode .cir-big-spd    { font-size: clamp(55px, 17vh, 115px); }
 body.landscape-mode .cir-gear-val   { font-size: 28px; }
-body.landscape-mode .cir-lean-bars  { height: 42px; }
-body.landscape-mode .cir-bar-track  { height: 42px; }
+body.landscape-mode .cir-lean-bars  { height: 52px; }
+body.landscape-mode .cir-bar-track  { height: 52px; }
 body.landscape-mode .cir-lean-val   { font-size: 18px; }
 body.landscape-mode .cir-left-panel,
 body.landscape-mode .cir-lean-panel { width: 78px; }

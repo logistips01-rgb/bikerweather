@@ -2473,6 +2473,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Ranking
   $('btn-reload-ranking')?.addEventListener('click', loadRanking);
 
+  // Circuit HUD accent hue
+  const savedHue = localStorage.getItem('bw_cir_hue') || '20';
+  document.documentElement.style.setProperty('--cir-h', savedHue);
+  const hueSlider = $('cir-hue');
+  if (hueSlider) {
+    hueSlider.value = savedHue;
+    hueSlider.addEventListener('input', e => {
+      document.documentElement.style.setProperty('--cir-h', e.target.value);
+      localStorage.setItem('bw_cir_hue', e.target.value);
+    });
+  }
+
   // GPS + Gyro + Slider
   startGPS();
   startGyro();
