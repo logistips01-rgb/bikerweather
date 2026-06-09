@@ -1647,56 +1647,57 @@ function _drawSpeedArc(cv, spd) {
   const EA     = Math.atan2(END_Y - CY, (W - MARGIN) - CX);
   let sweep    = EA - SA; if (sweep < 0) sweep += 2 * Math.PI;
 
-  // ── OUTER ARC: RPM (0–12000) ─────────────────────────────────────────────
-  const MAX_RPM = 12000;
-  const rpm     = App.obd2Rpm || 0;
-  const rpmFrac = Math.min(Math.max(rpm, 0) / MAX_RPM, 1);
+  // ── OUTER ARC: RPM segmented (0–12000) ──────────────────────────────────
+  const MAX_RPM  = 12000;
+  const rpm      = App.obd2Rpm || 0;
+  const N_SEGS   = 24;
+  const SEG_SPAN = sweep / N_SEGS;
+  const SEG_GAP  = SEG_SPAN * 0.20;
+  const SEG_ARC  = SEG_SPAN - SEG_GAP;
 
-  // Background track
-  ctx.beginPath(); ctx.arc(CX, CY, R_OUT, SA, EA);
-  ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 17; ctx.lineCap = 'butt'; ctx.stroke();
+  for (let i = 0; i < N_SEGS; i++) {
+    const segA0  = SA + i * SEG_SPAN + SEG_GAP / 2;
+    const segA1  = segA0 + SEG_ARC;
+    const active = rpm >= (i / N_SEGS * MAX_RPM);
+    const red    = i >= 20;   // 10000+ RPM
+    const warm   = i >= 16;   // 8000+ RPM
 
-  // RPM ticks — 12 major (every 1000 RPM), minor every 500
-  for (let i = 0; i <= 24; i++) {
-    const a   = SA + sweep * (i / 24);
-    const maj = i % 2 === 0;
-    const redZone = (i / 24) >= (10000 / MAX_RPM);
-    const r1  = R_OUT - (maj ? 20 : 11);
-    const r2  = R_OUT - 8;
-    const c = Math.cos(a), s = Math.sin(a);
-    ctx.beginPath(); ctx.moveTo(CX + r1*c, CY + r1*s); ctx.lineTo(CX + r2*c, CY + r2*s);
-    ctx.strokeStyle = redZone ? (maj ? 'rgba(255,40,40,0.75)' : 'rgba(255,40,40,0.35)')
-                               : (maj ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.18)');
-    ctx.lineWidth = maj ? 1.5 : 1; ctx.lineCap = 'butt'; ctx.stroke();
-    if (maj) {
-      const lbl = (i / 2).toString();
-      const rt  = R_OUT - 42;
-      ctx.fillStyle = redZone ? 'rgba(255,80,80,0.95)' : 'rgba(255,255,255,0.85)';
-      ctx.font = 'bold 16px Rajdhani,Arial,sans-serif';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      if (!redZone) { ctx.shadowColor = 'rgba(255,255,255,0.4)'; ctx.shadowBlur = 6; }
-      else          { ctx.shadowColor = 'rgba(255,60,60,0.6)';   ctx.shadowBlur = 8; }
-      ctx.fillText(lbl, CX + rt*Math.cos(a), CY + rt*Math.sin(a));
+    ctx.beginPath(); ctx.arc(CX, CY, R_OUT, segA0, segA1);
+    ctx.lineWidth = 14; ctx.lineCap = 'butt';
+
+    if (active) {
+      const t = i / 20;
+      if (red) {
+        ctx.strokeStyle = i >= 22 ? '#ff0022' : '#ff2200';
+        ctx.shadowColor = 'rgba(255,0,30,0.9)'; ctx.shadowBlur = 12;
+      } else if (warm) {
+        ctx.strokeStyle = '#ff5500';
+        ctx.shadowColor = 'rgba(255,85,0,0.7)'; ctx.shadowBlur = 9;
+      } else {
+        const hue = t < 0.55 ? 120 - (t / 0.55) * 90
+                              : 30  - ((t - 0.55) / 0.45) * 30;
+        ctx.strokeStyle = `hsl(${hue},100%,52%)`;
+        ctx.shadowColor = `hsla(${hue},100%,55%,0.5)`; ctx.shadowBlur = 7;
+      }
+    } else {
+      ctx.strokeStyle = red ? 'rgba(255,30,30,0.20)' : 'rgba(255,255,255,0.07)';
       ctx.shadowBlur = 0;
     }
+    ctx.stroke(); ctx.shadowBlur = 0;
   }
 
-  // RPM fill (only when Carber connected)
-  if (rpmFrac > 0) {
-    const fillEnd = SA + sweep * rpmFrac;
-    const rpmGrad = ctx.createLinearGradient(MARGIN, 0, W - MARGIN, 0);
-    rpmGrad.addColorStop(0,    '#00e060');
-    rpmGrad.addColorStop(0.55, '#ffaa00');
-    rpmGrad.addColorStop(0.80, '#ff4400');
-    rpmGrad.addColorStop(1,    '#ff0022');
-    ctx.beginPath(); ctx.arc(CX, CY, R_OUT, SA, fillEnd);
-    ctx.strokeStyle = 'rgba(255,120,0,0.18)'; ctx.lineWidth = 30; ctx.lineCap = 'round'; ctx.stroke();
-    ctx.beginPath(); ctx.arc(CX, CY, R_OUT, SA, fillEnd);
-    ctx.strokeStyle = rpmGrad; ctx.lineWidth = 17; ctx.lineCap = 'round'; ctx.stroke();
-    const tipX = CX + R_OUT * Math.cos(fillEnd), tipY = CY + R_OUT * Math.sin(fillEnd);
-    ctx.beginPath(); ctx.arc(tipX, tipY, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#fff'; ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 8; ctx.fill();
-    ctx.shadowBlur = 0;
+  // RPM numbers 1–12 at major positions
+  for (let i = 1; i <= 12; i++) {
+    const a      = SA + sweep * (i / 12);
+    const red    = i >= 10;
+    const rt     = R_OUT - 38;
+    ctx.fillStyle   = red ? 'rgba(255,80,80,0.95)' : 'rgba(255,255,255,0.88)';
+    ctx.font        = 'bold 16px Rajdhani,Arial,sans-serif';
+    ctx.textAlign   = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = red ? 'rgba(255,60,60,0.7)' : 'rgba(255,255,255,0.45)';
+    ctx.shadowBlur  = 7;
+    ctx.fillText(i.toString(), CX + rt * Math.cos(a), CY + rt * Math.sin(a));
+    ctx.shadowBlur  = 0;
   }
 
   // ── GAP separator between arcs ───────────────────────────────────────────
