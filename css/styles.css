@@ -1521,7 +1521,7 @@ body.circuit-active .location-bar { display: none !important; }
 }
 .cas-rpm {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 8px; color: rgba(255,255,255,0.22); letter-spacing: 0.5px;
+  font-size: 8px; color: rgba(255,255,255,0.50); letter-spacing: 0.5px;
 }
 .cas-kmh {
   font-family: 'JetBrains Mono', monospace;
@@ -1547,12 +1547,12 @@ body.circuit-active .location-bar { display: none !important; }
 .cir-stat { display: flex; flex-direction: column; gap: 0px; }
 .cir-sl {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 7px; color: rgba(255,255,255,0.18);
+  font-size: 7px; color: rgba(255,255,255,0.55);
   letter-spacing: 1.5px; text-transform: uppercase;
 }
 .cir-sv {
   font-size: 16px; font-weight: 700;
-  color: rgba(255,255,255,0.65); line-height: 1.1;
+  color: rgba(255,255,255,0.90); line-height: 1.1;
 }
 .cir-map-cv {
   width: 100%; flex: 1;
@@ -1576,7 +1576,7 @@ body.circuit-active .location-bar { display: none !important; }
 }
 .cir-spd-unit {
   font-size: 11px; font-weight: 700;
-  color: rgba(255,110,0,0.45); letter-spacing: 5px;
+  color: rgba(255,110,0,0.75); letter-spacing: 5px;
 }
 /* Gear indicator — big, ready for Carber */
 .cir-gear-val {
@@ -1597,8 +1597,8 @@ body.circuit-active .location-bar { display: none !important; }
   font-size: 12px; font-weight: 700; color: #ffb300;
   transition: color 0.2s;
 }
-.cir-gf-icon { font-size: 9px; color: rgba(255,179,0,0.35); }
-.cir-gf-unit { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: rgba(255,179,0,0.35); }
+.cir-gf-icon { font-size: 9px; color: rgba(255,179,0,0.65); }
+.cir-gf-unit { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: rgba(255,179,0,0.65); }
 
 /* ── Right: lean angle ── */
 .cir-lean-panel {
@@ -1611,7 +1611,7 @@ body.circuit-active .location-bar { display: none !important; }
 }
 .cir-lean-title {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 6px; color: rgba(255,179,0,0.32);
+  font-size: 6px; color: rgba(255,179,0,0.70);
   letter-spacing: 0.8px; text-align: center;
 }
 .cir-lean-nums {
@@ -1651,7 +1651,7 @@ body.circuit-active .location-bar { display: none !important; }
   display: flex; align-items: center; gap: 3px; margin-top: 2px;
 }
 .cir-wind-num { font-size: 13px; font-weight: 700; color: #29d9ff; }
-.cir-wind-lbl { font-size: 7px; color: rgba(41,217,255,0.38); letter-spacing: 0.5px; }
+.cir-wind-lbl { font-size: 7px; color: rgba(41,217,255,0.70); letter-spacing: 0.5px; }
 
 /* ── Kirk AI bar ── */
 .cir-ai-bar {
