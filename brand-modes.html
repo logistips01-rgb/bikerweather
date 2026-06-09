@@ -12,182 +12,164 @@ body { background:#000; color:#fff; font-family:'Rajdhani',sans-serif; overflow-
   color:rgba(255,200,0,0.5); padding:10px 0 4px; text-transform:uppercase; }
 .divider { height:6px; background:#000; border-top:1px solid rgba(255,255,255,0.04); }
 
-/* Landscape frame — simulates 844×390 phone landscape */
-.ls { width:100vw; height:390px; position:relative; overflow:hidden;
+/* Landscape frame — 390px tall simulating phone landscape */
+.ls { width:100vw; height:390px; position:relative; overflow:hidden; }
+
+/* ═══════════════════════════════════════════════════════
+   TRIUMPH  — top half: tachometer arc | bottom half: TFT
+═══════════════════════════════════════════════════════ */
+.tri-mode {
+  background: #0c0e12;
+  display: flex; flex-direction: column;
+}
+
+/* ── Top arc section ── */
+.tri-arc-section {
+  flex: 0 0 228px;
+  position: relative;
+  background: radial-gradient(ellipse 70% 100% at 50% 110%, #1a2030 0%, #0c0e12 55%);
+  overflow: hidden;
+}
+.tri-arc-svg { width:100%; height:228px; display:block; }
+
+/* ── Bottom TFT section ── */
+.tri-tft-section {
+  flex: 1;
+  background: #050709;
+  border-top: 1px solid rgba(30,163,211,0.22);
+  display: flex; align-items: stretch;
+}
+
+/* Speed block */
+.tri-spd-col {
+  flex: 0 0 220px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border-right: 1px solid rgba(30,163,211,0.12);
+  padding: 0 16px;
+  gap: 1px;
+}
+.tri-spd-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 68px; font-weight: 700; color: #fff;
+  line-height: 1; letter-spacing: -2px;
+}
+.tri-spd-unit {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: rgba(255,255,255,0.28); letter-spacing: 5px;
+}
+
+/* Secondary value (lean in cyan, styled like the "124" in the Triumph TFT) */
+.tri-spd-secondary {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 22px; font-weight: 700; color: #1EA3D3;
+  margin-top: 3px;
+}
+.tri-spd-sec-lbl {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 7px; color: rgba(30,163,211,0.5); letter-spacing: 2px;
+}
+
+/* Right data grid */
+.tri-data-col {
+  flex: 1; display: flex; flex-direction: column;
+}
+.tri-data-row {
+  flex: 1; display: flex; border-bottom: 1px solid rgba(30,163,211,0.08);
+}
+.tri-data-row:last-child { border-bottom: none; }
+.tri-d-cell {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  border-right: 1px solid rgba(30,163,211,0.08);
+  padding: 4px;
+}
+.tri-d-cell:last-child { border-right: none; }
+.tri-d-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 20px; font-weight: 700; color: rgba(255,255,255,0.82); line-height: 1;
+}
+.tri-d-lbl {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 6px; color: rgba(255,255,255,0.28); letter-spacing: 1px; margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   HARLEY  (unchanged)
+═══════════════════════════════════════════════════════ */
+.ls-hd { background: radial-gradient(ellipse 55% 80% at center, #1e0e04 0%, #080503 60%);
   display:flex; align-items:center; justify-content:center; }
 
-/* ═══════════════════════════════════════════════════════
-   TRIUMPH — Round dial + inner TFT
-═══════════════════════════════════════════════════════ */
-.ls-tri { background: radial-gradient(ellipse 55% 80% at center, #1c2230 0%, #090b0e 65%); }
-
-.tri-wrap { display:flex; align-items:center; justify-content:center; gap:14px; width:100%; padding:0 10px; }
-
-.tri-side { width:78px; flex-shrink:0; display:flex; flex-direction:column; gap:7px; }
-.tri-side.right { align-items:flex-end; }
-.tri-s-lbl { font-family:'JetBrains Mono',monospace; font-size:6px; color:rgba(255,255,255,0.3); letter-spacing:1px; }
-.tri-s-val { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700; color:rgba(255,255,255,0.85); }
-
-/* The round instrument */
-.tri-dial {
-  width:344px; height:344px; flex-shrink:0; position:relative;
-  display:flex; align-items:center; justify-content:center;
-}
-.tri-bezel {
-  position:absolute; inset:0; border-radius:50%;
-  background: radial-gradient(ellipse at 48% 38%, #252c38 0%, #14181f 55%, #0c0e12 100%);
-  border:3px solid #2e3440;
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.04),
-              0 6px 50px rgba(0,0,0,0.95),
-              inset 0 1px 0 rgba(255,255,255,0.06),
-              inset 0 0 40px rgba(0,0,0,0.5);
-}
-.tri-svg { position:absolute; inset:0; width:100%; height:100%; }
-
-/* Inner TFT screen */
-.tri-tft {
-  position:absolute; bottom:50px; left:50%; transform:translateX(-50%);
-  width:172px; height:108px; z-index:3;
-  background:#04080f;
-  border:1px solid #1a3a5a;
-  border-radius:3px;
-  box-shadow: 0 0 0 1px rgba(30,163,211,0.12), 0 0 18px rgba(30,163,211,0.18),
-              inset 0 0 10px rgba(0,0,0,0.7);
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
-}
-.tri-tft-spd { font-family:'JetBrains Mono',monospace; font-size:50px; font-weight:700; color:#fff; line-height:1; }
-.tri-tft-unit { font-family:'JetBrains Mono',monospace; font-size:7px; color:rgba(255,255,255,0.3); letter-spacing:4px; }
-.tri-tft-row { display:flex; gap:12px; margin-top:3px; }
-.tri-tft-row span { font-family:'JetBrains Mono',monospace; font-size:10px; color:#1EA3D3; }
-.tri-gear-badge {
-  position:absolute; top:9px; right:10px;
-  font-family:'Rajdhani',sans-serif; font-size:26px; font-weight:700; color:#1EA3D3; line-height:1;
-}
-
-/* ═══════════════════════════════════════════════════════
-   HARLEY-DAVIDSON — Circular digital Boom Box style
-═══════════════════════════════════════════════════════ */
-.ls-hd { background: radial-gradient(ellipse 55% 80% at center, #1e0e04 0%, #080503 60%); }
-
-.hd-dial {
-  width:356px; height:356px; flex-shrink:0; position:relative;
-  display:flex; align-items:center; justify-content:center;
-}
-.hd-bezel {
-  position:absolute; inset:0; border-radius:50%;
-  background: radial-gradient(ellipse at 48% 38%, #1c1108 0%, #100b04 55%, #070503 100%);
+.hd-dial { width:356px; height:356px; flex-shrink:0; position:relative;
+  display:flex; align-items:center; justify-content:center; }
+.hd-bezel { position:absolute; inset:0; border-radius:50%;
+  background:radial-gradient(ellipse at 48% 38%, #1c1108 0%, #100b04 55%, #070503 100%);
   border:5px solid #ff6500;
-  box-shadow: 0 0 0 9px rgba(255,101,0,0.07),
-              0 0 50px rgba(255,101,0,0.18),
-              inset 0 0 30px rgba(0,0,0,0.6);
-}
-.hd-inner {
-  position:relative; z-index:2;
-  width:86%; height:86%;
-  display:flex; flex-direction:column;
-  padding:14px 18px 10px;
-}
-/* Top row: gear + speed */
+  box-shadow:0 0 0 9px rgba(255,101,0,0.07),0 0 50px rgba(255,101,0,0.18),inset 0 0 30px rgba(0,0,0,0.6); }
+.hd-inner { position:relative; z-index:2; width:86%; height:86%;
+  display:flex; flex-direction:column; padding:14px 18px 10px; }
 .hd-row1 { display:flex; align-items:flex-end; justify-content:space-between; }
 .hd-gear-block { display:flex; flex-direction:column; align-items:center; }
 .hd-gear-tag { font-family:'JetBrains Mono',monospace; font-size:7px; color:rgba(255,101,0,0.5); letter-spacing:2px; }
 .hd-gear { font-family:'Rajdhani',sans-serif; font-size:76px; font-weight:700; color:#ff6500;
   line-height:1; text-shadow:0 0 22px rgba(255,101,0,0.55); }
 .hd-spd-block { text-align:right; padding-bottom:6px; }
-.hd-spd { font-family:'JetBrains Mono',monospace; font-size:58px; font-weight:700; color:#fff; line-height:1; letter-spacing:-2px; }
+.hd-spd { font-family:'JetBrains Mono',monospace; font-size:58px; font-weight:700; color:#fff;
+  line-height:1; letter-spacing:-2px; }
 .hd-spd-unit { font-family:'JetBrains Mono',monospace; font-size:9px; color:rgba(255,255,255,0.28); letter-spacing:3px; }
-/* RPM segments strip */
 .hd-rpm { display:flex; gap:2px; margin:7px 0 5px; height:7px; }
 .hd-seg { flex:1; border-radius:1px; }
-/* Bottom data */
-.hd-row2 {
-  display:grid; grid-template-columns:1fr 1fr 1fr 1fr;
-  border-top:1px solid rgba(255,101,0,0.14); padding-top:5px; gap:0;
-}
+.hd-row2 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr;
+  border-top:1px solid rgba(255,101,0,0.14); padding-top:5px; }
 .hd-cell { display:flex; flex-direction:column; align-items:center;
   border-right:1px solid rgba(255,101,0,0.09); }
 .hd-cell:last-child { border-right:none; }
 .hd-cell-val { font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:700; color:#ff6500; line-height:1.2; }
 .hd-cell-lbl { font-family:'JetBrains Mono',monospace; font-size:6px; color:rgba(255,255,255,0.28); letter-spacing:1px; }
-/* Status bar */
-.hd-status {
-  margin-top:5px; text-align:center;
+.hd-status { margin-top:5px; text-align:center;
   background:rgba(0,180,60,0.1); border:1px solid rgba(0,200,60,0.28);
   border-radius:2px; padding:2px 0;
-  font-family:'JetBrains Mono',monospace; font-size:7px; color:#00c840; letter-spacing:2px;
-}
-/* Harley logo */
-.hd-logo {
-  position:absolute; bottom:22px; left:50%; transform:translateX(-50%); z-index:3;
+  font-family:'JetBrains Mono',monospace; font-size:7px; color:#00c840; letter-spacing:2px; }
+.hd-logo { position:absolute; bottom:22px; left:50%; transform:translateX(-50%); z-index:3;
   font-family:'Rajdhani',sans-serif; font-size:9px; font-weight:700;
-  color:rgba(255,101,0,0.28); letter-spacing:4px; white-space:nowrap;
-}
+  color:rgba(255,101,0,0.28); letter-spacing:4px; white-space:nowrap; }
 
 /* ═══════════════════════════════════════════════════════
-   BMW — Rectangular technical S1000RR style
+   BMW (unchanged)
 ═══════════════════════════════════════════════════════ */
-.ls-bmw { background: radial-gradient(ellipse 60% 80% at center, #030d1c 0%, #020508 60%); }
-
-.bmw-layout {
-  width:100%; height:100%;
-  display:flex; flex-direction:column;
-  padding:9px 14px 7px; gap:5px;
-}
-
-/* Thin RPM bar */
+.ls-bmw { background:radial-gradient(ellipse 60% 80% at center, #030d1c 0%, #020508 60%);
+  display:block; }
+.bmw-layout { width:100%; height:100%; display:flex; flex-direction:column; padding:9px 14px 7px; gap:5px; }
 .bmw-rpm-row { display:flex; align-items:center; gap:6px; flex-shrink:0; }
 .bmw-rpm-tag { font-family:'JetBrains Mono',monospace; font-size:7px; color:rgba(28,105,212,0.6); width:24px; text-align:right; }
 .bmw-rpm-track { flex:1; height:7px; background:rgba(28,105,212,0.05); border:1px solid rgba(28,105,212,0.18); border-radius:1px; overflow:hidden; }
 .bmw-rpm-fill { height:100%; border-radius:1px;
   background:linear-gradient(to right, #0a3a8a 0%, #1C69D4 55%, #4a9fff 75%, #80bfff 85%, #ff3333 90%); }
 .bmw-rpm-num { font-family:'JetBrains Mono',monospace; font-size:8px; color:rgba(28,105,212,0.75); width:28px; }
-
-/* Main content row */
 .bmw-main { flex:1; display:flex; align-items:stretch; gap:0; min-height:0; }
-
-.bmw-gear-col {
-  width:66px; flex-shrink:0;
-  border-right:1px solid rgba(28,105,212,0.12);
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
-}
+.bmw-gear-col { width:66px; flex-shrink:0; border-right:1px solid rgba(28,105,212,0.12);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
 .bmw-gear-lbl { font-family:'JetBrains Mono',monospace; font-size:6px; color:rgba(28,105,212,0.4); letter-spacing:2px; }
 .bmw-gear { font-family:'Rajdhani',sans-serif; font-size:70px; font-weight:700; color:#1C69D4; line-height:1;
   text-shadow:0 0 22px rgba(28,105,212,0.45); }
-
 .bmw-spd-col { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; }
 .bmw-spd { font-family:'JetBrains Mono',monospace; font-size:82px; font-weight:700; color:#fff;
   line-height:0.9; letter-spacing:-3px; }
 .bmw-spd-unit { font-family:'JetBrains Mono',monospace; font-size:7px; color:rgba(255,255,255,0.22); letter-spacing:5px; }
-
-.bmw-info-col {
-  width:84px; flex-shrink:0;
-  border-left:1px solid rgba(28,105,212,0.12);
-  display:flex; flex-direction:column; justify-content:center;
-  padding-left:8px; gap:7px;
-}
+.bmw-info-col { width:84px; flex-shrink:0; border-left:1px solid rgba(28,105,212,0.12);
+  display:flex; flex-direction:column; justify-content:center; padding-left:8px; gap:7px; }
 .bmw-info-cell { display:flex; flex-direction:column; }
 .bmw-info-val { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700; color:#4a9fff; line-height:1; }
 .bmw-info-lbl { font-family:'JetBrains Mono',monospace; font-size:6px; color:rgba(28,105,212,0.38); letter-spacing:1px; }
-
-/* Lean indicator strip */
-.bmw-lean-row {
-  flex-shrink:0; display:flex; align-items:center; gap:8px;
-  border-top:1px solid rgba(28,105,212,0.08); padding-top:4px;
-}
+.bmw-lean-row { flex-shrink:0; display:flex; align-items:center; gap:8px;
+  border-top:1px solid rgba(28,105,212,0.08); padding-top:4px; }
 .bmw-lean-tag { font-family:'JetBrains Mono',monospace; font-size:6px; color:rgba(28,105,212,0.45); width:22px; }
 .bmw-lean-track { flex:1; height:3px; background:rgba(28,105,212,0.07); border:1px solid rgba(28,105,212,0.14); border-radius:1px; position:relative; }
 .bmw-lean-center { position:absolute; top:-1px; left:50%; transform:translateX(-50%); height:5px; width:1px; background:rgba(28,105,212,0.3); }
 .bmw-lean-dot { position:absolute; top:50%; transform:translate(-50%,-50%); width:7px; height:7px;
   background:#1C69D4; border-radius:50%; box-shadow:0 0 8px rgba(28,105,212,0.9); }
 .bmw-lean-val { font-family:'JetBrains Mono',monospace; font-size:9px; color:#4a9fff; width:28px; text-align:right; }
-
-/* BMW roundel mini */
-.bmw-roundel {
-  position:absolute; top:12px; right:14px;
-  width:22px; height:22px; border-radius:50%; overflow:hidden;
-  border:1px solid rgba(28,105,212,0.35);
-  display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr;
-}
+.bmw-roundel { position:absolute; top:12px; right:14px; width:22px; height:22px; border-radius:50%; overflow:hidden;
+  border:1px solid rgba(28,105,212,0.35); display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; }
 .r-blue { background:rgba(28,105,212,0.55); }
 .r-white { background:rgba(255,255,255,0.1); }
 </style>
@@ -195,35 +177,55 @@ body { background:#000; color:#fff; font-family:'Rajdhani',sans-serif; overflow-
 <body>
 
 <!-- ══════════════════════ TRIUMPH ══════════════════════ -->
-<p class="mode-lbl">Triumph · Street Triple / Tiger TFT</p>
-<div class="ls ls-tri">
-  <div class="tri-wrap">
+<p class="mode-lbl">Triumph · Street Triple TFT</p>
+<div class="ls tri-mode">
 
-    <div class="tri-side">
-      <div><span class="tri-s-lbl">SESIÓN</span><br><span class="tri-s-val">18:42</span></div>
-      <div><span class="tri-s-lbl">CURVAS</span><br><span class="tri-s-val">12</span></div>
-      <div><span class="tri-s-lbl">V.MÁX</span><br><span class="tri-s-val" style="color:#1EA3D3">187</span></div>
-      <div><span class="tri-s-lbl">Â.MÁX</span><br><span class="tri-s-val" style="color:#1EA3D3">42°</span></div>
+  <!-- TOP HALF: Wide tachometer arc -->
+  <div class="tri-arc-section">
+    <svg id="tri-arc" class="tri-arc-svg" viewBox="0 0 844 228" preserveAspectRatio="xMidYMid meet"></svg>
+  </div>
+
+  <!-- BOTTOM HALF: Digital TFT data -->
+  <div class="tri-tft-section">
+
+    <!-- Speed column -->
+    <div class="tri-spd-col">
+      <div class="tri-spd-num">142</div>
+      <div class="tri-spd-unit">KM/H</div>
+      <div class="tri-spd-secondary">28°</div>
+      <div class="tri-spd-sec-lbl">INCLINACIÓN</div>
     </div>
 
-    <div class="tri-dial">
-      <div class="tri-bezel"></div>
-      <svg class="tri-svg" viewBox="0 0 300 300" id="tri-svg"></svg>
-      <div class="tri-tft">
-        <div class="tri-tft-spd">142</div>
-        <div class="tri-tft-unit">KM/H</div>
-        <div class="tri-tft-row">
-          <span>28° INC</span>
-          <span>8.5k RPM</span>
+    <!-- Data grid: 2×2 -->
+    <div class="tri-data-col">
+      <div class="tri-data-row">
+        <div class="tri-d-cell">
+          <span class="tri-d-val" style="font-size:30px;color:#1EA3D3">4</span>
+          <span class="tri-d-lbl">MARCHA</span>
         </div>
-        <div class="tri-gear-badge">4</div>
+        <div class="tri-d-cell">
+          <span class="tri-d-val">8.5k</span>
+          <span class="tri-d-lbl">RPM</span>
+        </div>
+        <div class="tri-d-cell">
+          <span class="tri-d-val">18:42</span>
+          <span class="tri-d-lbl">SESIÓN</span>
+        </div>
       </div>
-    </div>
-
-    <div class="tri-side right">
-      <div><span class="tri-s-lbl">TEMP</span><br><span class="tri-s-val">86°</span></div>
-      <div><span class="tri-s-lbl">VOLTAJE</span><br><span class="tri-s-val">12.6v</span></div>
-      <div><span class="tri-s-lbl">INCL</span><br><span class="tri-s-val" style="color:#1EA3D3">28° R</span></div>
+      <div class="tri-data-row">
+        <div class="tri-d-cell">
+          <span class="tri-d-val">86°</span>
+          <span class="tri-d-lbl">TEMP</span>
+        </div>
+        <div class="tri-d-cell">
+          <span class="tri-d-val">12.6v</span>
+          <span class="tri-d-lbl">VOLTAJE</span>
+        </div>
+        <div class="tri-d-cell">
+          <span class="tri-d-val" style="color:#1EA3D3">187</span>
+          <span class="tri-d-lbl">V.MÁX</span>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -236,7 +238,6 @@ body { background:#000; color:#fff; font-family:'Rajdhani',sans-serif; overflow-
   <div class="hd-dial">
     <div class="hd-bezel"></div>
     <div class="hd-inner">
-
       <div class="hd-row1">
         <div class="hd-gear-block">
           <span class="hd-gear-tag">MARCHA</span>
@@ -247,18 +248,14 @@ body { background:#000; color:#fff; font-family:'Rajdhani',sans-serif; overflow-
           <div class="hd-spd-unit">KM/H</div>
         </div>
       </div>
-
       <div class="hd-rpm" id="hd-rpm"></div>
-
       <div class="hd-row2">
         <div class="hd-cell"><span class="hd-cell-val">86°</span><span class="hd-cell-lbl">TEMP</span></div>
         <div class="hd-cell"><span class="hd-cell-val">12.6</span><span class="hd-cell-lbl">VOLT</span></div>
         <div class="hd-cell"><span class="hd-cell-val" style="color:#ffcc44">28°</span><span class="hd-cell-lbl">INCL</span></div>
         <div class="hd-cell"><span class="hd-cell-val" style="color:rgba(255,101,0,0.65)">8.5k</span><span class="hd-cell-lbl">RPM</span></div>
       </div>
-
       <div class="hd-status">SISTEMA OK</div>
-
     </div>
     <div class="hd-logo">HARLEY-DAVIDSON</div>
   </div>
@@ -269,13 +266,11 @@ body { background:#000; color:#fff; font-family:'Rajdhani',sans-serif; overflow-
 <p class="mode-lbl">BMW · S1000RR / R1250GS</p>
 <div class="ls ls-bmw" style="position:relative">
   <div class="bmw-layout">
-
     <div class="bmw-rpm-row">
       <span class="bmw-rpm-tag">RPM</span>
       <div class="bmw-rpm-track"><div class="bmw-rpm-fill" style="width:72%"></div></div>
       <span class="bmw-rpm-num">8.5k</span>
     </div>
-
     <div class="bmw-main">
       <div class="bmw-gear-col">
         <span class="bmw-gear-lbl">MARCHA</span>
@@ -291,7 +286,6 @@ body { background:#000; color:#fff; font-family:'Rajdhani',sans-serif; overflow-
         <div class="bmw-info-cell"><span class="bmw-info-val" style="color:#80bfff">28°</span><span class="bmw-info-lbl">INCL</span></div>
       </div>
     </div>
-
     <div class="bmw-lean-row">
       <span class="bmw-lean-tag">L 0°</span>
       <div class="bmw-lean-track">
@@ -300,96 +294,160 @@ body { background:#000; color:#fff; font-family:'Rajdhani',sans-serif; overflow-
       </div>
       <span class="bmw-lean-val">28° R</span>
     </div>
-
   </div>
-
-  <div class="bmw-roundel" style="position:absolute;top:10px;right:12px;">
+  <div class="bmw-roundel">
     <div class="r-blue"></div><div class="r-white"></div>
     <div class="r-white"></div><div class="r-blue"></div>
   </div>
 </div>
 
 <script>
-/* ── Triumph tachometer SVG ── */
+/* ═══════════════════════════════════════════════════════
+   TRIUMPH tachometer — wide arc spanning full screen width
+   Circle: center (422, 610), R=500
+   Arc: from left intersection to right intersection, through top
+═══════════════════════════════════════════════════════ */
 (function(){
-  const svg = document.getElementById('tri-svg');
+  const svg = document.getElementById('tri-arc');
   const ns  = 'http://www.w3.org/2000/svg';
-  const cx = 150, cy = 150;
-  const startDeg = 218, totalArc = 264; // 7 o'clock → 5 o'clock
-  function rad(d){ return (d - 90) * Math.PI / 180; }
-  function pt(r, d){ return [cx + r*Math.cos(rad(d)), cy + r*Math.sin(rad(d))]; }
 
-  // Arc background ring
-  (function drawArcBg(){
-    const r1=140, r2=123, a0=startDeg, a1=startDeg+totalArc;
-    const lg = totalArc>180?1:0;
-    const [ax1,ay1]=pt(r1,a0),[bx1,by1]=pt(r1,a1);
-    const [ax2,ay2]=pt(r2,a0),[bx2,by2]=pt(r2,a1);
-    const bg = document.createElementNS(ns,'path');
-    bg.setAttribute('d',`M${ax1},${ay1} A${r1},${r1} 0 ${lg},1 ${bx1},${by1} L${bx2},${by2} A${r2},${r2} 0 ${lg},0 ${ax2},${ay2} Z`);
-    bg.setAttribute('fill','rgba(255,255,255,0.025)');
-    svg.appendChild(bg);
-    // Redline last 18%
-    const rs = startDeg + totalArc*0.82;
-    const [rx1,ry1]=pt(r1,rs),[rex1,rey1]=pt(r1,a1);
-    const [rx2,ry2]=pt(r2,rs),[rex2,rey2]=pt(r2,a1);
-    const rl = document.createElementNS(ns,'path');
-    rl.setAttribute('d',`M${rx1},${ry1} A${r1},${r1} 0 0,1 ${rex1},${rey1} L${rex2},${rey2} A${r2},${r2} 0 0,0 ${rx2},${ry2} Z`);
-    rl.setAttribute('fill','rgba(255,30,30,0.13)');
-    svg.appendChild(rl);
-  })();
+  // Circle geometry: center below the SVG so only the top arc is visible
+  const CX=422, CY=610, R=500;
 
-  // Major ticks + labels (0–12)
-  for(let i=0; i<=12; i++){
-    const deg = startDeg + (i/12)*totalArc;
-    const isRed = i >= 10;
-    const [x1,y1]=pt(141,deg), [x2,y2]=pt(124,deg);
-    const ln = document.createElementNS(ns,'line');
-    Object.entries({x1,y1,x2,y2,stroke:isRed?'rgba(255,50,50,0.9)':'rgba(255,255,255,0.78)','stroke-width':'1.8','stroke-linecap':'round'}).forEach(([k,v])=>ln.setAttribute(k,v));
-    svg.appendChild(ln);
-    const [tx,ty]=pt(112,deg);
-    const t = document.createElementNS(ns,'text');
-    Object.entries({x:tx,y:ty,'text-anchor':'middle','dominant-baseline':'middle',fill:isRed?'rgba(255,60,60,0.7)':'rgba(255,255,255,0.45)','font-size':'7.5','font-family':'JetBrains Mono,monospace'}).forEach(([k,v])=>t.setAttribute(k,v));
+  // Angles (standard JS Math: 0=right, CCW positive, Y-DOWN so sin flips)
+  // Using screen convention: angles in radians from right, clockwise in SVG
+  // At y=218 (bottom of SVG section): sqrt(R²-(y-CY)²) = sqrt(500²-392²) = sqrt(96336) ≈ 310
+  // Left x = 422-310=112, Right x = 422+310=732
+  const Y_BASE = 218;
+  const dx = Math.sqrt(R*R - (Y_BASE-CY)*(Y_BASE-CY));
+  const LX = CX-dx, RX = CX+dx;
+
+  // Angles from center to each endpoint (Math.atan2: standard, Y-down screen)
+  const startA = Math.atan2(Y_BASE-CY, LX-CX); // left endpoint ≈ pointing upper-left
+  const endA   = Math.atan2(Y_BASE-CY, RX-CX); // right endpoint ≈ pointing upper-right
+
+  function pt(r, a){ return [CX + r*Math.cos(a), CY + r*Math.sin(a)]; }
+
+  // ── Arc background track ──
+  const R_OUT=500, R_IN=472;
+  const [sx1,sy1]=pt(R_OUT,startA), [ex1,ey1]=pt(R_OUT,endA);
+  const [sx2,sy2]=pt(R_IN, startA), [ex2,ey2]=pt(R_IN, endA);
+  // Large arc flag=0 (short arc through top), sweep=1 (clockwise in SVG Y-down)
+  const bg=document.createElementNS(ns,'path');
+  bg.setAttribute('d',`M${sx1},${sy1} A${R_OUT},${R_OUT} 0 0,1 ${ex1},${ey1} L${ex2},${ey2} A${R_IN},${R_IN} 0 0,0 ${sx2},${sy2} Z`);
+  bg.setAttribute('fill','rgba(255,255,255,0.028)');
+  svg.appendChild(bg);
+
+  // ── Redline zone (last 18% of arc — RPM 9.8–12k) ──
+  const redFrac = 0.82;
+  const redA = startA + redFrac*(endA-startA);
+  const [rx1,ry1]=pt(R_OUT,redA),[rex1,rey1]=pt(R_OUT,endA);
+  const [rx2,ry2]=pt(R_IN, redA),[rex2,rey2]=pt(R_IN, endA);
+  const redBg=document.createElementNS(ns,'path');
+  redBg.setAttribute('d',`M${rx1},${ry1} A${R_OUT},${R_OUT} 0 0,1 ${rex1},${rey1} L${rex2},${rey2} A${R_IN},${R_IN} 0 0,0 ${rx2},${ry2} Z`);
+  redBg.setAttribute('fill','rgba(255,20,20,0.12)');
+  svg.appendChild(redBg);
+
+  // ── Arc progress glow (RPM fill up to 8.5k = 70.8%) ──
+  const rpmFrac = 0.708;
+  const rpmA = startA + rpmFrac*(endA-startA);
+  const [px1,py1]=pt(R_OUT-1,startA),[ppx1,ppy1]=pt(R_OUT-1,rpmA);
+  const [px2,py2]=pt(R_IN+1, startA),[ppx2,ppy2]=pt(R_IN+1, rpmA);
+  const glow=document.createElementNS(ns,'path');
+  glow.setAttribute('d',`M${px1},${py1} A${R_OUT},${R_OUT} 0 0,1 ${ppx1},${ppy1} L${ppx2},${ppy2} A${R_IN},${R_IN} 0 0,0 ${px2},${py2} Z`);
+  glow.setAttribute('fill','rgba(255,255,255,0.06)');
+  svg.appendChild(glow);
+
+  // ── Tick marks + labels (0–11) ──
+  const MAJOR = 12;
+  for(let i=0; i<=MAJOR; i++){
+    const frac = i/MAJOR;
+    const a = startA + frac*(endA-startA);
+    const isRed = i>=10;
+
+    // Major tick
+    const [ox,oy]=pt(R_OUT+2, a), [ix,iy]=pt(R_IN-10, a);
+    const tick=document.createElementNS(ns,'line');
+    Object.entries({x1:ox,y1:oy,x2:ix,y2:iy,
+      stroke: isRed?'rgba(255,55,55,0.9)':'rgba(255,255,255,0.75)',
+      'stroke-width': isRed?'2':'1.8','stroke-linecap':'round'
+    }).forEach(([k,v])=>tick.setAttribute(k,String(v)));
+    svg.appendChild(tick);
+
+    // Label
+    const [tx,ty]=pt(R_IN-26, a);
+    const t=document.createElementNS(ns,'text');
+    Object.entries({x:tx,y:ty,'text-anchor':'middle','dominant-baseline':'middle',
+      fill: isRed?'rgba(255,60,60,0.75)':'rgba(255,255,255,0.5)',
+      'font-size':'9','font-family':'JetBrains Mono,monospace','font-weight':'400'
+    }).forEach(([k,v])=>t.setAttribute(k,String(v)));
     t.textContent = i;
     svg.appendChild(t);
   }
-  // Minor ticks
-  for(let i=0; i<=12*4; i++){
+
+  // ── Minor ticks (4 between each major) ──
+  for(let i=0; i<MAJOR*4; i++){
     if(i%4===0) continue;
-    const deg = startDeg + (i/(12*4))*totalArc;
+    const a = startA + (i/(MAJOR*4))*(endA-startA);
     const isMid = i%2===0;
-    const [x1,y1]=pt(141,deg),[x2,y2]=pt(isMid?136:138,deg);
-    const ln=document.createElementNS(ns,'line');
-    Object.entries({x1,y1,x2,y2,stroke:'rgba(255,255,255,0.22)','stroke-width':'0.8'}).forEach(([k,v])=>ln.setAttribute(k,v));
-    svg.appendChild(ln);
+    const [ox2,oy2]=pt(R_OUT+1, a),[ix2,iy2]=pt(isMid ? R_OUT-7 : R_OUT-4, a);
+    const m=document.createElementNS(ns,'line');
+    Object.entries({x1:ox2,y1:oy2,x2:ix2,y2:iy2,
+      stroke:'rgba(255,255,255,0.22)','stroke-width':'0.8'
+    }).forEach(([k,v])=>m.setAttribute(k,String(v)));
+    svg.appendChild(m);
   }
 
-  // Needle (8.5k RPM = 70.8% of 12k)
-  const needleDeg = startDeg + 0.708 * totalArc;
-  const [nx,ny] = pt(115, needleDeg);
-  const [tx2,ty2] = pt(-12, needleDeg); // tail
-  const nPath = document.createElementNS(ns,'line');
-  Object.entries({x1:tx2,y1:ty2,x2:nx,y2:ny,stroke:'#e8e8e8','stroke-width':'1.8','stroke-linecap':'round'}).forEach(([k,v])=>nPath.setAttribute(k,v));
-  svg.appendChild(nPath);
-  // Center hub
-  const hub=document.createElementNS(ns,'circle');
-  Object.entries({cx,cy,r:'5',fill:'#ccc','stroke':'#888','stroke-width':'1'}).forEach(([k,v])=>hub.setAttribute(k,v));
-  svg.appendChild(hub);
+  // ── Outer arc border line ──
+  const arcLine=document.createElementNS(ns,'path');
+  const [alx,aly]=pt(R_OUT+2,startA),[arx,ary]=pt(R_OUT+2,endA);
+  arcLine.setAttribute('d',`M${alx},${aly} A${R_OUT+2},${R_OUT+2} 0 0,1 ${arx},${ary}`);
+  arcLine.setAttribute('fill','none');
+  arcLine.setAttribute('stroke','rgba(255,255,255,0.18)');
+  arcLine.setAttribute('stroke-width','1.2');
+  svg.appendChild(arcLine);
 
-  // Triumph "T" at top of dial
-  const logo = document.createElementNS(ns,'text');
-  Object.entries({x:150,y:42,'text-anchor':'middle','font-size':'11','fill':'rgba(255,255,255,0.18)','letter-spacing':'3','font-family':'Rajdhani,sans-serif','font-weight':'700'}).forEach(([k,v])=>logo.setAttribute(k,v));
-  logo.textContent = 'TRIUMPH';
-  svg.appendChild(logo);
+  // ── Needle ──
+  const na = startA + rpmFrac*(endA-startA);
+  const [ntx,nty]=pt(R_OUT-6, na);
+  // Base of needle: below the SVG (CX, CY) — line is clipped by SVG viewBox
+  const needle=document.createElementNS(ns,'line');
+  Object.entries({x1:CX,y1:CY,x2:ntx,y2:nty,
+    stroke:'#e8e8e8','stroke-width':'2','stroke-linecap':'round'
+  }).forEach(([k,v])=>needle.setAttribute(k,String(v)));
+  svg.appendChild(needle);
+  // Needle glow
+  const needleGlow=document.createElementNS(ns,'line');
+  Object.entries({x1:CX,y1:CY,x2:ntx,y2:nty,
+    stroke:'rgba(255,255,255,0.15)','stroke-width':'6','stroke-linecap':'round'
+  }).forEach(([k,v])=>needleGlow.setAttribute(k,String(v)));
+  svg.insertBefore(needleGlow, needle);
+
+  // ── "TRIUMPH" brand text at top center ──
+  const brand=document.createElementNS(ns,'text');
+  Object.entries({x:422,y:24,'text-anchor':'middle','font-size':'11',
+    fill:'rgba(255,255,255,0.18)','letter-spacing':'5',
+    'font-family':'Rajdhani,sans-serif','font-weight':'700'
+  }).forEach(([k,v])=>brand.setAttribute(k,String(v)));
+  brand.textContent='TRIUMPH';
+  svg.appendChild(brand);
+
+  // ── "x1000 RPM" label ──
+  const rpmLbl=document.createElementNS(ns,'text');
+  Object.entries({x:422,y:200,'text-anchor':'middle','font-size':'8',
+    fill:'rgba(255,255,255,0.18)','letter-spacing':'2',
+    'font-family':'JetBrains Mono,monospace'
+  }).forEach(([k,v])=>rpmLbl.setAttribute(k,String(v)));
+  rpmLbl.textContent='×1000 RPM';
+  svg.appendChild(rpmLbl);
 })();
 
 /* ── Harley RPM segments ── */
 (function(){
-  const c = document.getElementById('hd-rpm');
+  const c=document.getElementById('hd-rpm');
   const N=22, active=Math.round(0.708*N);
   for(let i=0;i<N;i++){
-    const s=document.createElement('div');
-    s.className='hd-seg';
+    const s=document.createElement('div'); s.className='hd-seg';
     if(i<active){
       if(i>=Math.floor(N*0.85)){ s.style.cssText='background:#ff0022;box-shadow:0 0 4px rgba(255,0,30,0.8)'; }
       else if(i>=Math.floor(N*0.68)){ s.style.cssText='background:#ff5500;box-shadow:0 0 3px rgba(255,85,0,0.6)'; }
