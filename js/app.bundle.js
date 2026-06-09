@@ -1287,6 +1287,7 @@ let _triNeedle = null, _triNeedleGlow = null, _triGlowArc = null;
 let _kirkSpeaking  = false;
 let _kirkListening = false;
 let _kirkAutoListen = true;
+let _kirkMuted     = false;
 let _kirkKittPos   = 0;
 let _kirkKittDir   = 1;
 let _kirkLastCheck = 0;
@@ -1336,7 +1337,7 @@ function _kirkStopListening() {
 }
 
 function kirkSpeak(text) {
-  if (!text || !window.speechSynthesis) return;
+  if (!text || !window.speechSynthesis || _kirkMuted) return;
   _kirkStopListening();
   window.speechSynthesis.cancel();
   const utt = new SpeechSynthesisUtterance(text);
@@ -2688,6 +2689,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const ov = $('circuit-overlay');
     if (ov) ov.dataset.brand = _cirBrand;
     $('btn-cir-brand')?.classList.toggle('active', _cirBrand === 'triumph');
+  });
+  $('btn-cir-mute')?.addEventListener('click', () => {
+    _kirkMuted = !_kirkMuted;
+    if (_kirkMuted) {
+      window.speechSynthesis?.cancel();
+      _kirkStopListening();
+    }
+    $('btn-cir-mute')?.classList.toggle('active', _kirkMuted);
   });
   $('btn-cir-mic')?.addEventListener('click', () => {
     if (!_kirkRec) { toast('Voz no disponible', 'info'); return; }
