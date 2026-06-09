@@ -2196,3 +2196,96 @@ body.landscape-mode #circuit-overlay {
   border-radius: 2px !important;
   background: rgba(0,0,0,0.82) !important;
 }
+
+
+/* ══════════════════════════════════════════════════════
+   PRE-RIDE CONTROLS — cockpit redesign
+══════════════════════════════════════════════════════ */
+
+/* ── Start button: orange cockpit style ── */
+.btn-start-route {
+  background: rgba(255,85,0,0.08) !important;
+  border: 1px solid rgba(255,85,0,0.6) !important;
+  color: var(--orange) !important;
+  box-shadow: 0 0 22px rgba(255,85,0,0.14), inset 0 0 20px rgba(255,85,0,0.04) !important;
+  letter-spacing: 0.14em !important;
+  font-family: var(--font-mono) !important;
+}
+.btn-start-route:hover {
+  background: rgba(255,85,0,0.15) !important;
+  box-shadow: 0 0 32px rgba(255,85,0,0.25) !important;
+}
+
+/* ── Bottom group layout ── */
+.pre-ride-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 2px;
+  padding: 10px 12px;
+  background: rgba(0,0,0,0.35);
+}
+
+/* ── Toggle row ── */
+.pre-ride-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.pre-toggle-lbl {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  color: rgba(255,255,255,0.45);
+  text-transform: uppercase;
+}
+
+/* ── Instrument toggle switch ── */
+.toggle-sw { position: relative; display: inline-block; width: 44px; height: 24px; cursor: pointer; }
+.toggle-sw input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-sw-track {
+  position: absolute; inset: 0;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 2px;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.toggle-sw-track::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 16px; height: 16px;
+  background: rgba(255,255,255,0.25);
+  border-radius: 1px;
+  transition: transform 0.2s, background 0.2s;
+}
+.toggle-sw input:checked + .toggle-sw-track {
+  background: rgba(255,85,0,0.15);
+  border-color: rgba(255,85,0,0.6);
+  box-shadow: 0 0 12px rgba(255,85,0,0.2);
+}
+.toggle-sw input:checked + .toggle-sw-track::after {
+  transform: translateX(20px);
+  background: var(--orange);
+  box-shadow: 0 0 6px rgba(255,85,0,0.6);
+}
+
+/* ── Display button ── */
+.btn-display {
+  width: 100%;
+  background: rgba(41,217,255,0.05) !important;
+  border: 1px solid rgba(41,217,255,0.25) !important;
+  color: var(--ice) !important;
+  border-radius: 2px !important;
+  font-family: var(--font-mono) !important;
+  font-size: 0.78rem !important;
+  letter-spacing: 0.18em !important;
+  padding: 9px !important;
+  text-transform: uppercase;
+  box-shadow: 0 0 14px rgba(41,217,255,0.06) !important;
+}
+.btn-display:hover {
+  background: rgba(41,217,255,0.1) !important;
+  box-shadow: 0 0 20px rgba(41,217,255,0.15) !important;
+}

@@ -281,9 +281,17 @@
 
         <!-- Botón iniciar -->
         <button class="btn-start-route" id="btn-start-route">▶ INICIAR RUTA</button>
-        <div style="display:flex;gap:8px">
-          <button id="btn-landscape" class="btn btn-landscape-toggle" style="flex:1">⊞ HORIZONTAL</button>
-          <button id="btn-open-circuit" class="btn btn-circuit-open" style="flex:1">🏁 CIRCUITO</button>
+
+        <!-- Toggle horizontal + botón Display -->
+        <div class="pre-ride-bottom">
+          <div class="pre-ride-toggle-row">
+            <span class="pre-toggle-lbl">MODO HORIZONTAL</span>
+            <label class="toggle-sw" for="toggle-landscape">
+              <input type="checkbox" id="toggle-landscape">
+              <span class="toggle-sw-track"></span>
+            </label>
+          </div>
+          <button id="btn-open-circuit" class="btn btn-display">◈ DISPLAY</button>
         </div>
       </div>
 

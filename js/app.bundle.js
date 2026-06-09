@@ -736,8 +736,8 @@ function toggleLandscapeMode() {
 
   // Sync both landscape toggle buttons (pre-ride + in-session)
   const on = App.landscapeMode;
-  const btn = $('btn-landscape');
-  if (btn) { btn.textContent = on ? '⊡ PORTRAIT' : '⊞ HORIZONTAL'; btn.classList.toggle('active', on); }
+  const chk = document.getElementById('toggle-landscape');
+  if (chk) chk.checked = on;
   const btnMap = $('btn-map-landscape');
   if (btnMap) { btnMap.textContent = on ? '⊡' : '⊞'; btnMap.classList.toggle('active', on); btnMap.title = on ? 'Salir modo horizontal' : 'Modo horizontal'; }
 
@@ -2677,7 +2677,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-calibrate')?.addEventListener('click',  doCalibrate);
   $('btn-calibrate2')?.addEventListener('click', doCalibrate);
   $('btn-cir-cal')?.addEventListener('click', doCalibrate);
-  $('btn-landscape')?.addEventListener('click', toggleLandscapeMode);
+  document.getElementById('toggle-landscape')?.addEventListener('change', toggleLandscapeMode);
   $('btn-map-landscape')?.addEventListener('click', toggleLandscapeMode);
   $('btn-open-circuit')?.addEventListener('click', openCircuit);
   $('btn-cir-start')?.addEventListener('click', startCircuitSession);
