@@ -722,6 +722,33 @@
         </div>
       </div>
 
+      <!-- ── TRIUMPH brand mode ── -->
+      <div id="cir-triumph" class="cir-tri-wrap">
+        <div class="tri-side">
+          <div class="tri-s"><span class="tri-s-lbl">SESIÓN</span><span class="tri-s-val" id="cir-tri-sess">--:--</span></div>
+          <div class="tri-s"><span class="tri-s-lbl">CURVAS</span><span class="tri-s-val" id="cir-tri-curves">0</span></div>
+          <div class="tri-s"><span class="tri-s-lbl">V.MÁX</span><span class="tri-s-val" id="cir-tri-vmax" style="color:#1EA3D3">0</span></div>
+          <div class="tri-s"><span class="tri-s-lbl">Â.MÁX</span><span class="tri-s-val" id="cir-tri-amax" style="color:#1EA3D3">0°</span></div>
+        </div>
+        <div class="tri-dial">
+          <svg id="cir-tri-svg" viewBox="0 0 338 338"></svg>
+          <div class="tri-tft">
+            <div class="tri-tft-spd" id="cir-tri-spd">0</div>
+            <div class="tri-tft-unit">KM/H</div>
+            <div class="tri-tft-lean" id="cir-tri-lean">0°</div>
+            <div class="tri-tft-sub">
+              <span id="cir-tri-gear">MARCHA —</span>
+              <span id="cir-tri-rpm">-- RPM</span>
+            </div>
+          </div>
+        </div>
+        <div class="tri-side right">
+          <div class="tri-s"><span class="tri-s-lbl">TEMP</span><span class="tri-s-val" id="cir-tri-temp">--°</span></div>
+          <div class="tri-s"><span class="tri-s-lbl">VOLTAJE</span><span class="tri-s-val" id="cir-tri-volt">--v</span></div>
+          <div class="tri-s"><span class="tri-s-lbl">INCL</span><span class="tri-s-val" id="cir-tri-incl">0°</span></div>
+        </div>
+      </div>
+
       <!-- ── SHARED: Kirk AI bar ── -->
       <div class="cir-ai-bar">
         <div class="cir-ai-pill">AI</div>
@@ -735,6 +762,7 @@
         <button id="btn-cir-inv-p" class="cir-btn cir-btn-sm">↕ P</button>
         <button id="btn-cir-cal"   class="cir-btn cir-btn-sm">⊕</button>
         <button id="btn-cir-ls"    class="cir-btn cir-btn-sm">⊞</button>
+        <button id="btn-cir-brand" class="cir-btn cir-btn-sm">T</button>
         <input type="range" id="cir-hue" class="cir-hue-slider" min="0" max="360" value="20" title="Color">
         <div class="cir-ctrl-gap"></div>
         <button id="btn-cir-mic"   class="cir-btn cir-btn-mic">🎤</button>

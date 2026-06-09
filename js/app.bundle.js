@@ -1280,6 +1280,8 @@ let _cirMaxAng = 0;
 let _cirHue    = 20;
 let _lsSegsRpm = [];
 let _lsSegsSpd = [];
+let _cirBrand  = 'sport';   // 'sport' | 'triumph'
+let _triNeedle = null, _triNeedleGlow = null, _triGlowArc = null;
 
 /* ── Kirk state ── */
 let _kirkSpeaking  = false;
@@ -1653,6 +1655,175 @@ function _updateLsLayout(roll, spd) {
   const gla = $('cir-ls-glat'); if (gla) gla.textContent = Math.abs(latG).toFixed(2);
 }
 
+/* ══════════════════════════════
+   TRIUMPH brand mode
+══════════════════════════════ */
+function _buildTriumphSvg() {
+  const svg = $('cir-tri-svg');
+  if (!svg || svg.children.length) return;  // already built
+  const ns = 'http://www.w3.org/2000/svg';
+  const CX = 169, CY = 169;
+  const START = 210, ARC = 300, END = START + ARC;  // 510° → 150°
+  const R_OUT = 148, R_IN = 133;
+
+  function rad(d) { return d * Math.PI / 180; }
+  function pt(r, a) { return [CX + r * Math.sin(rad(a)), CY - r * Math.cos(rad(a))]; }
+  function mkEl(tag, attrs) {
+    const el = document.createElementNS(ns, tag);
+    Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, String(v)));
+    return el;
+  }
+  function arcPt(r, startA, endA) {
+    const span = ((endA - startA) + 360) % 360;
+    const [sx, sy] = pt(r, startA), [ex, ey] = pt(r, endA);
+    return `M${sx},${sy} A${r},${r} 0 ${span > 180 ? 1 : 0},1 ${ex},${ey}`;
+  }
+
+  // Background track ring
+  const [s1x,s1y]=pt(R_OUT,START), [e1x,e1y]=pt(R_OUT,END);
+  const [s2x,s2y]=pt(R_IN, START), [e2x,e2y]=pt(R_IN, END);
+  svg.appendChild(mkEl('path', {
+    d: `M${s1x},${s1y} A${R_OUT},${R_OUT} 0 1,1 ${e1x},${e1y}L${e2x},${e2y} A${R_IN},${R_IN} 0 1,0 ${s2x},${s2y} Z`,
+    fill: 'rgba(255,255,255,0.025)'
+  }));
+
+  // Redline zone (≥83%)
+  const redStart = START + ARC * 0.833;
+  const [rs1x,rs1y]=pt(R_OUT,redStart),[re1x,re1y]=pt(R_OUT,END);
+  const [rs2x,rs2y]=pt(R_IN, redStart),[re2x,re2y]=pt(R_IN, END);
+  const rdSpan = ((END - redStart) + 360) % 360;
+  svg.appendChild(mkEl('path', {
+    d: `M${rs1x},${rs1y} A${R_OUT},${R_OUT} 0 ${rdSpan>180?1:0},1 ${re1x},${re1y}L${re2x},${re2y} A${R_IN},${R_IN} 0 ${rdSpan>180?1:0},0 ${rs2x},${rs2y} Z`,
+    fill: 'rgba(255,20,20,0.18)'
+  }));
+
+  // RPM progress glow (dynamic — stored ref)
+  _triGlowArc = mkEl('path', { d: '', fill: 'rgba(200,220,255,0.07)' });
+  svg.appendChild(_triGlowArc);
+
+  // Outer arc border
+  svg.appendChild(mkEl('path', {
+    d: arcPt(R_OUT + 2, START, END), fill: 'none',
+    stroke: 'rgba(255,255,255,0.15)', 'stroke-width': '1'
+  }));
+
+  // Major ticks + labels (0–11)
+  for (let i = 0; i <= 12; i++) {
+    const a = START + (i / 12) * ARC;
+    const isRed = i >= 10;
+    const col = isRed ? 'rgba(255,55,55,0.95)' : 'rgba(255,255,255,0.82)';
+    const [ox,oy]=pt(R_OUT+4,a), [ix,iy]=pt(R_IN-8,a);
+    svg.appendChild(mkEl('line', { x1:ox,y1:oy,x2:ix,y2:iy, stroke:col, 'stroke-width':'2', 'stroke-linecap':'round' }));
+    const [tx,ty]=pt(R_IN-22,a);
+    const lbl = mkEl('text', { x:tx, y:ty, 'text-anchor':'middle', 'dominant-baseline':'middle',
+      fill: isRed?'rgba(255,65,65,0.8)':'rgba(255,255,255,0.55)',
+      'font-size':'9.5', 'font-family':'JetBrains Mono,monospace' });
+    lbl.textContent = i;
+    svg.appendChild(lbl);
+  }
+
+  // Minor ticks
+  for (let i = 0; i < 48; i++) {
+    if (i % 4 === 0) continue;
+    const a = START + (i / 48) * ARC;
+    const isMid = i % 2 === 0;
+    const [ox,oy]=pt(R_OUT+3,a), [ix,iy]=pt(isMid?R_OUT-3:R_OUT-1,a);
+    svg.appendChild(mkEl('line', { x1:ox,y1:oy,x2:ix,y2:iy, stroke:'rgba(255,255,255,0.25)', 'stroke-width':'0.8' }));
+  }
+
+  // Needle glow (dynamic)
+  const [ntx0,nty0] = pt(R_OUT-4, START);
+  _triNeedleGlow = mkEl('line', { x1:CX,y1:CY,x2:ntx0,y2:nty0,
+    stroke:'rgba(255,255,255,0.12)', 'stroke-width':'8', 'stroke-linecap':'round' });
+  svg.appendChild(_triNeedleGlow);
+  // Needle (dynamic)
+  _triNeedle = mkEl('line', { x1:CX,y1:CY,x2:ntx0,y2:nty0,
+    stroke:'#dde4f0', 'stroke-width':'2', 'stroke-linecap':'round' });
+  svg.appendChild(_triNeedle);
+
+  // Center hub
+  svg.appendChild(mkEl('circle', { cx:CX,cy:CY,r:'7', fill:'#b8bfc8', stroke:'#6a707a', 'stroke-width':'1.5' }));
+
+  // Branding
+  const brand = mkEl('text', { x:CX,y:28,'text-anchor':'middle',
+    fill:'rgba(255,255,255,0.2)','font-size':'10','font-family':'Rajdhani,sans-serif',
+    'font-weight':'700','letter-spacing':'5' });
+  brand.textContent = 'TRIUMPH';
+  svg.appendChild(brand);
+
+  const rpmLbl = mkEl('text', { x:CX,y:48,'text-anchor':'middle',
+    fill:'rgba(255,255,255,0.16)','font-size':'7','font-family':'JetBrains Mono,monospace',
+    'letter-spacing':'1' });
+  rpmLbl.textContent = '×1000 RPM';
+  svg.appendChild(rpmLbl);
+
+  const vLogo = mkEl('text', { x:CX,y:226,'text-anchor':'middle',
+    fill:'rgba(255,255,255,0.22)','font-size':'13','font-family':'Rajdhani,sans-serif',
+    'font-weight':'700','letter-spacing':'2' });
+  vLogo.textContent = '───V───';
+  svg.appendChild(vLogo);
+}
+
+function _updateTriumphLayout(roll, spd) {
+  const rpm  = App.obd2Rpm  || 0;
+  const gear = App.obd2Gear || '—';
+  const temp = App.weather  ? App.weather.temp + '°' : '--°';
+  const lean = Math.abs(roll);
+  const CX = 169, CY = 169;
+  const START = 210, ARC = 300;
+  const R_OUT = 148, R_IN = 133;
+  const maxRpm = 12000;
+  const frac = Math.min(rpm / maxRpm, 1);
+
+  function rad(d) { return d * Math.PI / 180; }
+  function pt(r, a) { return [CX + r * Math.sin(rad(a)), CY - r * Math.cos(rad(a))]; }
+
+  // Update needle
+  const nClock = START + frac * ARC;
+  const [nx, ny] = pt(R_OUT - 4, nClock);
+  if (_triNeedle)     { _triNeedle.setAttribute('x2', nx);     _triNeedle.setAttribute('y2', ny); }
+  if (_triNeedleGlow) { _triNeedleGlow.setAttribute('x2', nx); _triNeedleGlow.setAttribute('y2', ny); }
+
+  // Update glow arc
+  if (_triGlowArc) {
+    if (frac > 0.005) {
+      const rC = START + frac * ARC;
+      const [pg1x,pg1y]=pt(R_OUT-1,START), [pgx,pgy]=pt(R_OUT-1,rC);
+      const [pg2x,pg2y]=pt(R_IN+1,START),  [pgx2,pgy2]=pt(R_IN+1,rC);
+      const sp = ((rC - START) + 360) % 360;
+      _triGlowArc.setAttribute('d',
+        `M${pg1x},${pg1y} A${R_OUT},${R_OUT} 0 ${sp>180?1:0},1 ${pgx},${pgy}` +
+        `L${pgx2},${pgy2} A${R_IN},${R_IN} 0 ${sp>180?1:0},0 ${pg2x},${pg2y} Z`);
+    } else {
+      _triGlowArc.setAttribute('d', '');
+    }
+  }
+
+  // TFT
+  const ts = $('cir-tri-spd');  if (ts)  ts.textContent  = Math.round(spd) || 0;
+  const tl = $('cir-tri-lean'); if (tl)  tl.textContent  = lean > 0.5 ? Math.round(lean)+'°' : '0°';
+  const tg = $('cir-tri-gear'); if (tg)  tg.textContent  = 'MARCHA '+(gear === '—' ? '—' : gear);
+  const tr = $('cir-tri-rpm');  if (tr)  tr.textContent  = rpm > 0 ? (rpm/1000).toFixed(1)+'k RPM' : '-- RPM';
+
+  // Side left: session stats
+  if (App.sessionActive) {
+    const el = App.sessionStart ? Date.now() - App.sessionStart : 0;
+    const s = Math.floor(el/1000)%60, m = Math.floor(el/60000);
+    const ses = $('cir-tri-sess'); if (ses) ses.textContent = pad(m)+':'+pad(s);
+  }
+  const tc = $('cir-tri-curves'); if (tc) tc.textContent = App.sessionCurves?.length || 0;
+  const tv = $('cir-tri-vmax');   if (tv) tv.textContent = _cirMaxSpd;
+  const ta = $('cir-tri-amax');   if (ta) ta.textContent = Math.round(_cirMaxAng)+'°';
+
+  // Side right
+  const tt  = $('cir-tri-temp');  if (tt)  tt.textContent  = temp;
+  const tvo = $('cir-tri-volt');  if (tvo) tvo.textContent = App.obd2Volt ? App.obd2Volt.toFixed(1)+'v' : '--v';
+  const ti  = $('cir-tri-incl');  if (ti)  {
+    const pitch = App.gyroData?.beta || 0;
+    ti.textContent = Math.round(Math.abs(pitch))+'° '+(pitch >= 0 ? 'F' : 'B');
+  }
+}
+
 function openCircuit() {
   App.circuitMode  = true;
   _kirkKittPos     = 0; _kirkKittDir = 1; _kirkCooldowns = {};
@@ -1666,6 +1837,9 @@ function openCircuit() {
   $('btn-cir-inv-p')?.classList.toggle('active', App.pitchFlip);
   initKirkVoice();
   _buildLsSegs();
+  _buildTriumphSvg();
+  const ov2 = $('circuit-overlay');
+  if (ov2) ov2.dataset.brand = _cirBrand;
   setTimeout(() => {
     resizeCircuitCanvases();
     _cirLoop();
@@ -1723,7 +1897,9 @@ function _cirLoop() {
   if (!App.circuitMode) return;
   const roll = (App.gyroData.gamma || 0) * (App.rollFlip  ? -1 : 1);
   const spd  = App.gpsSpeed || 0;
-  if (App.landscapeMode) {
+  if (_cirBrand === 'triumph') {
+    _updateTriumphLayout(roll, spd);
+  } else if (App.landscapeMode) {
     _updateLsLayout(roll, spd);
   } else {
     _drawSpeedArc($('cir-arc-cv'), spd);
@@ -2507,6 +2683,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-cir-stop')?.addEventListener('click', stopCircuitSession);
   $('btn-cir-exit')?.addEventListener('click', closeCircuit);
   $('btn-cir-ls')?.addEventListener('click', () => { toggleLandscapeMode(); $('btn-cir-ls')?.classList.toggle('active', App.landscapeMode); });
+  $('btn-cir-brand')?.addEventListener('click', () => {
+    _cirBrand = _cirBrand === 'triumph' ? 'sport' : 'triumph';
+    const ov = $('circuit-overlay');
+    if (ov) ov.dataset.brand = _cirBrand;
+    $('btn-cir-brand')?.classList.toggle('active', _cirBrand === 'triumph');
+  });
   $('btn-cir-mic')?.addEventListener('click', () => {
     if (!_kirkRec) { toast('Voz no disponible', 'info'); return; }
     $('btn-cir-mic').classList.add('active');

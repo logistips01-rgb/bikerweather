@@ -1933,3 +1933,94 @@ body.landscape-mode #circuit-overlay {
 }
 .btn-hud-mic:hover  { border-color: var(--border); color: var(--text); }
 .btn-hud-mic.active { border-color: rgba(255,30,0,0.5); color: #ff3030; }
+
+
+/* ══════════════════════════════════════════════════════
+   TRIUMPH brand mode inside circuit overlay
+══════════════════════════════════════════════════════ */
+
+/* Hidden by default; shown when overlay has data-brand="triumph" */
+.cir-tri-wrap {
+  display: none;
+  flex: 1; min-height: 0;
+  align-items: center; justify-content: center;
+  background: radial-gradient(ellipse 60% 80% at center, #151c28 0%, #07080b 65%);
+}
+
+#circuit-overlay[data-brand="triumph"] .cir-portrait,
+#circuit-overlay[data-brand="triumph"] .cir-landscape { display: none !important; }
+#circuit-overlay[data-brand="triumph"] .cir-tri-wrap  { display: flex; }
+
+/* Side stats */
+.tri-side {
+  flex: 1; min-width: 0; padding: 0 10px;
+  display: flex; flex-direction: column; justify-content: center; gap: 9px;
+}
+.tri-side.right { align-items: flex-end; }
+.tri-s { display: flex; flex-direction: column; }
+.tri-s-lbl {
+  font-family: 'JetBrains Mono', monospace; font-size: 6px;
+  color: rgba(255,255,255,0.3); letter-spacing: 1px;
+}
+.tri-s-val {
+  font-family: 'JetBrains Mono', monospace; font-size: 14px;
+  font-weight: 700; color: rgba(255,255,255,0.82); line-height: 1.1;
+}
+
+/* Round instrument */
+.tri-dial {
+  flex-shrink: 0;
+  width: 340px; height: 340px;
+  border-radius: 50%;
+  position: relative;
+  background: radial-gradient(ellipse at 50% 42%, #1e2636 0%, #10141c 50%, #080a0d 100%);
+  border: 14px solid #0d1016;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.07),
+    0 0 0 2px rgba(0,0,0,0.9),
+    0 4px 50px rgba(0,0,0,0.95),
+    inset 0 0 0 1px rgba(255,255,255,0.08),
+    inset 0 2px 0 rgba(255,255,255,0.05),
+    inset 0 0 50px rgba(0,0,0,0.55);
+  overflow: hidden;
+}
+.tri-dial svg {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+}
+
+/* TFT inner panel */
+.tri-tft {
+  position: absolute;
+  bottom: 32px; left: 50%; transform: translateX(-50%);
+  width: 148px; height: 95px;
+  background: #03060e;
+  border: 1px solid rgba(30,163,211,0.35);
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgba(30,163,211,0.1), 0 0 18px rgba(30,163,211,0.22),
+              inset 0 0 12px rgba(0,0,0,0.7);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 0; padding: 5px 8px;
+  z-index: 5;
+}
+.tri-tft-spd {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 42px; font-weight: 700; color: #fff; line-height: 1;
+  letter-spacing: -1px;
+}
+.tri-tft-unit {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 7px; color: rgba(255,255,255,0.3); letter-spacing: 4px;
+  margin-bottom: 3px;
+}
+.tri-tft-lean {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px; font-weight: 700; color: #1EA3D3; line-height: 1;
+}
+.tri-tft-sub {
+  display: flex; gap: 12px; margin-top: 2px;
+}
+.tri-tft-sub span {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px; color: rgba(255,255,255,0.4);
+}
