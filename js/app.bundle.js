@@ -1578,7 +1578,7 @@ function _buildLsSegs() {
   });
 }
 
-function _updateLsSegs(rpm, spd) {
+function _updateLsSegs(rpm, roll) {
   const N = 24;
   // RPM segments
   _lsSegsRpm.forEach((s, i) => {
@@ -1593,23 +1593,23 @@ function _updateLsSegs(rpm, spd) {
       s.style.boxShadow  = 'none';
     }
   });
-  // Speed segments — skin-aware color
-  const spdBase     = _cirHue;
-  const spdInactive = 'rgba(255,255,255,0.07)';
+  // Lean angle (roll) segments — green→amber→orange→red at 55° max
+  const lean = Math.abs(roll);
   _lsSegsSpd.forEach((s, i) => {
-    const on = spd > (i / N * 220);
+    const on = lean > (i / N * 55);
     if (on) {
-      const t = i / N; const h = spdBase + t * 20;
+      const t = i / N;
+      const h = 120 - t * 120; // green at 0° → red at 55°
       s.style.background = `hsl(${h},100%,52%)`;
-      s.style.boxShadow  = `0 0 3px hsla(${h},100%,55%,0.45)`;
+      s.style.boxShadow  = `0 0 3px hsla(${h},100%,55%,0.5)`;
     } else {
-      s.style.background = spdInactive;
+      s.style.background = 'rgba(255,255,255,0.07)';
       s.style.boxShadow  = 'none';
     }
   });
   // Bar labels
   const rv = $('cir-ls-rpm-bar'); if (rv) rv.textContent = rpm > 0 ? (rpm/1000).toFixed(1)+'k' : '--';
-  const sv = $('cir-ls-spd-bar'); if (sv) sv.textContent = Math.round(spd) || '--';
+  const sv = $('cir-ls-spd-bar'); if (sv) sv.textContent = lean > 0.5 ? Math.round(lean)+'°' : '--';
 }
 
 function _updateLsLayout(roll, spd) {
@@ -1617,7 +1617,7 @@ function _updateLsLayout(roll, spd) {
   const gear = App.obd2Gear || '—';
   const temp = App.weather  ? App.weather.temp + '°' : '--°';
 
-  _updateLsSegs(rpm, spd);
+  _updateLsSegs(rpm, roll);
 
   // Info strip
   const rn = $('cir-ls-rpm-num'); if (rn) rn.textContent = rpm > 0 ? (rpm/1000).toFixed(1)+'k' : '--k';
