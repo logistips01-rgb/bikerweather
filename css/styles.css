@@ -1846,18 +1846,21 @@ body.landscape-mode .cir-lean-panel { width: 110px; overflow: hidden; }
   text-shadow:0 0 10px hsla(var(--cir-h),100%,55%,0.5);
 }
 .cir-ls-vtrack {
-  width:18px; flex:1;
-  border-radius:2px; overflow:hidden;
-  background:hsla(var(--cir-h),100%,50%,0.07);
-  border:1px solid hsla(var(--cir-h),100%,55%,0.28);
+  width:22px; flex:1;
+  border-radius:3px; overflow:hidden;
+  background:rgba(255,255,255,0.04);
+  border:1px solid hsla(var(--cir-h),100%,55%,0.45);
   display:flex; flex-direction:column; justify-content:flex-end;
 }
 .cir-ls-vfill {
   width:100%; height:0%;
-  background:linear-gradient(to top, hsl(var(--cir-h),100%,50%), hsl(calc(var(--cir-h)+28),100%,64%));
-  border-radius:2px 2px 0 0;
+  background:linear-gradient(to top,
+    hsl(var(--cir-h),100%,45%),
+    hsl(var(--cir-h),100%,72%));
+  border-top:2px solid hsl(var(--cir-h),100%,88%);
   transition:height 0.1s ease-out;
-  box-shadow:0 0 10px hsla(var(--cir-h),100%,55%,0.5);
+  box-shadow:0 0 16px hsla(var(--cir-h),100%,60%,0.8),
+             inset 0 0 8px hsla(var(--cir-h),100%,80%,0.3);
 }
 .cir-ls-vlbl { font-family:'JetBrains Mono',monospace; font-size:7px; color:hsla(var(--cir-h),80%,60%,0.6); }
 .cir-ls-vl .cir-ls-vtrack { transform:skewX(10deg); }
