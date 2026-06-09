@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>BikerWeather — Mockups HUD</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#000; color:#fff; font-family:'Rajdhani',sans-serif; overflow-x:hidden; }
+h1 { text-align:center; font-size:13px; color:rgba(255,255,255,0.3); letter-spacing:3px; padding:16px 0 8px; text-transform:uppercase; }
+.mockup { width:100vw; height:92vw; max-height:380px; background:#04050a; border-bottom:1px solid rgba(255,255,255,0.06); position:relative; display:flex; flex-direction:column; overflow:hidden; }
+.mockup-label { position:absolute; top:8px; right:10px; font-size:9px; color:rgba(255,255,255,0.25); letter-spacing:2px; z-index:10; }
+.option-title { text-align:center; font-size:11px; color:rgba(255,180,0,0.6); letter-spacing:2px; padding:10px 0 4px; text-transform:uppercase; }
+.divider { height:1px; background:rgba(255,255,255,0.05); margin:0; }
+
+/* ── SHARED MID ROW ── */
+.mid { flex:1; display:flex; align-items:stretch; min-height:0; }
+.left-stats { width:80px; flex-shrink:0; padding:8px 6px; display:flex; flex-direction:column; gap:6px; border-right:1px solid rgba(255,255,255,0.05); }
+.stat { display:flex; flex-direction:column; }
+.sl { font-family:'JetBrains Mono',monospace; font-size:6px; color:rgba(255,255,255,0.45); letter-spacing:1px; }
+.sv { font-size:14px; font-weight:700; color:rgba(255,255,255,0.88); }
+.center { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
+.lean-panel { width:90px; flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; border-left:1px solid rgba(255,179,0,0.1); padding:6px; }
+.lean-title { font-family:'JetBrains Mono',monospace; font-size:6px; color:rgba(255,179,0,0.6); letter-spacing:1px; }
+.lean-nums { display:flex; justify-content:space-between; width:100%; }
+.lean-val { font-size:22px; font-weight:700; color:#ff9500; text-shadow:0 0 12px rgba(255,149,0,0.5); }
+.lean-bars { display:flex; gap:10px; align-items:flex-end; height:80px; }
+.bar-track { width:18px; height:80px; background:rgba(255,149,0,0.06); border:1px solid rgba(255,149,0,0.22); border-radius:2px; overflow:hidden; display:flex; flex-direction:column; justify-content:flex-end; }
+.bar-fill { width:100%; background:linear-gradient(to top,#ff9500,#ffcc00); border-radius:2px 2px 0 0; }
+.lr-lbl { display:flex; justify-content:space-between; width:100%; font-family:'JetBrains Mono',monospace; font-size:8px; color:rgba(255,179,0,0.5); }
+
+/* bottom bar */
+.bot { height:36px; display:flex; align-items:center; justify-content:center; gap:8px; border-top:1px solid rgba(255,255,255,0.05); flex-shrink:0; padding:0 8px; }
+.btn { font-family:'JetBrains Mono',monospace; font-size:9px; color:rgba(255,255,255,0.5); border:1px solid rgba(255,255,255,0.12); border-radius:4px; padding:4px 8px; }
+.btn.accent { border-color:rgba(255,149,0,0.4); color:rgba(255,149,0,0.8); }
+
+
+/* ════════════════════════════════════════
+   OPCIÓN A — Barras horizontales de bloques
+   ════════════════════════════════════════ */
+.opt-a .top-bars { flex-shrink:0; padding:10px 10px 6px; display:flex; flex-direction:column; gap:5px; }
+.bar-row { display:flex; align-items:center; gap:6px; }
+.bar-lbl { font-family:'JetBrains Mono',monospace; font-size:8px; width:28px; text-align:right; flex-shrink:0; }
+.segs { display:flex; gap:2px; flex:1; }
+.seg { flex:1; height:14px; border-radius:2px; }
+.bar-val { font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700; width:32px; text-align:left; flex-shrink:0; }
+.opt-a .center .spd { font-size:clamp(52px,14vw,90px); font-weight:700; color:#fff; line-height:1; letter-spacing:-2px; }
+.opt-a .center .unit { font-size:10px; color:rgba(255,255,255,0.5); letter-spacing:4px; }
+.opt-a .center .gear { font-size:42px; font-weight:700; color:#00f0a0; border:1px solid rgba(0,240,160,0.25); border-radius:4px; padding:0 12px; line-height:1.1; }
+
+
+/* ════════════════════════════════════════
+   OPCIÓN B — Solo números grandes (TFT)
+   ════════════════════════════════════════ */
+.opt-b .tft-top { flex-shrink:0; height:70px; display:flex; align-items:stretch; border-bottom:1px solid rgba(255,255,255,0.06); }
+.tft-cell { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:4px; }
+.tft-cell + .tft-cell { border-left:1px solid rgba(255,255,255,0.06); }
+.tft-num { font-family:'JetBrains Mono',monospace; font-size:38px; font-weight:700; line-height:1; }
+.tft-lbl { font-family:'JetBrains Mono',monospace; font-size:7px; letter-spacing:2px; margin-top:2px; }
+.tft-rpm .tft-num { color:#ff5500; }
+.tft-rpm .tft-lbl { color:rgba(255,85,0,0.55); }
+.tft-temp .tft-num { color:#29d9ff; font-size:28px; }
+.tft-temp .tft-lbl { color:rgba(41,217,255,0.55); }
+.tft-bat .tft-num  { color:rgba(255,255,255,0.7); font-size:22px; }
+.tft-bat .tft-lbl  { color:rgba(255,255,255,0.35); }
+.opt-b .center .spd { font-size:clamp(68px,18vw,110px); font-weight:700; color:#fff; line-height:0.9; letter-spacing:-3px; }
+.opt-b .center .unit { font-size:10px; color:rgba(255,255,255,0.45); letter-spacing:5px; margin-top:2px; }
+.opt-b .center .gear { font-size:48px; font-weight:700; color:#00f0a0; border:1px solid rgba(0,240,160,0.25); border-radius:4px; padding:0 14px; line-height:1.1; margin-top:2px; }
+.opt-b .center .gf { font-family:'JetBrains Mono',monospace; font-size:14px; color:#ffb300; margin-top:4px; }
+
+
+/* ════════════════════════════════════════
+   OPCIÓN C — Columnas verticales laterales
+   ════════════════════════════════════════ */
+.opt-c .col-layout { flex:1; display:flex; align-items:stretch; min-height:0; }
+.rpm-col { width:28px; flex-shrink:0; display:flex; flex-direction:column-reverse; gap:2px; padding:6px 4px; border-right:1px solid rgba(255,255,255,0.05); }
+.rpm-seg { width:100%; height:100%; border-radius:2px; flex:1; }
+.opt-c .col-center { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
+.opt-c .col-center .spd { font-size:clamp(60px,16vw,100px); font-weight:700; color:#fff; line-height:0.9; letter-spacing:-2px; }
+.opt-c .col-center .unit { font-size:10px; color:rgba(255,255,255,0.45); letter-spacing:5px; }
+.opt-c .col-center .gear { font-size:44px; font-weight:700; color:#00f0a0; border:1px solid rgba(0,240,160,0.25); border-radius:4px; padding:0 12px; line-height:1.1; margin-top:2px; }
+.opt-c .col-center .gf { font-family:'JetBrains Mono',monospace; font-size:13px; color:#ffb300; margin-top:4px; }
+.opt-c .col-center .rpm-num { font-family:'JetBrains Mono',monospace; font-size:11px; color:rgba(255,85,0,0.7); letter-spacing:1px; margin-bottom:2px; }
+.spd-col { width:28px; flex-shrink:0; display:flex; flex-direction:column-reverse; gap:2px; padding:6px 4px; border-left:1px solid rgba(255,255,255,0.05); }
+.spd-seg { width:100%; border-radius:2px; flex:1; }
+.col-label { font-family:'JetBrains Mono',monospace; font-size:6px; letter-spacing:1px; text-align:center; padding:2px 0; flex-shrink:0; }
+</style>
+</head>
+<body>
+<h1>BikerWeather · Simulaciones HUD</h1>
+
+<!-- ═══════════ OPCIÓN A ═══════════ -->
+<p class="option-title">A — Barras horizontales de bloques</p>
+<div class="mockup opt-a">
+  <div class="mockup-label">OPCIÓN A</div>
+  <div class="top-bars">
+    <div class="bar-row">
+      <span class="bar-lbl" style="color:rgba(255,255,255,0.45)">RPM</span>
+      <div class="segs" id="segs-rpm"></div>
+      <span class="bar-val" style="color:rgba(255,85,0,0.8)">8.2k</span>
+    </div>
+    <div class="bar-row">
+      <span class="bar-lbl" style="color:rgba(255,149,0,0.6)">SPD</span>
+      <div class="segs" id="segs-spd"></div>
+      <span class="bar-val" style="color:rgba(255,149,0,0.9)">124</span>
+    </div>
+  </div>
+  <div class="mid">
+    <div class="left-stats">
+      <div class="stat"><span class="sl">SESIÓN</span><span class="sv">12:34</span></div>
+      <div class="stat"><span class="sl">CURVAS</span><span class="sv">7</span></div>
+      <div class="stat"><span class="sl">V.MÁX</span><span class="sv" style="color:#ff6600">187</span></div>
+      <div class="stat"><span class="sl">Â.MÁX</span><span class="sv" style="color:#ffb300">38°</span></div>
+    </div>
+    <div class="center">
+      <div class="spd">184</div>
+      <div class="unit">KM/H</div>
+      <div class="gear">3</div>
+    </div>
+    <div class="lean-panel">
+      <div class="lean-title">LEANING ANGLE</div>
+      <div class="lean-nums"><span class="lean-val">0°</span><span class="lean-val">34°</span></div>
+      <div class="lean-bars">
+        <div class="bar-track"><div class="bar-fill" style="height:0%"></div></div>
+        <div class="bar-track"><div class="bar-fill" style="height:42%"></div></div>
+      </div>
+      <div class="lr-lbl"><span>L</span><span>R</span></div>
+    </div>
+  </div>
+  <div class="bot">
+    <span class="btn">✕</span><span class="btn">↔ R</span><span class="btn">↕ P</span><span class="btn accent">▶ INICIO</span>
+  </div>
+</div>
+<div class="divider"></div>
+
+<!-- ═══════════ OPCIÓN B ═══════════ -->
+<p class="option-title">B — Números grandes tipo TFT (Ducati / KTM)</p>
+<div class="mockup opt-b">
+  <div class="mockup-label">OPCIÓN B</div>
+  <div class="tft-top">
+    <div class="tft-cell tft-rpm">
+      <div class="tft-num">8.2<span style="font-size:0.55em">k</span></div>
+      <div class="tft-lbl">RPM</div>
+    </div>
+    <div class="tft-cell tft-temp">
+      <div class="tft-num">84°</div>
+      <div class="tft-lbl">TEMP</div>
+    </div>
+    <div class="tft-cell tft-bat">
+      <div class="tft-num">12.8v</div>
+      <div class="tft-lbl">BATERÍA</div>
+    </div>
+  </div>
+  <div class="mid">
+    <div class="left-stats">
+      <div class="stat"><span class="sl">SESIÓN</span><span class="sv">12:34</span></div>
+      <div class="stat"><span class="sl">CURVAS</span><span class="sv">7</span></div>
+      <div class="stat"><span class="sl">V.MÁX</span><span class="sv" style="color:#ff6600">187</span></div>
+      <div class="stat"><span class="sl">Â.MÁX</span><span class="sv" style="color:#ffb300">38°</span></div>
+    </div>
+    <div class="center">
+      <div class="spd">184</div>
+      <div class="unit">KM/H</div>
+      <div class="gear">3</div>
+      <div class="gf">0.12↑ &nbsp; 0.38→ G</div>
+    </div>
+    <div class="lean-panel">
+      <div class="lean-title">LEANING ANGLE</div>
+      <div class="lean-nums"><span class="lean-val">0°</span><span class="lean-val">34°</span></div>
+      <div class="lean-bars">
+        <div class="bar-track"><div class="bar-fill" style="height:0%"></div></div>
+        <div class="bar-track"><div class="bar-fill" style="height:42%"></div></div>
+      </div>
+      <div class="lr-lbl"><span>L</span><span>R</span></div>
+    </div>
+  </div>
+  <div class="bot">
+    <span class="btn">✕</span><span class="btn">↔ R</span><span class="btn">↕ P</span><span class="btn accent">▶ INICIO</span>
+  </div>
+</div>
+<div class="divider"></div>
+
+<!-- ═══════════ OPCIÓN C ═══════════ -->
+<p class="option-title">C — Columnas verticales laterales</p>
+<div class="mockup opt-c">
+  <div class="mockup-label">OPCIÓN C</div>
+  <div class="col-layout">
+    <div style="display:flex;flex-direction:column;width:28px;flex-shrink:0;border-right:1px solid rgba(255,255,255,0.05);">
+      <div class="col-label" style="color:rgba(255,85,0,0.5)">RPM</div>
+      <div class="rpm-col" id="rpm-col" style="flex:1"></div>
+    </div>
+    <div class="col-center">
+      <div class="rpm-num">8200 RPM</div>
+      <div class="spd">184</div>
+      <div class="unit">KM/H</div>
+      <div class="gear">3</div>
+      <div class="gf">0.12↑ &nbsp;0.38→ G</div>
+    </div>
+    <div style="display:flex;flex-direction:column;width:28px;flex-shrink:0;border-left:1px solid rgba(255,255,255,0.05);">
+      <div class="col-label" style="color:rgba(255,149,0,0.5)">SPD</div>
+      <div class="spd-col" id="spd-col" style="flex:1"></div>
+    </div>
+  </div>
+  <div class="bot">
+    <span class="btn">✕</span><span class="btn">↔ R</span><span class="btn">↕ P</span><span class="btn accent">▶ INICIO</span>
+  </div>
+</div>
+
+<script>
+// ── Opción A: segmentos horizontales ──
+function buildHSegs(id, total, active, colors) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  for (let i = 0; i < total; i++) {
+    const s = document.createElement('div');
+    s.className = 'seg';
+    const on = i < active;
+    const redZ = i >= Math.floor(total * 0.82);
+    const warmZ = i >= Math.floor(total * 0.65);
+    if (on) {
+      if (redZ)       s.style.background = i >= total*0.9 ? '#ff0022' : '#ff2200';
+      else if (warmZ) s.style.background = '#ff5500';
+      else {
+        const t = i / (total * 0.65);
+        const hue = 120 - t * 120;
+        s.style.background = `hsl(${hue},100%,52%)`;
+        s.style.boxShadow = `0 0 4px hsla(${hue},100%,55%,0.6)`;
+      }
+    } else {
+      s.style.background = redZ ? 'rgba(255,30,30,0.18)' : 'rgba(255,255,255,0.07)';
+    }
+    el.appendChild(s);
+  }
+}
+buildHSegs('segs-rpm', 24, 16, null);
+buildHSegs('segs-spd', 24, 14, null);
+
+// ── Opción C: segmentos verticales ──
+function buildVSegs(id, total, active, isRpm) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  for (let i = total - 1; i >= 0; i--) {
+    const s = document.createElement('div');
+    s.className = isRpm ? 'rpm-seg' : 'spd-seg';
+    s.style.flex = '1';
+    s.style.width = '100%';
+    const on = i < active;
+    const redZ = i >= Math.floor(total * 0.82);
+    const warmZ = i >= Math.floor(total * 0.65);
+    if (on) {
+      if (isRpm) {
+        if (redZ)       s.style.background = '#ff0022';
+        else if (warmZ) s.style.background = '#ff5500';
+        else { const t=i/(total*0.65); const h=120-t*120; s.style.background=`hsl(${h},100%,52%)`; }
+      } else {
+        const h = 20 + (i/total)*20;
+        s.style.background = `hsl(${h},100%,52%)`;
+      }
+    } else {
+      s.style.background = (isRpm && redZ) ? 'rgba(255,30,30,0.15)' : 'rgba(255,255,255,0.06)';
+    }
+    el.appendChild(s);
+  }
+}
+buildVSegs('rpm-col', 20, 14, true);
+buildVSegs('spd-col', 20, 11, false);
+</script>
+</body>
+</html>
