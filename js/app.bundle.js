@@ -1606,12 +1606,21 @@ function stopCircuitSession() {
 }
 
 function resizeCircuitCanvases() {
-  const ov = $('circuit-overlay');
+  const ov  = $('circuit-overlay');
   if (!ov) return;
+  const dpr = window.devicePixelRatio || 1;
   const arc = $('cir-arc-cv');
-  if (arc) { arc.width = ov.offsetWidth || 1; arc.height = ov.offsetHeight || 1; }
+  if (arc) {
+    const cw = ov.offsetWidth || 1, ch = ov.offsetHeight || 1;
+    arc.width = cw * dpr; arc.height = ch * dpr;
+    arc.style.width = cw + 'px'; arc.style.height = ch + 'px';
+  }
   const map = $('cir-map-cv');
-  if (map) { map.width = map.offsetWidth || 1; map.height = map.offsetHeight || 1; }
+  if (map) {
+    const mw = map.offsetWidth || 1, mh = map.offsetHeight || 1;
+    map.width = mw * dpr; map.height = mh * dpr;
+    map.style.width = mw + 'px'; map.style.height = mh + 'px';
+  }
 }
 
 function _cirLoop() {
@@ -1629,7 +1638,9 @@ function _cirLoop() {
 function _drawSpeedArc(cv, spd) {
   if (!cv || cv.width < 10) return;
   const ctx = cv.getContext('2d');
-  const W = cv.width, H = cv.height;
+  const dpr = window.devicePixelRatio || 1;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const W = cv.width / dpr, H = cv.height / dpr;
   ctx.clearRect(0, 0, W, H);
 
   // Shared arc geometry
@@ -1748,7 +1759,9 @@ function _drawSpeedArc(cv, spd) {
 function _drawMiniMap(cv) {
   if (!cv || cv.width < 4) return;
   const ctx = cv.getContext('2d');
-  const W = cv.width, H = cv.height;
+  const dpr = window.devicePixelRatio || 1;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const W = cv.width / dpr, H = cv.height / dpr;
   ctx.clearRect(0, 0, W, H);
   const pts = (App.sessionSamples || []).filter(s => s.lat && s.lon);
   if (pts.length < 3) {
