@@ -2024,3 +2024,99 @@ body.landscape-mode #circuit-overlay {
   font-family: 'JetBrains Mono', monospace;
   font-size: 8px; color: rgba(255,255,255,0.4);
 }
+
+
+/* ══════════════════════════════════════════════════════
+   COCKPIT REDESIGN — Dashboard
+   Overrides default "app" styling to instrument-panel aesthetic
+══════════════════════════════════════════════════════ */
+
+/* ── Sharp edges on all dashboard cards ── */
+.hero-block,
+.speed-panel,
+.weather-panel,
+.gyro-panel,
+.input-card,
+.waypoints-panel { border-radius: 2px !important; }
+
+/* ── Hero block: stronger glow border ── */
+.hero-block {
+  border: 1px solid rgba(255,85,0,0.45) !important;
+  box-shadow:
+    0 0 0 1px rgba(255,85,0,0.06),
+    0 0 40px rgba(255,85,0,0.08),
+    inset 0 0 60px rgba(0,0,0,0.3);
+}
+.hero-block::before, .hero-block::after {
+  width: 52px !important; height: 52px !important;
+  opacity: 0.65 !important;
+}
+.hero-glow {
+  background: radial-gradient(circle at 72% 22%, rgba(255,85,0,0.22) 0%, transparent 58%) !important;
+}
+
+/* ── Temperature: stronger glow on every state ── */
+.temp-giant.cool   { text-shadow: 0 0 30px rgba(190,200,255,0.18); }
+.temp-giant.hot    { text-shadow: 0 0 55px rgba(255,101,53,0.55) !important; }
+.temp-giant.warm   { text-shadow: 0 0 45px rgba(255,179,0,0.45) !important; }
+.temp-giant.cold   { text-shadow: 0 0 45px rgba(41,217,255,0.45) !important; }
+.temp-giant.freeze { text-shadow: 0 0 60px rgba(136,204,255,0.55) !important; }
+.temp-giant.extreme{ text-shadow: 0 0 80px rgba(187,212,255,0.6)  !important; }
+
+/* ── Hero stats: bigger, monospace ── */
+.hstat-val {
+  font-family: var(--font-mono) !important;
+  font-size: 1.45rem !important;
+  letter-spacing: -0.02em;
+}
+
+/* ── Comfort bar: thicker + stronger glow ── */
+.comfort-track {
+  height: 7px !important;
+  border-radius: 3px !important;
+  box-shadow: 0 0 14px rgba(255,85,0,0.3), 0 0 4px rgba(41,217,255,0.2) !important;
+}
+.comfort-needle {
+  width: 3px !important;
+  height: 18px !important;
+  top: -6px !important;
+  box-shadow: 0 0 8px rgba(255,255,255,0.95), 0 0 18px rgba(255,255,255,0.4) !important;
+}
+
+/* ── Speed panel: bigger number + glow ── */
+.speed-panel {
+  border-color: rgba(255,85,0,0.2) !important;
+}
+.speed-big {
+  font-size: 4.8rem !important;
+  text-shadow: 0 0 35px rgba(255,85,0,0.4);
+}
+
+/* ── Panel headers: colored left accent bar ── */
+.panel-hdr {
+  border-left: 2px solid var(--orange);
+  padding-left: 12px !important;
+}
+
+/* ── Weather panel ── */
+.weather-panel {
+  border-color: rgba(255,255,255,0.07) !important;
+}
+.w-cell-val {
+  font-family: var(--font-mono) !important;
+  font-size: 1.05rem !important;
+}
+.w-cell-lbl {
+  font-size: 0.6rem !important;
+  color: rgba(255,255,255,0.35) !important;
+}
+/* Color-code each weather cell by type */
+.weather-grid .w-cell:nth-child(1) .w-cell-val { color: var(--orange);  text-shadow: 0 0 12px rgba(255,85,0,0.3); }  /* temp */
+.weather-grid .w-cell:nth-child(2) .w-cell-val { color: var(--ice);    text-shadow: 0 0 10px rgba(41,217,255,0.25); } /* humidity */
+.weather-grid .w-cell:nth-child(3) .w-cell-val { color: var(--amber);  text-shadow: 0 0 10px rgba(255,179,0,0.25); }  /* wind */
+.weather-grid .w-cell:nth-child(4) .w-cell-val { color: var(--amber);  text-shadow: 0 0 10px rgba(255,179,0,0.2); }   /* gust */
+.weather-grid .w-cell:nth-child(5) .w-cell-val { color: var(--ice);    text-shadow: 0 0 10px rgba(41,217,255,0.2); }  /* dir */
+.weather-grid .w-cell:nth-child(6) .w-cell-val { color: var(--text);                                                } /* pressure */
+
+/* ── Section gap tighter ── */
+#section-dashboard { gap: 5px !important; }
