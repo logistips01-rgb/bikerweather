@@ -1278,6 +1278,8 @@ let _cirRaf    = null;
 let _cirMaxSpd = 0;
 let _cirMaxAng = 0;
 let _cirHue    = 20;
+let _lsSegsRpm = [];
+let _lsSegsSpd = [];
 
 /* ── Kirk state ── */
 let _kirkSpeaking  = false;
@@ -1558,6 +1560,97 @@ function cirColor(v, warn, danger) {
   return '#00ff88';
 }
 
+function _buildLsSegs() {
+  const N = 24;
+  ['rpm','spd'].forEach(type => {
+    const el = $('cir-ls-segs-' + type);
+    if (!el) return;
+    el.innerHTML = '';
+    const arr = [];
+    for (let i = 0; i < N; i++) {
+      const s = document.createElement('div');
+      s.className = 'cir-ls-seg';
+      el.appendChild(s);
+      arr.push(s);
+    }
+    if (type === 'rpm') _lsSegsRpm = arr;
+    else                _lsSegsSpd = arr;
+  });
+}
+
+function _updateLsSegs(rpm, spd) {
+  const N = 24;
+  // RPM segments
+  _lsSegsRpm.forEach((s, i) => {
+    const on  = rpm > (i / N * 12000);
+    const red = i >= 20, warm = i >= 16;
+    if (on) {
+      if (red)       { s.style.background = i >= 22 ? '#ff0022' : '#ff2200'; s.style.boxShadow = '0 0 4px rgba(255,0,30,0.8)'; }
+      else if (warm) { s.style.background = '#ff5500'; s.style.boxShadow = '0 0 3px rgba(255,85,0,0.6)'; }
+      else { const t=i/(N*0.67); const h=120-t*120; s.style.background=`hsl(${h},100%,52%)`; s.style.boxShadow=`0 0 3px hsla(${h},100%,55%,0.5)`; }
+    } else {
+      s.style.background = red ? 'rgba(255,30,30,0.18)' : 'rgba(255,255,255,0.07)';
+      s.style.boxShadow  = 'none';
+    }
+  });
+  // Speed segments
+  _lsSegsSpd.forEach((s, i) => {
+    const on = spd > (i / N * 220);
+    if (on) {
+      const t = i / N; const h = _cirHue + t * 20;
+      s.style.background = `hsl(${h},100%,52%)`;
+      s.style.boxShadow  = `0 0 3px hsla(${h},100%,55%,0.45)`;
+    } else {
+      s.style.background = 'rgba(255,255,255,0.07)';
+      s.style.boxShadow  = 'none';
+    }
+  });
+  // Bar labels
+  const rv = $('cir-ls-rpm-bar'); if (rv) rv.textContent = rpm > 0 ? (rpm/1000).toFixed(1)+'k' : '--';
+  const sv = $('cir-ls-spd-bar'); if (sv) sv.textContent = Math.round(spd) || '--';
+}
+
+function _updateLsLayout(roll, spd) {
+  const rpm  = App.obd2Rpm  || 0;
+  const gear = App.obd2Gear || '—';
+  const temp = App.weather  ? App.weather.temp + '°' : '--°';
+
+  _updateLsSegs(rpm, spd);
+
+  // Info strip
+  const rn = $('cir-ls-rpm-num'); if (rn) rn.textContent = rpm > 0 ? (rpm/1000).toFixed(1)+'k' : '--k';
+  const tn = $('cir-ls-temp');    if (tn) tn.textContent = temp;
+  const vn = $('cir-ls-volt');    if (vn) vn.textContent = App.obd2Volt ? App.obd2Volt.toFixed(1)+'v' : '--v';
+  const gn = $('cir-ls-gear');    if (gn) gn.textContent = gear;
+
+  // Stats
+  if (App.sessionActive) {
+    const el = App.sessionStart ? Date.now() - App.sessionStart : 0;
+    const s = Math.floor(el/1000)%60, m = Math.floor(el/60000);
+    const ss = $('cir-ls-sess'); if (ss) ss.textContent = pad(m)+':'+pad(s);
+  }
+  const lc = $('cir-ls-curves'); if (lc) lc.textContent = App.sessionCurves?.length || 0;
+  const lv = $('cir-ls-vmax');   if (lv) lv.textContent = _cirMaxSpd;
+  const la = $('cir-ls-amax');   if (la) la.textContent = Math.round(_cirMaxAng)+'°';
+
+  // Speed
+  const ls = $('cir-ls-spd'); if (ls) ls.textContent = Math.round(spd) || 0;
+
+  // Lean bars
+  const ar = Math.abs(roll);
+  const leanL = roll < 0 ? ar : 0, leanR = roll > 0 ? ar : 0;
+  const maxA  = 55;
+  const al = $('cir-ls-al'); if (al) al.textContent = Math.round(leanL)+'°';
+  const ar2= $('cir-ls-ar'); if (ar2) ar2.textContent = Math.round(leanR)+'°';
+  const fl = $('cir-ls-fl'); if (fl) fl.style.height = Math.min(leanL/maxA*100,100)+'%';
+  const fr = $('cir-ls-fr'); if (fr) fr.style.height = Math.min(leanR/maxA*100,100)+'%';
+
+  // G-forces
+  const longG = App.gForce?.long || 0, latG = App.gForce?.lat || 0;
+  const glo = $('cir-ls-glon'); if (glo) glo.textContent = Math.abs(longG).toFixed(2);
+  const gla = $('cir-ls-glat'); if (gla) gla.textContent = Math.abs(latG).toFixed(2);
+}
+
 function openCircuit() {
   App.circuitMode  = true;
   _kirkKittPos     = 0; _kirkKittDir = 1; _kirkCooldowns = {};
@@ -1570,6 +1663,7 @@ function openCircuit() {
   $('btn-cir-inv-r')?.classList.toggle('active', App.rollFlip);
   $('btn-cir-inv-p')?.classList.toggle('active', App.pitchFlip);
   initKirkVoice();
+  _buildLsSegs();
   setTimeout(() => {
     resizeCircuitCanvases();
     _cirLoop();
@@ -1627,9 +1721,13 @@ function _cirLoop() {
   if (!App.circuitMode) return;
   const roll = (App.gyroData.gamma || 0) * (App.rollFlip  ? -1 : 1);
   const spd  = App.gpsSpeed || 0;
-  _drawSpeedArc($('cir-arc-cv'), spd);
-  _drawMiniMap($('cir-map-cv'));
-  _updateCirData(roll, spd);
+  if (App.landscapeMode) {
+    _updateLsLayout(roll, spd);
+  } else {
+    _drawSpeedArc($('cir-arc-cv'), spd);
+    _drawMiniMap($('cir-map-cv'));
+    _updateCirData(roll, spd);
+  }
   const now = Date.now();
   if (now - _kirkLastCheck > 2000) { _kirkLastCheck = now; kirkCheckAlerts(); }
   _cirRaf = requestAnimationFrame(_cirLoop);

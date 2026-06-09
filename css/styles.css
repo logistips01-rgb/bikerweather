@@ -1511,6 +1511,14 @@ body.circuit-active .location-bar { display: none !important; }
   display: flex; flex-direction: column;
 }
 
+/* Portrait / landscape content switching */
+.cir-portrait  { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.cir-landscape { display: none; flex: 1; min-height: 0; flex-direction: column; }
+body.landscape-mode .cir-portrait  { display: none; }
+body.landscape-mode .cir-landscape { display: flex; }
+/* hide arc canvas in landscape (not needed) */
+body.landscape-mode #cir-arc-cv    { display: none; }
+
 /* Arc strip — space for canvas arcs (outer=RPM, inner=speed) */
 .cir-arc-strip {
   flex-shrink: 0; height: 126px;
@@ -1778,6 +1786,99 @@ body.landscape-mode .cir-bar-track:last-child  { transform: rotate(16deg);  tran
 body.landscape-mode .cir-lean-val   { font-size: 22px; }
 body.landscape-mode .cir-left-panel { width: 78px; }
 body.landscape-mode .cir-lean-panel { width: 110px; overflow: hidden; }
+
+/* ══════════════════════════════════════════════════════
+   LANDSCAPE DIGITAL LAYOUT (skin: Sport default)
+   ══════════════════════════════════════════════════════ */
+
+/* Segment bars */
+.cir-ls-bars { flex-shrink:0; padding:8px 10px 5px; display:flex; flex-direction:column; gap:5px; }
+.cir-ls-seg-row { display:flex; align-items:center; gap:6px; }
+.cir-ls-seg-lbl { font-family:'JetBrains Mono',monospace; font-size:8px; width:28px; text-align:right; flex-shrink:0; }
+.cir-lsl-rpm  { color:rgba(255,85,0,0.85); }
+.cir-lsl-spd  { color:rgba(255,200,0,0.75); }
+.cir-lsl-temp { color:rgba(41,217,255,0.55); }
+.cir-lsl-volt { color:rgba(255,255,255,0.35); }
+.cir-lsl-gear { color:rgba(0,240,160,0.55); }
+.cir-ls-segs  { display:flex; gap:2px; flex:1; height:13px; }
+.cir-ls-seg   { flex:1; border-radius:2px; transition:background 0.05s; }
+.cir-ls-seg-num { font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700; width:32px; flex-shrink:0; text-align:left; }
+.cir-lsn-rpm  { color:rgba(255,85,0,0.9); }
+.cir-lsn-spd  { color:rgba(255,200,0,0.9); }
+
+/* Info strip */
+.cir-ls-info {
+  flex-shrink:0; display:flex;
+  border-top:1px solid rgba(255,255,255,0.06);
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+.cir-ls-cell { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:4px 2px; }
+.cir-ls-cell + .cir-ls-cell { border-left:1px solid rgba(255,255,255,0.05); }
+.cir-ls-cnum { font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; line-height:1; }
+.cir-ls-clbl { font-family:'JetBrains Mono',monospace; font-size:6px; letter-spacing:2px; margin-top:2px; }
+.cir-lsc-rpm  { color:#ff5500; }
+.cir-lsc-temp { color:#29d9ff; }
+.cir-lsc-volt { color:rgba(255,255,255,0.75); }
+.cir-lsc-gear { color:#00f0a0; font-size:24px; }
+
+/* Mid row */
+.cir-ls-mid { flex:1; min-height:0; display:flex; align-items:stretch; }
+.cir-ls-stats {
+  width:72px; flex-shrink:0; padding:6px 5px;
+  display:flex; flex-direction:column; gap:5px;
+  border-right:1px solid rgba(255,255,255,0.05);
+}
+
+/* V lean + speed center */
+.cir-ls-v {
+  flex:1; display:flex; align-items:stretch; justify-content:center;
+  gap:6px; padding:4px 8px; overflow:visible;
+}
+.cir-ls-vside {
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:3px; flex-shrink:0;
+}
+.cir-ls-vangle {
+  font-size:14px; font-weight:700;
+  color:hsl(var(--cir-h),100%,62%);
+  font-family:'Rajdhani',sans-serif;
+  text-shadow:0 0 10px hsla(var(--cir-h),100%,55%,0.5);
+}
+.cir-ls-vtrack {
+  width:18px; flex:1;
+  border-radius:2px; overflow:hidden;
+  background:hsla(var(--cir-h),100%,50%,0.07);
+  border:1px solid hsla(var(--cir-h),100%,55%,0.28);
+  display:flex; flex-direction:column; justify-content:flex-end;
+}
+.cir-ls-vfill {
+  width:100%; height:0%;
+  background:linear-gradient(to top, hsl(var(--cir-h),100%,50%), hsl(calc(var(--cir-h)+28),100%,64%));
+  border-radius:2px 2px 0 0;
+  transition:height 0.1s ease-out;
+  box-shadow:0 0 10px hsla(var(--cir-h),100%,55%,0.5);
+}
+.cir-ls-vlbl { font-family:'JetBrains Mono',monospace; font-size:7px; color:hsla(var(--cir-h),80%,60%,0.6); }
+.cir-ls-vl .cir-ls-vtrack { transform:skewX(10deg); }
+.cir-ls-vr .cir-ls-vtrack { transform:skewX(-10deg); }
+
+/* Speed center block */
+.cir-ls-vctr {
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:2px;
+}
+.cir-ls-spd {
+  font-size:clamp(50px,11vh,75px); font-weight:700;
+  color:#fff; line-height:0.9; letter-spacing:-2px;
+  font-family:'Rajdhani',sans-serif;
+}
+.cir-ls-spdu { font-size:8px; color:rgba(255,255,255,0.4); letter-spacing:5px; }
+.cir-ls-gf {
+  font-family:'JetBrains Mono',monospace; font-size:10px;
+  color:#ffb300; margin-top:3px;
+  text-shadow:0 0 8px rgba(255,179,0,0.4);
+}
 
 /* Kirk message in route HUD (unchanged) */
 .hud-kirk-msg {
