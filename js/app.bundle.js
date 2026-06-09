@@ -538,9 +538,9 @@ function updateGForceHUD() {
   accelEl.textContent = accelG.toFixed(2) + 'G';
   latEl.textContent   = latG.toFixed(2)   + 'G';
 
-  brakeEl.style.color = brakeG > 0.5 ? '#ff2255' : brakeG > 0.25 ? '#ffb300' : '#5a5a7a';
-  accelEl.style.color = accelG > 0.4 ? '#00f0a0' : accelG > 0.15 ? '#29d9ff' : '#5a5a7a';
-  latEl.style.color   = latG   > 0.5 ? '#ffb300' : latG   > 0.25 ? '#ff5500' : '#5a5a7a';
+  brakeEl.style.color = brakeG > 0.5 ? '#ff2255' : brakeG > 0.25 ? '#ffb300' : 'rgba(255,34,85,0.3)';
+  accelEl.style.color = accelG > 0.4 ? '#00f0a0' : accelG > 0.15 ? '#29d9ff' : 'rgba(0,240,160,0.3)';
+  latEl.style.color   = latG   > 0.5 ? '#ffb300' : latG   > 0.25 ? '#ff5500' : 'rgba(41,217,255,0.3)';
 }
 
 /* ═══════════════════════════════════════

@@ -2120,3 +2120,79 @@ body.landscape-mode #circuit-overlay {
 
 /* ── Section gap tighter ── */
 #section-dashboard { gap: 5px !important; }
+
+
+/* ══════════════════════════════════════════════════════
+   COCKPIT REDESIGN — En Ruta HUD
+══════════════════════════════════════════════════════ */
+
+/* ── Pre-ride: sharp buttons ── */
+.mode-btn        { border-radius: 2px !important; }
+.btn-start-route { border-radius: 2px !important; font-size: 1.05rem !important; letter-spacing: 0.12em !important; }
+.btn-stop-route  { border-radius: 2px !important; }
+
+/* ── HUD cards: ditch backdrop-blur, sharp instrument edges ── */
+.hud-speed-card, .hud-wc-card, .hud-horizon-card {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-radius: 2px !important;
+  background: rgba(0,0,0,0.80) !important;
+}
+.hud-speed-card   { border-color: rgba(255,85,0,0.5) !important; box-shadow: 0 0 22px rgba(255,85,0,0.12) !important; }
+.hud-wc-card      { border-color: rgba(255,255,255,0.07) !important; }
+.hud-horizon-card { border-color: rgba(255,255,255,0.07) !important; }
+
+/* ── Speed: THE dominant reading ── */
+.hud-speed-val {
+  font-size: 5rem !important;
+  text-shadow: 0 0 40px rgba(255,85,0,0.55), 0 0 80px rgba(255,85,0,0.18) !important;
+}
+.hud-speed-lbl { font-size: 0.7rem !important; letter-spacing: 0.22em !important; }
+
+/* ── Wind chill: secondary but readable ── */
+.hud-wc-val { font-size: 2.8rem !important; }
+
+/* ── Horizon: bigger circle, stronger angle readout ── */
+.hud-horizon-mini {
+  width: 70px !important; height: 70px !important;
+  border-color: rgba(255,85,0,0.28) !important;
+  background: rgba(0,0,0,0.6) !important;
+}
+.hud-roll-val { font-size: 1.0rem !important; }
+.hud-roll-dir { font-size: 0.76rem !important; }
+
+/* ── G-force strip: no blur, bigger, color-coded ── */
+.hud-g-strip {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-radius: 2px !important;
+  background: rgba(0,0,0,0.80) !important;
+  border-color: rgba(255,255,255,0.05) !important;
+  padding: 8px 0 !important;
+}
+.hud-g-val { font-size: 1.05rem !important; }
+.hud-g-lbl { font-size: 0.52rem !important; color: rgba(255,255,255,0.28) !important; letter-spacing: 0.14em !important; }
+
+/* ── Curve badges: bigger counts ── */
+.hud-curve-badge {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-radius: 2px !important;
+  background: rgba(0,0,0,0.80) !important;
+  padding: 6px 20px !important;
+}
+.hud-curve-num { font-size: 1.55rem !important; }
+
+/* ── Stop row: stop takes priority ── */
+#btn-stop-route { flex: 3 !important; }
+#btn-hud-mic    { flex: 1 !important; white-space: nowrap; }
+
+/* ── Kirk message: sharp ── */
+.hud-kirk-msg { border-radius: 2px !important; }
+
+/* ── Map overlay buttons: sharp ── */
+.btn-recenter, .btn-map-landscape {
+  backdrop-filter: none !important;
+  border-radius: 2px !important;
+  background: rgba(0,0,0,0.82) !important;
+}
