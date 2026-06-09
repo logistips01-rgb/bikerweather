@@ -1603,7 +1603,7 @@ body.circuit-active .location-bar { display: none !important; }
 
 /* ── Right: lean angle ── */
 .cir-lean-panel {
-  width: 160px; flex-shrink: 0;
+  width: 130px; flex-shrink: 0;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 4px;
   padding: 8px 6px 8px 6px;
@@ -1613,7 +1613,7 @@ body.circuit-active .location-bar { display: none !important; }
 }
 .cir-lean-title {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 8px; color: rgba(255,179,0,0.70);
+  font-size: 7px; color: rgba(255,179,0,0.70);
   letter-spacing: 1px; text-align: center;
 }
 .cir-lean-nums {
@@ -1621,20 +1621,20 @@ body.circuit-active .location-bar { display: none !important; }
   width: 100%; padding: 0 2px;
 }
 .cir-lean-val {
-  font-size: 46px; font-weight: 700;
+  font-size: 30px; font-weight: 700;
   color: hsl(var(--cir-h), 100%, 62%);
-  text-shadow: 0 0 22px hsla(var(--cir-h), 100%, 60%, 0.7);
+  text-shadow: 0 0 18px hsla(var(--cir-h), 100%, 60%, 0.65);
   transition: color 0.2s, text-shadow 0.2s;
 }
 .cir-lean-bars {
-  display: flex; gap: 22px; align-items: flex-end;
-  height: 200px; overflow: visible;
+  display: flex; gap: 18px; align-items: flex-end;
+  height: 115px; overflow: visible;
 }
 .cir-bar-track {
-  width: 44px; height: 200px;
+  width: 26px; height: 115px;
   background: hsla(var(--cir-h), 100%, 50%, 0.06);
   border: 1px solid hsla(var(--cir-h), 100%, 55%, 0.28);
-  border-radius: 4px; overflow: hidden;
+  border-radius: 3px; overflow: hidden;
   display: flex; flex-direction: column; justify-content: flex-end;
 }
 .cir-bar-track:first-child {

@@ -1670,11 +1670,14 @@ function _drawSpeedArc(cv, spd) {
     ctx.lineWidth = maj ? 1.5 : 1; ctx.lineCap = 'butt'; ctx.stroke();
     if (maj) {
       const lbl = (i / 2).toString();
-      const rt  = R_OUT - 32;
-      ctx.fillStyle = redZone ? 'rgba(255,60,60,0.7)' : 'rgba(255,255,255,0.38)';
-      ctx.font = 'bold 8px Rajdhani,Arial,sans-serif';
+      const rt  = R_OUT - 42;
+      ctx.fillStyle = redZone ? 'rgba(255,80,80,0.95)' : 'rgba(255,255,255,0.85)';
+      ctx.font = 'bold 16px Rajdhani,Arial,sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      if (!redZone) { ctx.shadowColor = 'rgba(255,255,255,0.4)'; ctx.shadowBlur = 6; }
+      else          { ctx.shadowColor = 'rgba(255,60,60,0.6)';   ctx.shadowBlur = 8; }
       ctx.fillText(lbl, CX + rt*Math.cos(a), CY + rt*Math.sin(a));
+      ctx.shadowBlur = 0;
     }
   }
 
