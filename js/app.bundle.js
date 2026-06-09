@@ -1280,9 +1280,6 @@ let _cirMaxAng = 0;
 let _cirHue    = 20;
 let _lsSegsRpm = [];
 let _lsSegsSpd = [];
-const _CIR_SKINS = ['sport','harley','harley-light'];
-const _CIR_SKIN_LABELS = { sport:'SPORT', harley:'HARLEY', 'harley-light':'HARLEY L' };
-let _cirSkin = localStorage.getItem('cirSkin') || 'sport';
 
 /* ── Kirk state ── */
 let _kirkSpeaking  = false;
@@ -1563,16 +1560,6 @@ function cirColor(v, warn, danger) {
   return '#00ff88';
 }
 
-function _applyCirSkin(skin) {
-  _cirSkin = skin;
-  localStorage.setItem('cirSkin', skin);
-  const ov = document.getElementById('circuit-overlay');
-  if (ov) ov.dataset.skin = skin === 'sport' ? '' : skin;
-  const btn = $('btn-cir-skin');
-  if (btn) btn.textContent = _CIR_SKIN_LABELS[skin] || skin.toUpperCase();
-  btn?.classList.toggle('active', skin !== 'sport');
-}
-
 function _buildLsSegs() {
   const N = 24;
   ['rpm','spd'].forEach(type => {
@@ -1607,9 +1594,8 @@ function _updateLsSegs(rpm, spd) {
     }
   });
   // Speed segments — skin-aware color
-  const isHarley = _cirSkin === 'harley' || _cirSkin === 'harley-light';
-  const spdBase  = isHarley ? 20 : _cirHue;
-  const spdInactive = isHarley ? 'rgba(255,101,0,0.12)' : 'rgba(255,255,255,0.07)';
+  const spdBase     = _cirHue;
+  const spdInactive = 'rgba(255,255,255,0.07)';
   _lsSegsSpd.forEach((s, i) => {
     const on = spd > (i / N * 220);
     if (on) {
@@ -1678,7 +1664,6 @@ function openCircuit() {
   $('btn-cir-ls')?.classList.toggle('active', App.landscapeMode);
   $('btn-cir-inv-r')?.classList.toggle('active', App.rollFlip);
   $('btn-cir-inv-p')?.classList.toggle('active', App.pitchFlip);
-  _applyCirSkin(_cirSkin);
   initKirkVoice();
   _buildLsSegs();
   setTimeout(() => {
@@ -2522,10 +2507,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-cir-stop')?.addEventListener('click', stopCircuitSession);
   $('btn-cir-exit')?.addEventListener('click', closeCircuit);
   $('btn-cir-ls')?.addEventListener('click', () => { toggleLandscapeMode(); $('btn-cir-ls')?.classList.toggle('active', App.landscapeMode); });
-  $('btn-cir-skin')?.addEventListener('click', () => {
-    const idx = _CIR_SKINS.indexOf(_cirSkin);
-    _applyCirSkin(_CIR_SKINS[(idx + 1) % _CIR_SKINS.length]);
-  });
   $('btn-cir-mic')?.addEventListener('click', () => {
     if (!_kirkRec) { toast('Voz no disponible', 'info'); return; }
     $('btn-cir-mic').classList.add('active');

@@ -1815,43 +1815,6 @@ body.landscape-mode .cir-lean-panel { width: 110px; overflow: hidden; }
   --sk-bar-lbl:   hsla(var(--cir-h),80%,60%,0.60);
 }
 
-/* ── Harley Dark skin ── */
-#circuit-overlay[data-skin="harley"] {
-  --sk-bg:        #080605;
-  --sk-bg-glow:   hsla(22,90%,11%,0.85);
-  --sk-rpm-c:     #ff6500;
-  --sk-gear-c:    #ff6500;
-  --sk-gf-c:      #ff8800;
-  --sk-bar-bdr:   rgba(255,101,0,0.50);
-  --sk-bar-fill:  #bb3d00;
-  --sk-bar-top:   #ffcc88;
-  --sk-bar-ang:   #ff6500;
-  --sk-bar-lbl:   rgba(255,101,0,0.60);
-}
-
-/* ── Harley Light skin ── */
-#circuit-overlay[data-skin="harley-light"] {
-  --sk-bg:        #f5f0e8;
-  --sk-bg-glow:   hsla(28,90%,78%,0.70);
-  --sk-txt:       rgba(26,8,0,0.90);
-  --sk-txt2:      rgba(26,8,0,0.55);
-  --sk-border:    rgba(26,8,0,0.10);
-  --sk-border2:   rgba(26,8,0,0.08);
-  --sk-rpm-c:     #cc2200;
-  --sk-temp-c:    #0055aa;
-  --sk-volt-c:    rgba(26,8,0,0.70);
-  --sk-gear-c:    #cc2200;
-  --sk-spd-c:     #0a0400;
-  --sk-spdu-c:    rgba(26,8,0,0.45);
-  --sk-gf-c:      #cc4400;
-  --sk-bar-trk:   rgba(26,8,0,0.05);
-  --sk-bar-bdr:   rgba(204,34,0,0.50);
-  --sk-bar-fill:  #991500;
-  --sk-bar-top:   #ff7755;
-  --sk-bar-ang:   #cc2200;
-  --sk-bar-lbl:   rgba(204,34,0,0.60);
-}
-
 /* Apply skin bg — radial glow from center */
 body.landscape-mode #circuit-overlay {
   background: radial-gradient(
@@ -1947,12 +1910,6 @@ body.landscape-mode #circuit-overlay {
   color:var(--sk-gf-c); margin-top:3px;
 }
 
-/* ── Skin selector button ── */
-.cir-btn-skin {
-  font-family:'JetBrains Mono',monospace; font-size:8px;
-  color:var(--sk-bar-ang); border-color:var(--sk-bar-bdr);
-  min-width:54px; letter-spacing:1px;
-}
 
 /* Kirk message in route HUD (unchanged) */
 .hud-kirk-msg {
