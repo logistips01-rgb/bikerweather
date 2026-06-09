@@ -1637,14 +1637,7 @@ body.circuit-active .location-bar { display: none !important; }
   border-radius: 3px; overflow: hidden;
   display: flex; flex-direction: column; justify-content: flex-end;
 }
-.cir-bar-track:first-child {
-  transform: rotate(-16deg);
-  transform-origin: bottom center;
-}
-.cir-bar-track:last-child {
-  transform: rotate(16deg);
-  transform-origin: bottom center;
-}
+/* Portrait: barras rectas, sin rotación */
 .cir-bar-fill {
   width: 100%; height: 0%;
   background: linear-gradient(to top,
@@ -1775,11 +1768,13 @@ body.circuit-active .location-bar { display: none !important; }
 body.landscape-mode .cir-arc-strip  { height: 80px; }
 body.landscape-mode .cir-big-spd    { font-size: clamp(55px, 17vh, 115px); }
 body.landscape-mode .cir-gear-val   { font-size: 28px; }
-body.landscape-mode .cir-lean-bars  { height: 110px; }
-body.landscape-mode .cir-bar-track  { height: 110px; width: 30px; }
-body.landscape-mode .cir-lean-val   { font-size: 30px; }
+body.landscape-mode .cir-lean-bars  { height: 72px; }
+body.landscape-mode .cir-bar-track  { height: 72px; width: 26px; }
+body.landscape-mode .cir-bar-track:first-child { transform: rotate(-16deg); transform-origin: bottom center; }
+body.landscape-mode .cir-bar-track:last-child  { transform: rotate(16deg);  transform-origin: bottom center; }
+body.landscape-mode .cir-lean-val   { font-size: 22px; }
 body.landscape-mode .cir-left-panel { width: 78px; }
-body.landscape-mode .cir-lean-panel { width: 120px; }
+body.landscape-mode .cir-lean-panel { width: 110px; overflow: hidden; }
 
 /* Kirk message in route HUD (unchanged) */
 .hud-kirk-msg {
