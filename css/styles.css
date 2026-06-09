@@ -1602,35 +1602,47 @@ body.circuit-active .location-bar { display: none !important; }
 
 /* ── Right: lean angle ── */
 .cir-lean-panel {
-  width: 92px; flex-shrink: 0;
+  width: 130px; flex-shrink: 0;
   display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 5px;
-  padding: 8px 8px 8px 6px;
+  align-items: center; justify-content: center; gap: 4px;
+  padding: 8px 6px 8px 6px;
   border-left: 1px solid rgba(255,179,0,0.1);
   background: rgba(4,5,10,0.65);
+  overflow: visible;
 }
 .cir-lean-title {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 6px; color: rgba(255,179,0,0.70);
-  letter-spacing: 0.8px; text-align: center;
+  font-size: 7px; color: rgba(255,179,0,0.70);
+  letter-spacing: 1px; text-align: center;
 }
 .cir-lean-nums {
   display: flex; justify-content: space-between;
-  width: 100%; padding: 0 4px;
+  width: 100%; padding: 0 2px;
 }
 .cir-lean-val {
-  font-size: 22px; font-weight: 700;
+  font-size: 30px; font-weight: 700;
   color: hsl(var(--cir-h), 100%, 62%);
-  text-shadow: 0 0 14px hsla(var(--cir-h), 100%, 60%, 0.5);
+  text-shadow: 0 0 18px hsla(var(--cir-h), 100%, 60%, 0.65);
   transition: color 0.2s, text-shadow 0.2s;
 }
-.cir-lean-bars { display: flex; gap: 8px; align-items: flex-end; height: 82px; }
+.cir-lean-bars {
+  display: flex; gap: 18px; align-items: flex-end;
+  height: 115px; overflow: visible;
+}
 .cir-bar-track {
-  width: 20px; height: 82px;
+  width: 26px; height: 115px;
   background: hsla(var(--cir-h), 100%, 50%, 0.06);
-  border: 1px solid hsla(var(--cir-h), 100%, 55%, 0.22);
-  border-radius: 2px; overflow: hidden;
+  border: 1px solid hsla(var(--cir-h), 100%, 55%, 0.28);
+  border-radius: 3px; overflow: hidden;
   display: flex; flex-direction: column; justify-content: flex-end;
+}
+.cir-bar-track:first-child {
+  transform: rotate(-16deg);
+  transform-origin: bottom center;
+}
+.cir-bar-track:last-child {
+  transform: rotate(16deg);
+  transform-origin: bottom center;
 }
 .cir-bar-fill {
   width: 100%; height: 0%;
@@ -1639,13 +1651,13 @@ body.circuit-active .location-bar { display: none !important; }
     hsl(calc(var(--cir-h) + 28), 100%, 64%));
   border-radius: 2px 2px 0 0;
   transition: height 0.1s ease-out;
-  box-shadow: 0 0 10px hsla(var(--cir-h), 100%, 55%, 0.5);
+  box-shadow: 0 0 14px hsla(var(--cir-h), 100%, 55%, 0.6);
 }
 .cir-lr-lbl {
   display: flex; justify-content: space-between;
-  width: 100%; padding: 0 5px;
+  width: 100%; padding: 0 4px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px; color: rgba(255,179,0,0.38); letter-spacing: 1px;
+  font-size: 10px; color: rgba(255,179,0,0.60); letter-spacing: 1.5px;
 }
 .cir-wind-mini {
   display: flex; align-items: center; gap: 3px; margin-top: 2px;
@@ -1762,11 +1774,11 @@ body.circuit-active .location-bar { display: none !important; }
 body.landscape-mode .cir-arc-strip  { height: 80px; }
 body.landscape-mode .cir-big-spd    { font-size: clamp(55px, 17vh, 115px); }
 body.landscape-mode .cir-gear-val   { font-size: 28px; }
-body.landscape-mode .cir-lean-bars  { height: 52px; }
-body.landscape-mode .cir-bar-track  { height: 52px; }
-body.landscape-mode .cir-lean-val   { font-size: 18px; }
-body.landscape-mode .cir-left-panel,
-body.landscape-mode .cir-lean-panel { width: 78px; }
+body.landscape-mode .cir-lean-bars  { height: 68px; }
+body.landscape-mode .cir-bar-track  { height: 68px; }
+body.landscape-mode .cir-lean-val   { font-size: 22px; }
+body.landscape-mode .cir-left-panel { width: 78px; }
+body.landscape-mode .cir-lean-panel { width: 100px; }
 
 /* Kirk message in route HUD (unchanged) */
 .hud-kirk-msg {
