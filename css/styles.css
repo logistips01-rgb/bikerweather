@@ -1488,7 +1488,7 @@ body.landscape-mode .btn-map-landscape {
   position: fixed;
   inset: 0;
   z-index: 9000;
-  background: #04050a;
+  background: radial-gradient(ellipse at 50% 40%, #0d1520 0%, #04050a 65%, #020308 100%);
   overflow: hidden;
   font-family: 'Rajdhani', 'Arial Narrow', Arial, sans-serif;
 }
