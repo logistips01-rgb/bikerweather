@@ -53,35 +53,41 @@ h1 { text-align:center; font-size:11px; color:rgba(255,255,255,0.25); letter-spa
 .sl { font-family:'JetBrains Mono',monospace; font-size:6px; color:rgba(255,255,255,0.5); letter-spacing:1px; }
 .sv { font-size:14px; font-weight:700; color:rgba(255,255,255,0.9); }
 
-/* Center — V lean bars + speed */
+/* Center — V lean bars + speed usando grid */
 .v-center {
-  flex:1; display:flex; flex-direction:column;
-  align-items:center; justify-content:center; gap:0;
-  padding:6px 4px;
+  flex:1; display:grid;
+  grid-template-columns: 38px 1fr 38px;
+  grid-template-rows: 1fr;
+  align-items: center;
+  min-height:0; overflow:visible;
 }
-.v-bars-row {
-  display:flex; align-items:flex-end; justify-content:center;
-  gap:10px; width:100%;
+.v-col {
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:4px; height:100%; padding:6px 0;
+  overflow:visible;
 }
-.v-bar-wrap { display:flex; flex-direction:column; align-items:center; gap:3px; }
-.v-angle { font-size:18px; font-weight:700; color:#ff9500; text-shadow:0 0 10px rgba(255,149,0,0.5); font-family:'Rajdhani',sans-serif; }
+.v-angle { font-size:16px; font-weight:700; color:#ff9500; font-family:'Rajdhani',sans-serif; text-shadow:0 0 10px rgba(255,149,0,0.5); }
 .v-track {
-  width:20px; border-radius:2px; overflow:hidden;
-  background:rgba(255,149,0,0.07); border:1px solid rgba(255,149,0,0.25);
+  width:22px; flex:1; max-height:120px; min-height:60px;
+  border-radius:2px; overflow:hidden;
+  background:rgba(255,149,0,0.07); border:1px solid rgba(255,149,0,0.28);
   display:flex; flex-direction:column; justify-content:flex-end;
 }
 .v-fill { width:100%; background:linear-gradient(to top,#ff9500,#ffcc00); border-radius:2px 2px 0 0; }
 .v-lbl { font-family:'JetBrains Mono',monospace; font-size:7px; color:rgba(255,149,0,0.55); }
+/* Inclinación visual con skew — no desplaza el elemento */
+.v-col-L .v-track { transform:skewX(10deg); }
+.v-col-R .v-track { transform:skewX(-10deg); }
 
-/* left bar tilts left, right tilts right */
-.v-bar-L { transform:rotate(-14deg); transform-origin:bottom center; }
-.v-bar-R { transform:rotate(14deg);  transform-origin:bottom center; }
-
-.spd-block { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; }
+.spd-block {
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:2px;
+}
 .spd-num { font-size:clamp(52px,13vw,82px); font-weight:700; color:#fff; line-height:0.9; letter-spacing:-2px; }
 .spd-unit { font-size:9px; color:rgba(255,255,255,0.4); letter-spacing:5px; margin-top:1px; }
-.gear-box { font-size:42px; font-weight:700; color:#00f0a0; border:1px solid rgba(0,240,160,0.25); border-radius:5px; padding:0 10px; line-height:1.1; margin-top:3px; font-family:'Rajdhani',sans-serif; text-shadow:0 0 20px rgba(0,240,160,0.5); }
-.gf-row { font-family:'JetBrains Mono',monospace; font-size:12px; color:#ffb300; margin-top:4px; }
+.gear-box { font-size:40px; font-weight:700; color:#00f0a0; border:1px solid rgba(0,240,160,0.25); border-radius:5px; padding:0 10px; line-height:1.1; margin-top:2px; font-family:'Rajdhani',sans-serif; text-shadow:0 0 20px rgba(0,240,160,0.5); }
+.gf-row { font-family:'JetBrains Mono',monospace; font-size:11px; color:#ffb300; margin-top:3px; }
 
 /* ── BOTTOM BAR ── */
 .bot { height:34px; display:flex; align-items:center; justify-content:center; gap:8px; border-top:1px solid rgba(255,255,255,0.05); flex-shrink:0; }
@@ -148,34 +154,33 @@ h1 { text-align:center; font-size:11px; color:rgba(255,255,255,0.25); letter-spa
 
     <!-- Centro: V lean + speed -->
     <div class="v-center">
-      <div class="v-bars-row">
 
-        <!-- Barra L -->
-        <div class="v-bar-wrap">
-          <span class="v-angle">0°</span>
-          <div class="v-track v-bar-L" style="height:90px">
-            <div class="v-fill" style="height:0%"></div>
-          </div>
-          <span class="v-lbl">L</span>
+      <!-- Barra L -->
+      <div class="v-col v-col-L">
+        <span class="v-angle">0°</span>
+        <div class="v-track">
+          <div class="v-fill" style="height:0%"></div>
         </div>
-
-        <!-- Velocidad central -->
-        <div class="spd-block">
-          <div class="spd-num">184</div>
-          <div class="spd-unit">KM/H</div>
-        </div>
-
-        <!-- Barra R -->
-        <div class="v-bar-wrap">
-          <span class="v-angle">34°</span>
-          <div class="v-track v-bar-R" style="height:90px">
-            <div class="v-fill" style="height:42%"></div>
-          </div>
-          <span class="v-lbl">R</span>
-        </div>
-
+        <span class="v-lbl">L</span>
       </div>
-      <div class="gf-row">0.12↑ &nbsp; 0.38→ G</div>
+
+      <!-- Velocidad central -->
+      <div class="spd-block">
+        <div class="spd-num">184</div>
+        <div class="spd-unit">KM/H</div>
+        <div class="gear-box">3</div>
+        <div class="gf-row">0.12↑ &nbsp;0.38→ G</div>
+      </div>
+
+      <!-- Barra R -->
+      <div class="v-col v-col-R">
+        <span class="v-angle">34°</span>
+        <div class="v-track">
+          <div class="v-fill" style="height:42%"></div>
+        </div>
+        <span class="v-lbl">R</span>
+      </div>
+
     </div>
 
   </div>
