@@ -1788,45 +1788,110 @@ body.landscape-mode .cir-left-panel { width: 78px; }
 body.landscape-mode .cir-lean-panel { width: 110px; overflow: hidden; }
 
 /* ══════════════════════════════════════════════════════
-   LANDSCAPE DIGITAL LAYOUT (skin: Sport default)
+   LANDSCAPE DIGITAL LAYOUT — SKIN SYSTEM
+   Variables defined per skin on #circuit-overlay
    ══════════════════════════════════════════════════════ */
+
+/* ── Default skin variables (Sport) ── */
+#circuit-overlay {
+  --sk-bg:        #04050a;
+  --sk-txt:       rgba(255,255,255,0.90);
+  --sk-txt2:      rgba(255,255,255,0.50);
+  --sk-border:    rgba(255,255,255,0.06);
+  --sk-border2:   rgba(255,255,255,0.05);
+  --sk-rpm-c:     #ff5500;
+  --sk-temp-c:    #29d9ff;
+  --sk-volt-c:    rgba(255,255,255,0.75);
+  --sk-gear-c:    #00f0a0;
+  --sk-spd-c:     #ffffff;
+  --sk-spdu-c:    rgba(255,255,255,0.40);
+  --sk-gf-c:      #ffb300;
+  --sk-bar-trk:   rgba(255,255,255,0.04);
+  --sk-bar-bdr:   hsla(var(--cir-h),100%,55%,0.45);
+  --sk-bar-fill:  hsl(var(--cir-h),100%,45%);
+  --sk-bar-top:   hsl(var(--cir-h),100%,88%);
+  --sk-bar-ang:   hsl(var(--cir-h),100%,62%);
+  --sk-bar-lbl:   hsla(var(--cir-h),80%,60%,0.60);
+}
+
+/* ── Harley Dark skin ── */
+#circuit-overlay[data-skin="harley"] {
+  --sk-bg:        #080605;
+  --sk-rpm-c:     #ff6500;
+  --sk-gear-c:    #ff6500;
+  --sk-gf-c:      #ff8800;
+  --sk-bar-bdr:   rgba(255,101,0,0.50);
+  --sk-bar-fill:  #bb3d00;
+  --sk-bar-top:   #ffcc88;
+  --sk-bar-ang:   #ff6500;
+  --sk-bar-lbl:   rgba(255,101,0,0.60);
+}
+
+/* ── Harley Light skin ── */
+#circuit-overlay[data-skin="harley-light"] {
+  --sk-bg:        #f5f0e8;
+  --sk-txt:       rgba(26,8,0,0.90);
+  --sk-txt2:      rgba(26,8,0,0.55);
+  --sk-border:    rgba(26,8,0,0.10);
+  --sk-border2:   rgba(26,8,0,0.08);
+  --sk-rpm-c:     #cc2200;
+  --sk-temp-c:    #0055aa;
+  --sk-volt-c:    rgba(26,8,0,0.70);
+  --sk-gear-c:    #cc2200;
+  --sk-spd-c:     #0a0400;
+  --sk-spdu-c:    rgba(26,8,0,0.45);
+  --sk-gf-c:      #cc4400;
+  --sk-bar-trk:   rgba(26,8,0,0.05);
+  --sk-bar-bdr:   rgba(204,34,0,0.50);
+  --sk-bar-fill:  #991500;
+  --sk-bar-top:   #ff7755;
+  --sk-bar-ang:   #cc2200;
+  --sk-bar-lbl:   rgba(204,34,0,0.60);
+}
+
+/* Apply skin bg */
+body.landscape-mode #circuit-overlay { background: var(--sk-bg); }
 
 /* Segment bars */
 .cir-ls-bars { flex-shrink:0; padding:8px 10px 5px; display:flex; flex-direction:column; gap:5px; }
 .cir-ls-seg-row { display:flex; align-items:center; gap:6px; }
 .cir-ls-seg-lbl { font-family:'JetBrains Mono',monospace; font-size:8px; width:28px; text-align:right; flex-shrink:0; }
-.cir-lsl-rpm  { color:rgba(255,85,0,0.85); }
-.cir-lsl-spd  { color:rgba(255,200,0,0.75); }
-.cir-lsl-temp { color:rgba(41,217,255,0.55); }
-.cir-lsl-volt { color:rgba(255,255,255,0.35); }
-.cir-lsl-gear { color:rgba(0,240,160,0.55); }
+.cir-lsl-rpm  { color:var(--sk-rpm-c); opacity:.85; }
+.cir-lsl-spd  { color:var(--sk-bar-ang); opacity:.80; }
+.cir-lsl-temp { color:var(--sk-temp-c); opacity:.65; }
+.cir-lsl-volt { color:var(--sk-volt-c); opacity:.65; }
+.cir-lsl-gear { color:var(--sk-gear-c); opacity:.65; }
 .cir-ls-segs  { display:flex; gap:2px; flex:1; height:13px; }
 .cir-ls-seg   { flex:1; border-radius:2px; transition:background 0.05s; }
 .cir-ls-seg-num { font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700; width:32px; flex-shrink:0; text-align:left; }
-.cir-lsn-rpm  { color:rgba(255,85,0,0.9); }
-.cir-lsn-spd  { color:rgba(255,200,0,0.9); }
+.cir-lsn-rpm  { color:var(--sk-rpm-c); }
+.cir-lsn-spd  { color:var(--sk-bar-ang); }
 
 /* Info strip */
 .cir-ls-info {
   flex-shrink:0; display:flex;
-  border-top:1px solid rgba(255,255,255,0.06);
-  border-bottom:1px solid rgba(255,255,255,0.06);
+  border-top:1px solid var(--sk-border);
+  border-bottom:1px solid var(--sk-border);
 }
 .cir-ls-cell { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:4px 2px; }
-.cir-ls-cell + .cir-ls-cell { border-left:1px solid rgba(255,255,255,0.05); }
+.cir-ls-cell + .cir-ls-cell { border-left:1px solid var(--sk-border2); }
 .cir-ls-cnum { font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; line-height:1; }
 .cir-ls-clbl { font-family:'JetBrains Mono',monospace; font-size:6px; letter-spacing:2px; margin-top:2px; }
-.cir-lsc-rpm  { color:#ff5500; }
-.cir-lsc-temp { color:#29d9ff; }
-.cir-lsc-volt { color:rgba(255,255,255,0.75); }
-.cir-lsc-gear { color:#00f0a0; font-size:24px; }
+.cir-lsc-rpm  { color:var(--sk-rpm-c); }
+.cir-lsc-temp { color:var(--sk-temp-c); }
+.cir-lsc-volt { color:var(--sk-volt-c); }
+.cir-lsc-gear { color:var(--sk-gear-c); font-size:24px; }
+
+/* Stats label/value reuse skin txt */
+.cir-ls-stats .cir-sl { color:var(--sk-txt2); }
+.cir-ls-stats .cir-sv { color:var(--sk-txt); }
 
 /* Mid row */
 .cir-ls-mid { flex:1; min-height:0; display:flex; align-items:stretch; }
 .cir-ls-stats {
   width:72px; flex-shrink:0; padding:6px 5px;
   display:flex; flex-direction:column; gap:5px;
-  border-right:1px solid rgba(255,255,255,0.05);
+  border-right:1px solid var(--sk-border2);
 }
 
 /* V lean + speed center */
@@ -1834,53 +1899,50 @@ body.landscape-mode .cir-lean-panel { width: 110px; overflow: hidden; }
   flex:1; display:flex; align-items:stretch; justify-content:center;
   gap:6px; padding:4px 8px; overflow:visible;
 }
-.cir-ls-vside {
-  display:flex; flex-direction:column;
-  align-items:center; justify-content:center;
-  gap:3px; flex-shrink:0;
-}
+.cir-ls-vside { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; flex-shrink:0; }
 .cir-ls-vangle {
   font-size:14px; font-weight:700;
-  color:hsl(var(--cir-h),100%,62%);
+  color:var(--sk-bar-ang);
   font-family:'Rajdhani',sans-serif;
-  text-shadow:0 0 10px hsla(var(--cir-h),100%,55%,0.5);
+  text-shadow:0 0 10px color-mix(in srgb, var(--sk-bar-ang) 50%, transparent);
 }
 .cir-ls-vtrack {
   width:22px; flex:1;
   border-radius:3px; overflow:hidden;
-  background:rgba(255,255,255,0.04);
-  border:1px solid hsla(var(--cir-h),100%,55%,0.45);
+  background:var(--sk-bar-trk);
+  border:1px solid var(--sk-bar-bdr);
   display:flex; flex-direction:column; justify-content:flex-end;
 }
 .cir-ls-vfill {
   width:100%; height:0%;
-  background:linear-gradient(to top,
-    hsl(var(--cir-h),100%,45%),
-    hsl(var(--cir-h),100%,72%));
-  border-top:2px solid hsl(var(--cir-h),100%,88%);
+  background:linear-gradient(to top, var(--sk-bar-fill), var(--sk-bar-top));
+  border-top:2px solid var(--sk-bar-top);
   transition:height 0.1s ease-out;
-  box-shadow:0 0 16px hsla(var(--cir-h),100%,60%,0.8),
-             inset 0 0 8px hsla(var(--cir-h),100%,80%,0.3);
+  box-shadow:0 0 16px color-mix(in srgb, var(--sk-bar-ang) 80%, transparent),
+             inset 0 0 8px color-mix(in srgb, var(--sk-bar-top) 30%, transparent);
 }
-.cir-ls-vlbl { font-family:'JetBrains Mono',monospace; font-size:7px; color:hsla(var(--cir-h),80%,60%,0.6); }
+.cir-ls-vlbl { font-family:'JetBrains Mono',monospace; font-size:7px; color:var(--sk-bar-lbl); }
 .cir-ls-vl .cir-ls-vtrack { transform:skewX(10deg); }
 .cir-ls-vr .cir-ls-vtrack { transform:skewX(-10deg); }
 
 /* Speed center block */
-.cir-ls-vctr {
-  display:flex; flex-direction:column;
-  align-items:center; justify-content:center; gap:2px;
-}
+.cir-ls-vctr { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
 .cir-ls-spd {
   font-size:clamp(50px,11vh,75px); font-weight:700;
-  color:#fff; line-height:0.9; letter-spacing:-2px;
+  color:var(--sk-spd-c); line-height:0.9; letter-spacing:-2px;
   font-family:'Rajdhani',sans-serif;
 }
-.cir-ls-spdu { font-size:8px; color:rgba(255,255,255,0.4); letter-spacing:5px; }
+.cir-ls-spdu { font-size:8px; color:var(--sk-spdu-c); letter-spacing:5px; }
 .cir-ls-gf {
   font-family:'JetBrains Mono',monospace; font-size:10px;
-  color:#ffb300; margin-top:3px;
-  text-shadow:0 0 8px rgba(255,179,0,0.4);
+  color:var(--sk-gf-c); margin-top:3px;
+}
+
+/* ── Skin selector button ── */
+.cir-btn-skin {
+  font-family:'JetBrains Mono',monospace; font-size:8px;
+  color:var(--sk-bar-ang); border-color:var(--sk-bar-bdr);
+  min-width:54px; letter-spacing:1px;
 }
 
 /* Kirk message in route HUD (unchanged) */
