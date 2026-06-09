@@ -1795,6 +1795,7 @@ body.landscape-mode .cir-lean-panel { width: 110px; overflow: hidden; }
 /* ── Default skin variables (Sport) ── */
 #circuit-overlay {
   --sk-bg:        #04050a;
+  --sk-bg-glow:   hsla(var(--cir-h),90%,14%,0.80);
   --sk-txt:       rgba(255,255,255,0.90);
   --sk-txt2:      rgba(255,255,255,0.50);
   --sk-border:    rgba(255,255,255,0.06);
@@ -1817,6 +1818,7 @@ body.landscape-mode .cir-lean-panel { width: 110px; overflow: hidden; }
 /* ── Harley Dark skin ── */
 #circuit-overlay[data-skin="harley"] {
   --sk-bg:        #080605;
+  --sk-bg-glow:   hsla(22,90%,11%,0.85);
   --sk-rpm-c:     #ff6500;
   --sk-gear-c:    #ff6500;
   --sk-gf-c:      #ff8800;
@@ -1830,6 +1832,7 @@ body.landscape-mode .cir-lean-panel { width: 110px; overflow: hidden; }
 /* ── Harley Light skin ── */
 #circuit-overlay[data-skin="harley-light"] {
   --sk-bg:        #f5f0e8;
+  --sk-bg-glow:   hsla(28,90%,78%,0.70);
   --sk-txt:       rgba(26,8,0,0.90);
   --sk-txt2:      rgba(26,8,0,0.55);
   --sk-border:    rgba(26,8,0,0.10);
@@ -1849,8 +1852,14 @@ body.landscape-mode .cir-lean-panel { width: 110px; overflow: hidden; }
   --sk-bar-lbl:   rgba(204,34,0,0.60);
 }
 
-/* Apply skin bg */
-body.landscape-mode #circuit-overlay { background: var(--sk-bg); }
+/* Apply skin bg — radial glow from center */
+body.landscape-mode #circuit-overlay {
+  background: radial-gradient(
+    ellipse 72% 62% at center,
+    var(--sk-bg-glow) 0%,
+    var(--sk-bg)      62%
+  );
+}
 
 /* Segment bars */
 .cir-ls-bars { flex-shrink:0; padding:8px 10px 5px; display:flex; flex-direction:column; gap:5px; }
