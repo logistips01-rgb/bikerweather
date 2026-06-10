@@ -2419,11 +2419,11 @@ body.landscape-mode #circuit-overlay {
   display: flex; align-items: center; gap: 8px;
   padding: 6px 10px;
   background: rgba(0,0,0,0.6);
-  border-bottom: 1px solid rgba(255,102,0,0.2);
+  border-bottom: 1px solid rgba(41,217,255,0.2);
   flex-shrink: 0;
 }
 .cir-e4-nav-arr {
-  font-size: 1.8rem; color: #ff6600;
+  font-size: 1.8rem; color: #29d9ff;
   line-height: 1; flex-shrink: 0;
   text-shadow: 0 0 10px rgba(255,102,0,0.6);
 }

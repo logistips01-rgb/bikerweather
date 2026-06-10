@@ -1799,7 +1799,7 @@ function _buildE4Tach() {
   // Glow arc (dynamic)
   const ga = document.createElementNS(ns, 'path');
   ga.setAttribute('d', arc(R, SA, SA + 0.1));
-  ga.setAttribute('fill', 'none'); ga.setAttribute('stroke', 'rgba(255,102,0,0.7)'); ga.setAttribute('stroke-width', '5');
+  ga.setAttribute('fill', 'none'); ga.setAttribute('stroke', 'rgba(41,217,255,0.8)'); ga.setAttribute('stroke-width', '5');
   ga.setAttribute('filter', 'url(#e4Glow)'); ga.style.display = 'none';
   svg.appendChild(ga); _e4Arc = ga;
 
@@ -1868,12 +1868,12 @@ function _initE4Map() {
   }).setView([lat, lon], 15);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(_e4Map);
   const icon = L.divIcon({
-    html: '<div style="width:14px;height:14px;background:#ff6600;border:2px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(255,102,0,0.9)"></div>',
+    html: '<div style="width:14px;height:14px;background:#29d9ff;border:2px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(41,217,255,0.9)"></div>',
     iconSize: [14,14], iconAnchor: [7,7], className: ''
   });
   _e4Marker = L.marker([lat, lon], { icon }).addTo(_e4Map);
   if (App.routePoints?.length > 1) {
-    L.polyline(App.routePoints.map(p => [p.lat, p.lng ?? p.lon]), { color: '#ff6600', weight: 3, opacity: 0.85 }).addTo(_e4Map);
+    L.polyline(App.routePoints.map(p => [p.lat, p.lng ?? p.lon]), { color: '#29d9ff', weight: 3, opacity: 0.85 }).addTo(_e4Map);
   }
   setTimeout(() => _e4Map.invalidateSize(), 100);
 }
@@ -1911,7 +1911,7 @@ function _updateE4Layout(roll, spd) {
   const es = $('cir-e4-spd');  if (es) es.textContent = Math.round(spd) || 0;
   const el = $('cir-e4-lean'); if (el) {
     el.textContent = (roll < -1 ? '◄ ' : roll > 1 ? '► ' : '') + Math.round(lean) + '°';
-    el.style.color = lean > 45 ? '#ff6600' : lean > 30 ? '#ffb300' : '#29d9ff';
+    el.style.color = lean > 45 ? '#ffffff' : lean > 30 ? '#29d9ff' : 'rgba(255,255,255,0.7)';
   }
   $('cir-e4-gear') && ($('cir-e4-gear').textContent = gear);
   $('cir-e4-rpm')  && ($('cir-e4-rpm').textContent  = rpm > 0 ? (rpm/1000).toFixed(1)+'k RPM' : '-- RPM');
@@ -1935,7 +1935,7 @@ function _updateE4Layout(roll, spd) {
     const distM = Math.round(Math.hypot((nxt.lat - App.position.lat) * 111320, ((nxt.lng ?? nxt.lon) - App.position.lon) * 111320 * Math.cos(App.position.lat * Math.PI / 180)));
     if (navDist) navDist.textContent = distM < 1000 ? distM + ' m' : (distM/1000).toFixed(1) + ' km';
     if (navSt)   navSt.textContent   = App.rideDestination || 'Ruta activa';
-    if (navArr)  { navArr.textContent = '↑'; navArr.style.color = '#ff6600'; }
+    if (navArr)  { navArr.textContent = '↑'; navArr.style.color = '#29d9ff'; }
     if (navEta)  { const eta = new Date(Date.now() + (distM / Math.max(spd/3.6, 5)) * 1000); navEta.textContent = eta.getHours().toString().padStart(2,'0')+':'+eta.getMinutes().toString().padStart(2,'0'); }
   } else {
     if (navArr)  navArr.textContent  = '↑';
