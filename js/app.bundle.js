@@ -2039,11 +2039,11 @@ function openCircuit(style) {
   _buildLsSegs();
   _buildTriumphSvg();
   _buildE4Tach();
-  _buildE5Gauges();
+  if (_cirBrand === 'e5') _buildE5Gauges();
   const ov2 = $('circuit-overlay');
   if (ov2) ov2.dataset.brand = _cirBrand;
   if (_cirBrand === 'e4') setTimeout(_initE4Map, 120);
-  if (_cirBrand === 'e5') setTimeout(_initE5Map, 120);
+  if (_cirBrand === 'e5') setTimeout(_initE5Map, 150);
   setTimeout(() => {
     resizeCircuitCanvases();
     _cirLoop();
@@ -2064,7 +2064,9 @@ function closeCircuit() {
   const e4svg = document.getElementById('cir-e4-svg'); if (e4svg) delete e4svg.dataset.built;
   if (_e5Map) { _e5Map.remove(); _e5Map = null; _e5Marker = null; }
   _e5SpdNeedle = null; _e5SpdArc = null; _e5RpmNeedle = null; _e5RpmArc = null;
-  ['cir-e5-spd','cir-e5-rpm'].forEach(id => { const s = document.getElementById(id); if (s) delete s.dataset.built; });
+  if (_cirBrand === 'e5') {
+    ['cir-e5-spd','cir-e5-rpm'].forEach(id => { const s = document.getElementById(id); if (s) delete s.dataset.built; });
+  }
   window.speechSynthesis?.cancel();
   _kirkRec = null; _kirkListening = false;
 }
@@ -2074,6 +2076,7 @@ function _buildE5Gauge(svgId, maxVal, isRpm) {
   const svg = document.getElementById(svgId);
   if (!svg || svg.dataset.built) return;
   svg.dataset.built = '1';
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
   const ns = 'http://www.w3.org/2000/svg';
   const CX = 110, CY = 110, R = 90, SA = 210, SWEEP = 300;
   const pt  = (r, d) => { const rad = (d - 90) * Math.PI / 180; return [CX + r * Math.cos(rad), CY + r * Math.sin(rad)]; };
@@ -2174,6 +2177,7 @@ function _buildE5Gauges() {
 }
 
 function _initE5Map() {
+  if (typeof L === 'undefined') return;
   if (_e5Map) { setTimeout(() => _e5Map.invalidateSize(), 50); return; }
   const container = document.getElementById('cir-e5-map');
   if (!container) return;
