@@ -1787,7 +1787,7 @@ function _buildE4Tach() {
   // Outer track ring
   const ring = document.createElementNS(ns, 'path');
   ring.setAttribute('d', arc(R, SA, SA + SWEEP));
-  ring.setAttribute('fill', 'none'); ring.setAttribute('stroke', 'rgba(255,255,255,0.1)'); ring.setAttribute('stroke-width', '3');
+  ring.setAttribute('fill', 'none'); ring.setAttribute('stroke', 'rgba(255,255,255,0.2)'); ring.setAttribute('stroke-width', '4');
   svg.appendChild(ring);
 
   // Red zone 10k–12k
@@ -1807,19 +1807,19 @@ function _buildE4Tach() {
   for (let k = 0; k <= 12; k++) {
     const deg = SA + SWEEP * (k / 12);
     const isMaj = Number.isInteger(k);
-    const [x1,y1] = pt(R - 1, deg); const [x2,y2] = pt(R - (isMaj ? 18 : 10), deg);
+    const [x1,y1] = pt(R - 1, deg); const [x2,y2] = pt(R - (isMaj ? 22 : 11), deg);
     const tick = document.createElementNS(ns, 'line');
     tick.setAttribute('x1', x1.toFixed(2)); tick.setAttribute('y1', y1.toFixed(2));
     tick.setAttribute('x2', x2.toFixed(2)); tick.setAttribute('y2', y2.toFixed(2));
-    tick.setAttribute('stroke', k >= 10 ? 'rgba(255,60,60,0.7)' : 'rgba(255,255,255,0.38)');
-    tick.setAttribute('stroke-width', isMaj ? '2' : '1');
+    tick.setAttribute('stroke', k >= 10 ? 'rgba(255,70,70,0.9)' : 'rgba(255,255,255,0.75)');
+    tick.setAttribute('stroke-width', isMaj ? '3' : '1.5');
     svg.appendChild(tick);
     if (isMaj && k > 0 && k < 12) {
-      const [lx, ly] = pt(R - 34, deg);
+      const [lx, ly] = pt(R - 38, deg);
       const lbl = document.createElementNS(ns, 'text');
-      lbl.setAttribute('x', lx.toFixed(2)); lbl.setAttribute('y', (ly + 4.5).toFixed(2));
-      lbl.setAttribute('text-anchor', 'middle'); lbl.setAttribute('font-size', '14'); lbl.setAttribute('font-family', 'JetBrains Mono,monospace');
-      lbl.setAttribute('fill', k >= 10 ? 'rgba(255,80,80,0.85)' : 'rgba(255,255,255,0.55)');
+      lbl.setAttribute('x', lx.toFixed(2)); lbl.setAttribute('y', (ly + 5).toFixed(2));
+      lbl.setAttribute('text-anchor', 'middle'); lbl.setAttribute('font-size', '16'); lbl.setAttribute('font-family', 'JetBrains Mono,monospace');
+      lbl.setAttribute('fill', k >= 10 ? 'rgba(255,90,90,0.95)' : 'rgba(255,255,255,0.9)');
       lbl.textContent = String(k); svg.appendChild(lbl);
     }
   }
@@ -1831,7 +1831,7 @@ function _buildE4Tach() {
     const tick = document.createElementNS(ns, 'line');
     tick.setAttribute('x1', x1.toFixed(2)); tick.setAttribute('y1', y1.toFixed(2));
     tick.setAttribute('x2', x2.toFixed(2)); tick.setAttribute('y2', y2.toFixed(2));
-    tick.setAttribute('stroke', 'rgba(255,255,255,0.2)'); tick.setAttribute('stroke-width', '1');
+    tick.setAttribute('stroke', 'rgba(255,255,255,0.45)'); tick.setAttribute('stroke-width', '1');
     svg.appendChild(tick);
   }
 
@@ -1839,7 +1839,7 @@ function _buildE4Tach() {
   const rpmLbl = document.createElementNS(ns, 'text');
   rpmLbl.setAttribute('x', CX); rpmLbl.setAttribute('y', '26'); rpmLbl.setAttribute('text-anchor', 'middle');
   rpmLbl.setAttribute('font-size', '11'); rpmLbl.setAttribute('font-family', 'JetBrains Mono,monospace');
-  rpmLbl.setAttribute('fill', 'rgba(255,255,255,0.25)'); rpmLbl.setAttribute('letter-spacing', '1');
+  rpmLbl.setAttribute('fill', 'rgba(255,255,255,0.5)'); rpmLbl.setAttribute('letter-spacing', '1');
   rpmLbl.textContent = 'RPM ×1000'; svg.appendChild(rpmLbl);
 
   // Center hub

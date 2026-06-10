@@ -2342,6 +2342,7 @@ body.landscape-mode #circuit-overlay {
   flex-direction: row;
 }
 #circuit-overlay[data-brand="e4"] .cir-e4-wrap { display: flex; }
+#circuit-overlay[data-brand="e4"] .cir-hue-slider { display: none; }
 
 /* Left panel: tachometer */
 .cir-e4-left {
