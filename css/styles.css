@@ -1853,6 +1853,7 @@ body.landscape-mode #circuit-overlay {
 .cir-lsc-temp { color:var(--sk-temp-c); }
 .cir-lsc-volt { color:var(--sk-volt-c); }
 .cir-lsc-gear { color:var(--sk-gear-c); font-size:24px; }
+.cir-lsc-hora { color:rgba(255,255,255,0.85); font-size:18px; letter-spacing:0.05em; }
 
 /* Stats label/value reuse skin txt */
 .cir-ls-stats .cir-sl { color:var(--sk-txt2); }

@@ -1618,15 +1618,18 @@ function _updateLsSegs(rpm, roll) {
 function _updateLsLayout(roll, spd) {
   const rpm  = App.obd2Rpm  || 0;
   const gear = App.obd2Gear || '—';
-  const temp = App.weather  ? App.weather.temp + '°' : '--°';
+  const motor = App.obd2Temp != null ? Math.round(App.obd2Temp)+'°' : '--°';
+  const now  = new Date();
+  const hora = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
 
   _updateLsSegs(rpm, roll);
 
   // Info strip
   const rn = $('cir-ls-rpm-num'); if (rn) rn.textContent = rpm > 0 ? (rpm/1000).toFixed(1)+'k' : '--k';
-  const tn = $('cir-ls-temp');    if (tn) tn.textContent = temp;
-  const vn = $('cir-ls-volt');    if (vn) vn.textContent = App.obd2Volt ? App.obd2Volt.toFixed(1)+'v' : '--v';
+  const tn = $('cir-ls-temp');    if (tn) tn.textContent = motor;
+  const vn = $('cir-ls-volt');    if (vn) vn.textContent = App.obd2Volt != null ? App.obd2Volt.toFixed(1)+'v' : '--v';
   const gn = $('cir-ls-gear');    if (gn) gn.textContent = gear;
+  const hn = $('cir-ls-hora');    if (hn) hn.textContent = hora;
 
   // Stats
   if (App.sessionActive) {
@@ -1637,6 +1640,7 @@ function _updateLsLayout(roll, spd) {
   const lc = $('cir-ls-curves'); if (lc) lc.textContent = App.sessionCurves?.length || 0;
   const lv = $('cir-ls-vmax');   if (lv) lv.textContent = _cirMaxSpd;
   const la = $('cir-ls-amax');   if (la) la.textContent = Math.round(_cirMaxAng)+'°';
+  const lt = $('cir-ls-tamb');   if (lt) lt.textContent = App.weather ? App.weather.temp+'°' : '--°';
 
   // Speed
   const ls = $('cir-ls-spd'); if (ls) ls.textContent = Math.round(spd) || 0;
@@ -1768,7 +1772,7 @@ function _buildTriumphSvg() {
 function _updateTriumphLayout(roll, spd) {
   const rpm  = App.obd2Rpm  || 0;
   const gear = App.obd2Gear || '—';
-  const temp = App.weather  ? App.weather.temp + '°' : '--°';
+  const temp = App.obd2Temp != null ? Math.round(App.obd2Temp)+'°' : '--°';
   const lean = Math.abs(roll);
   const CX = 169, CY = 169;
   const START = 210, ARC = 300;
