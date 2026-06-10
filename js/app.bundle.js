@@ -3368,6 +3368,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // Circuit glow intensity
+  const savedGlow = localStorage.getItem('bw_cir_glow') || '80';
+  document.documentElement.style.setProperty('--cir-g', (parseInt(savedGlow) / 100).toFixed(2));
+  const glowSlider = $('cir-glow');
+  if (glowSlider) {
+    glowSlider.value = savedGlow;
+    glowSlider.addEventListener('input', e => {
+      document.documentElement.style.setProperty('--cir-g', (parseInt(e.target.value) / 100).toFixed(2));
+      localStorage.setItem('bw_cir_glow', e.target.value);
+    });
+  }
+
   // GPS + Gyro + Slider
   startGPS();
   startGyro();

@@ -1509,7 +1509,7 @@ body.landscape-mode .btn-map-landscape {
 /* ═══════════════════════════════════════════════════════════
    CIRCUIT HUD — Premium Dashboard
    ═══════════════════════════════════════════════════════════ */
-:root { --cir-h: 20; }   /* accent hue: 0=red, 20=orange, 120=green, 200=blue, 270=purple */
+:root { --cir-h: 20; --cir-g: 0.80; }   /* hue: color del display; glow: intensidad 0-1 */
 
 #circuit-overlay {
   display: none;
@@ -1774,6 +1774,25 @@ body.circuit-active .location-bar { display: none !important; }
   box-shadow: 0 0 6px hsla(var(--cir-h), 100%, 55%, 0.7);
   cursor: pointer;
 }
+
+/* Slider intensidad glow */
+.cir-glow-slider {
+  width: 52px; height: 4px;
+  -webkit-appearance: none; appearance: none;
+  border-radius: 2px; cursor: pointer; outline: none;
+  background: linear-gradient(to right, rgba(255,255,255,0.04) 0%, hsl(var(--cir-h),90%,55%) 100%);
+  border: 1px solid rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+.cir-glow-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.85);
+  border: 2px solid rgba(255,255,255,0.6);
+  box-shadow: 0 0 6px rgba(255,255,255,0.4);
+  cursor: pointer;
+}
 .cir-btn-mic {
   font-size: 15px; width: 36px;
   border-color: rgba(180,0,0,0.22); color: rgba(255,60,30,0.42);
@@ -1824,7 +1843,7 @@ body.landscape-mode .cir-lean-panel { width: 110px; overflow: hidden; }
 /* ── Default skin variables (Sport) ── */
 #circuit-overlay {
   --sk-bg:        #04050a;
-  --sk-bg-glow:   hsla(var(--cir-h),90%,14%,0.80);
+  --sk-bg-glow:   hsla(var(--cir-h),90%,14%,var(--cir-g));
   --sk-txt:       rgba(255,255,255,0.90);
   --sk-txt2:      rgba(255,255,255,0.50);
   --sk-border:    rgba(255,255,255,0.06);
@@ -1844,10 +1863,10 @@ body.landscape-mode .cir-lean-panel { width: 110px; overflow: hidden; }
   --sk-bar-lbl:   hsla(var(--cir-h),80%,60%,0.60);
 }
 
-/* Apply skin bg — radial glow from center */
+/* Apply skin bg — radial glow centrado en el velocímetro */
 body.landscape-mode #circuit-overlay {
   background: radial-gradient(
-    ellipse 72% 62% at center,
+    ellipse 72% 62% at 63% center,
     var(--sk-bg-glow) 0%,
     var(--sk-bg)      62%
   );
@@ -2224,6 +2243,23 @@ body.landscape-mode #circuit-overlay {
   border-radius: 2px !important;
   background: rgba(0,0,0,0.82) !important;
 }
+
+/* Botón inicio manual Ruta Libre */
+.btn-map-start {
+  position: absolute; bottom: 56px; left: 50%; transform: translateX(-50%);
+  z-index: 20;
+  padding: 11px 28px;
+  background: rgba(255,85,0,0.15);
+  border: 1px solid rgba(255,85,0,0.6);
+  border-radius: var(--r2);
+  color: var(--orange);
+  font-family: var(--font-hud); font-size: 0.9rem; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer;
+  box-shadow: 0 0 20px rgba(255,85,0,0.2);
+  transition: all var(--t);
+}
+.btn-map-start:hover  { background: rgba(255,85,0,0.25); box-shadow: 0 0 30px rgba(255,85,0,0.35); }
+.btn-map-start:active { transform: translateX(-50%) scale(0.96); }
 
 
 /* ══════════════════════════════════════════════════════
