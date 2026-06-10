@@ -1754,9 +1754,14 @@ body.circuit-active .location-bar { display: none !important; }
   color: hsl(var(--cir-h), 100%, 68%);
 }
 
+/* Sliders agrupados */
+.cir-sliders {
+  display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+}
+
 /* Hue slider */
 .cir-hue-slider {
-  width: 52px; height: 4px;
+  width: 42px; height: 4px;
   -webkit-appearance: none; appearance: none;
   border-radius: 2px; cursor: pointer; outline: none;
   background: linear-gradient(to right,
@@ -1777,7 +1782,7 @@ body.circuit-active .location-bar { display: none !important; }
 
 /* Slider intensidad glow */
 .cir-glow-slider {
-  width: 52px; height: 4px;
+  width: 42px; height: 4px;
   -webkit-appearance: none; appearance: none;
   border-radius: 2px; cursor: pointer; outline: none;
   background: linear-gradient(to right, rgba(255,255,255,0.04) 0%, hsl(var(--cir-h),90%,55%) 100%);
