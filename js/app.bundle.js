@@ -3366,6 +3366,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Detección de caída
   startFallDetection();
 
+  // OBD2 diagnóstico — botones del panel
+  $('btn-obd-read')?.addEventListener('click',    () => obdReadDTCs('stored'));
+  $('btn-obd-pending')?.addEventListener('click', () => obdReadDTCs('pending'));
+  $('btn-obd-clear')?.addEventListener('click',   obdClearDTCs);
+
   // Firebase
   initFirebase().catch(e => console.warn('[FB]', e));
   checkWatchMode();
@@ -3427,6 +3432,113 @@ document.addEventListener('DOMContentLoaded', async () => {
    Perfil: FFF0 / FFF1(write) / FFF2(notify)
    Fallback: Nordic UART Service (NUS)
 ═══════════════════════════════════════ */
+
+/* Tabla de descripciones DTC (códigos genéricos más comunes) */
+const DTC_DESC = {
+  P0100:'Sensor flujo aire (MAF) — circuito',        P0101:'Sensor MAF — rendimiento',
+  P0105:'Sensor presión múltiple (MAP)',              P0110:'Sensor temperatura admisión',
+  P0115:'Sensor temperatura refrigerante',           P0120:'Sensor posición mariposa (TPS)',
+  P0121:'Rendimiento TPS',                           P0130:'Sensor O2 banco 1 sonda 1',
+  P0133:'O2 banco 1 sonda 1 — respuesta lenta',      P0135:'Calefactor O2 banco 1 sonda 1',
+  P0171:'Sistema demasiado pobre banco 1',           P0172:'Sistema demasiado rico banco 1',
+  P0201:'Inyector cilindro 1',                       P0202:'Inyector cilindro 2',
+  P0203:'Inyector cilindro 3',                       P0204:'Inyector cilindro 4',
+  P0300:'Fallo encendido aleatorio/múltiple',        P0301:'Fallo encendido cil. 1',
+  P0302:'Fallo encendido cil. 2',                    P0303:'Fallo encendido cil. 3',
+  P0304:'Fallo encendido cil. 4',                    P0320:'Sensor velocidad cigüeñal (CKP)',
+  P0335:'Sensor posición cigüeñal',                  P0340:'Sensor posición árbol levas',
+  P0351:'Bobina de encendido cil. 1',                P0352:'Bobina de encendido cil. 2',
+  P0420:'Eficiencia catalizador por debajo umbral',  P0440:'Sistema evaporativo EVAP',
+  P0480:'Ventilador refrigeración circuito 1',       P0500:'Sensor velocidad vehículo',
+  P0505:'Sistema control ralentí',                   P0560:'Tensión sistema — rango/rendimiento',
+  P0601:'Error memoria interna ECU',                 P0605:'Error ROM ECU',
+  P0700:'Sistema control transmisión',               P1000:'OBD no completado (ciclo conducción)',
+};
+
+function _decodeDTC(b1, b2) {
+  const sys = ['P','C','B','U'][(b1 >> 6) & 3];
+  const d1 = (b1 >> 4) & 3;
+  const d2 = (b1 & 0x0F).toString(16).toUpperCase();
+  const d3 = ((b2 >> 4) & 0x0F).toString(16).toUpperCase();
+  const d4 = (b2 & 0x0F).toString(16).toUpperCase();
+  return `${sys}${d1}${d2}${d3}${d4}`;
+}
+
+function _parseDTCBytes(raw, serviceHex) {
+  // Remove service response byte (e.g. "43" for mode 03) and parse hex pairs
+  const clean = raw.toUpperCase()
+    .replace(new RegExp(serviceHex, 'g'), '')
+    .replace(/[^0-9A-F]/g, ' ').trim();
+  const tokens = clean.split(/\s+/).filter(h => h.length === 2);
+  const bytes  = tokens.map(h => parseInt(h, 16));
+  const dtcs   = [];
+  for (let i = 0; i + 1 < bytes.length; i += 2) {
+    if (bytes[i] === 0 && bytes[i+1] === 0) continue;
+    dtcs.push(_decodeDTC(bytes[i], bytes[i+1]));
+  }
+  return dtcs;
+}
+
+function _renderDTCList(dtcs, type) {
+  const list = $('obd-dtc-list');
+  if (!list) return;
+  if (!dtcs.length) {
+    list.innerHTML = `<div class="obd-dtc-row none"><span class="obd-dtc-code">✓</span><span class="obd-dtc-desc">Sin ${type === 'pending' ? 'fallos pendientes' : 'fallos almacenados'}</span></div>`;
+    return;
+  }
+  list.innerHTML = dtcs.map(code => {
+    const desc = DTC_DESC[code] || 'Código específico del fabricante';
+    const cls  = type === 'pending' ? 'pending' : '';
+    return `<div class="obd-dtc-row ${cls}"><span class="obd-dtc-code">${code}</span><span class="obd-dtc-desc">${desc}</span></div>`;
+  }).join('');
+}
+
+async function obdReadDTCs(mode) {
+  if (!App.obdConnected) { toast('OBD2 no conectado', 'warn'); return; }
+  const cmd = mode === 'pending' ? '07' : '03';
+  const svcResp = mode === 'pending' ? '47' : '43';
+  $('obd-dtc-list').innerHTML = '<span class="obd-dtc-hint">Leyendo…</span>';
+  try {
+    const raw = await _obdCmd(cmd);
+    if (!raw || raw === 'TIMEOUT' || raw.includes('NO DATA') || raw.includes('UNABLE')) {
+      _renderDTCList([], mode);
+      return;
+    }
+    const dtcs = _parseDTCBytes(raw, svcResp);
+    _renderDTCList(dtcs, mode);
+    toast(dtcs.length ? `${dtcs.length} fallo(s) encontrado(s)` : 'Sin fallos', dtcs.length ? 'warn' : 'ok');
+  } catch(e) {
+    $('obd-dtc-list').innerHTML = '<span class="obd-dtc-hint" style="color:#ff3250">Error al leer — comprueba conexión</span>';
+  }
+}
+
+let _clearConfirmTimer = null;
+async function obdClearDTCs() {
+  if (!App.obdConnected) { toast('OBD2 no conectado', 'warn'); return; }
+  const btn = $('btn-obd-clear');
+  if (!btn) return;
+  if (!_clearConfirmTimer) {
+    // Primera pulsación — pedir confirmación
+    btn.textContent = '⚠ CONFIRMAR';
+    _clearConfirmTimer = setTimeout(() => {
+      btn.textContent = '🗑 BORRAR';
+      _clearConfirmTimer = null;
+    }, 3500);
+    return;
+  }
+  // Segunda pulsación dentro de 3.5s — ejecutar borrado
+  clearTimeout(_clearConfirmTimer);
+  _clearConfirmTimer = null;
+  btn.textContent = '🗑 BORRAR';
+  $('obd-dtc-list').innerHTML = '<span class="obd-dtc-hint">Borrando fallos…</span>';
+  try {
+    await _obdCmd('04');
+    $('obd-dtc-list').innerHTML = '<div class="obd-dtc-row none"><span class="obd-dtc-code">✓</span><span class="obd-dtc-desc">Fallos borrados correctamente</span></div>';
+    toast('Fallos OBD2 borrados ✓', 'ok');
+  } catch(e) {
+    $('obd-dtc-list').innerHTML = '<span class="obd-dtc-hint" style="color:#ff3250">Error al borrar fallos</span>';
+  }
+}
 const _OBD = {
   SVC:    '0000fff0-0000-1000-8000-00805f9b34fb',
   WRITE:  '0000fff1-0000-1000-8000-00805f9b34fb',
@@ -3488,6 +3600,8 @@ async function _obdInit() {
     App.obdConnected = true;
     _OBD._busy = false;
     setStatusPill('obd', 'active');
+    const _badge = $('obd-diag-status-badge');
+    if (_badge) { _badge.textContent = 'CONECTADO'; _badge.className = 'obd-badge ok'; }
     toast('OBD2 conectado ✓', 'ok');
     _obdStartPoll();
   } catch(e) {
@@ -3502,6 +3616,8 @@ function _obdOnDisconnect() {
   App.obdConnected = false;
   clearInterval(_OBD.pollTimer);
   setStatusPill('obd', 'error');
+  const _badge = $('obd-diag-status-badge');
+  if (_badge) { _badge.textContent = 'DESCONECTADO'; _badge.className = 'obd-badge err'; }
   toast('OBD2 desconectado', 'warn');
   if (App.obd2Enabled) {
     clearTimeout(_OBD.reconnTimer);

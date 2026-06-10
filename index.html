@@ -776,6 +776,24 @@
         </div>
       </div>
 
+      <!-- OBD2 Diagnóstico -->
+      <div class="sensors-card obd-diag-card">
+        <div class="panel-hdr" style="padding:8px 14px 7px">
+          <span class="panel-hdr-lbl">🔌 OBD2 — DIAGNÓSTICO</span>
+          <span id="obd-diag-status-badge" class="obd-badge">DESCONECTADO</span>
+        </div>
+        <div style="padding:10px 14px 14px;display:flex;flex-direction:column;gap:10px">
+          <div class="obd-diag-btns">
+            <button id="btn-obd-read"    class="obd-diag-btn">🔍 LEER FALLOS</button>
+            <button id="btn-obd-pending" class="obd-diag-btn obd-diag-sec">⏳ PENDIENTES</button>
+            <button id="btn-obd-clear"   class="obd-diag-btn obd-diag-warn">🗑 BORRAR</button>
+          </div>
+          <div id="obd-dtc-list" class="obd-dtc-list">
+            <span class="obd-dtc-hint">Conecta OBD2 y pulsa LEER FALLOS</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Kirk AI / Groq -->
       <div class="sensors-card">
         <div class="panel-hdr" style="padding:8px 14px 7px">

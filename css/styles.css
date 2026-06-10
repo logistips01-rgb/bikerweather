@@ -109,6 +109,43 @@ body::before {
 .status-pill.error .dot { background: var(--red); }
 .status-pill-btn { cursor: pointer; }
 .status-pill-btn:active { opacity: 0.7; }
+
+/* ── OBD2 Diagnóstico panel ── */
+.obd-badge {
+  font-family: var(--font-mono); font-size: 0.55rem; letter-spacing: 0.12em;
+  padding: 2px 7px; border-radius: 3px;
+  background: rgba(90,90,122,0.15); color: #5a5a7a;
+  border: 1px solid rgba(90,90,122,0.25);
+}
+.obd-badge.ok  { background: rgba(0,240,100,0.08); color: #00f064; border-color: rgba(0,240,100,0.25); }
+.obd-badge.err { background: rgba(255,50,80,0.08);  color: #ff3250; border-color: rgba(255,50,80,0.25); }
+.obd-diag-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.obd-diag-btn {
+  flex: 1; min-width: 90px;
+  font-family: var(--font-mono); font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.08em; padding: 9px 6px; border-radius: 4px; cursor: pointer;
+  background: rgba(41,217,255,0.06); border: 1px solid rgba(41,217,255,0.2);
+  color: var(--ice); transition: background 0.15s, border-color 0.15s;
+}
+.obd-diag-btn:active { background: rgba(41,217,255,0.14); }
+.obd-diag-btn:disabled { opacity: 0.35; cursor: default; }
+.obd-diag-sec  { background: rgba(255,179,0,0.06); border-color: rgba(255,179,0,0.2); color: var(--amber); }
+.obd-diag-sec:active { background: rgba(255,179,0,0.14); }
+.obd-diag-warn { background: rgba(255,50,80,0.06); border-color: rgba(255,50,80,0.2); color: #ff3250; }
+.obd-diag-warn:active { background: rgba(255,50,80,0.14); }
+.obd-dtc-list { display: flex; flex-direction: column; gap: 6px; min-height: 28px; }
+.obd-dtc-hint { font-family: var(--font-mono); font-size: 0.62rem; color: #5a5a7a; }
+.obd-dtc-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 10px; border-radius: 4px;
+  background: rgba(255,50,80,0.05); border: 1px solid rgba(255,50,80,0.18);
+}
+.obd-dtc-row.pending { background: rgba(255,179,0,0.05); border-color: rgba(255,179,0,0.2); }
+.obd-dtc-row.none    { background: rgba(0,240,100,0.05);  border-color: rgba(0,240,100,0.15); }
+.obd-dtc-code { font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: #ff3250; flex-shrink: 0; }
+.obd-dtc-row.pending .obd-dtc-code { color: var(--amber); }
+.obd-dtc-row.none    .obd-dtc-code { color: #00f064; }
+.obd-dtc-desc { font-family: var(--font-mono); font-size: 0.60rem; color: #8888aa; line-height: 1.5; }
 .status-pill.warn { border-color: rgba(255,179,0,0.3); color: var(--amber); }
 .status-pill.warn .dot { background: var(--amber); }
 
