@@ -2333,3 +2333,121 @@ body.landscape-mode #circuit-overlay {
   opacity: 0.35;
   cursor: default;
 }
+
+/* ══════════════════════════════════════════════════════
+   ESTILO 4 — BMW Motorrad TFT: gauge left + nav map right
+   ══════════════════════════════════════════════════════ */
+.cir-e4-wrap {
+  display: none; flex: 1; min-height: 0;
+  flex-direction: row;
+}
+#circuit-overlay[data-brand="e4"] .cir-e4-wrap { display: flex; }
+
+/* Left panel: tachometer */
+.cir-e4-left {
+  width: 52%; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  border-right: 1px solid rgba(255,255,255,0.07);
+  position: relative; padding: 4px 0;
+}
+.cir-e4-tach {
+  width: 88%; max-width: 300px; flex-shrink: 0;
+}
+
+/* TFT overlay — centered on the gauge */
+.cir-e4-tft {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: 56px;
+  background: rgba(0,0,0,0.82);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  padding: 6px 14px 5px;
+  text-align: center; pointer-events: none;
+  min-width: 120px;
+}
+.cir-e4-spd {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 2.4rem; font-weight: 700;
+  color: #fff; line-height: 1;
+}
+.cir-e4-spdu {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.55rem; letter-spacing: 0.2em;
+  color: rgba(255,255,255,0.45); margin-bottom: 2px;
+}
+.cir-e4-lean {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.95rem; font-weight: 700;
+  color: #29d9ff; letter-spacing: 0.05em;
+}
+.cir-e4-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem; color: rgba(255,255,255,0.5);
+  display: flex; gap: 8px; justify-content: center;
+  margin-top: 2px; letter-spacing: 0.05em;
+}
+
+/* Bottom data strip */
+.cir-e4-data {
+  display: flex; gap: 0; width: 100%;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  background: rgba(0,0,0,0.4);
+}
+.cir-e4-dc {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; padding: 5px 2px;
+  border-right: 1px solid rgba(255,255,255,0.06);
+}
+.cir-e4-dc:last-child { border-right: none; }
+.cir-e4-dc span:first-child {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem; font-weight: 700; color: #fff;
+}
+.cir-e4-dl {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.48rem; letter-spacing: 0.15em;
+  color: rgba(255,255,255,0.35); text-transform: uppercase;
+}
+
+/* Right panel: navigation + map */
+.cir-e4-right {
+  flex: 1; display: flex; flex-direction: column; min-width: 0;
+}
+
+/* Nav strip */
+.cir-e4-nav {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px;
+  background: rgba(0,0,0,0.6);
+  border-bottom: 1px solid rgba(255,102,0,0.2);
+  flex-shrink: 0;
+}
+.cir-e4-nav-arr {
+  font-size: 1.8rem; color: #ff6600;
+  line-height: 1; flex-shrink: 0;
+  text-shadow: 0 0 10px rgba(255,102,0,0.6);
+}
+.cir-e4-nav-txt { flex: 1; min-width: 0; }
+.cir-e4-nav-dist {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem; font-weight: 700; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cir-e4-nav-st {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.55rem; color: rgba(255,255,255,0.45);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cir-e4-nav-eta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem; font-weight: 700;
+  color: rgba(255,255,255,0.6); flex-shrink: 0;
+}
+
+/* Map fills remaining space */
+.cir-e4-map {
+  flex: 1; min-height: 0;
+  background: #0a0c12;
+}
+/* Leaflet dark map tiles overlay */
+.cir-e4-map .leaflet-tile { filter: brightness(0.75) saturate(0.6); }

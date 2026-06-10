@@ -1280,8 +1280,9 @@ let _cirMaxAng = 0;
 let _cirHue    = 20;
 let _lsSegsRpm = [];
 let _lsSegsSpd = [];
-let _cirBrand  = 'sport-ls'; // 'sport-ls' | 'sport-pt' | 'triumph'
+let _cirBrand  = 'sport-ls'; // 'sport-ls' | 'sport-pt' | 'triumph' | 'e4'
 let _triNeedle = null, _triNeedleGlow = null, _triGlowArc = null;
+let _e4Needle  = null, _e4Arc = null, _e4Map = null, _e4Marker = null;
 
 /* ── Kirk state ── */
 let _kirkSpeaking  = false;
@@ -1769,6 +1770,187 @@ function _buildTriumphSvg() {
   svg.appendChild(vLogo);
 }
 
+/* ── ESTILO 4: BMW Motorrad TFT ── */
+function _buildE4Tach() {
+  const svg = document.getElementById('cir-e4-svg');
+  if (!svg || svg.dataset.built) return;
+  svg.dataset.built = '1';
+  const ns = 'http://www.w3.org/2000/svg';
+  const CX = 169, CY = 169, R = 148, SA = 210, SWEEP = 300;
+  const pt = (r, deg) => { const rad = (deg - 90) * Math.PI / 180; return [CX + r * Math.cos(rad), CY + r * Math.sin(rad)]; };
+  const arc = (r, s, e) => { const lg = (e - s) > 180 ? 1 : 0; const [x1,y1]=pt(r,s); const [x2,y2]=pt(r,e); return `M${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${lg},1 ${x2.toFixed(2)},${y2.toFixed(2)}`; };
+
+  const defs = document.createElementNS(ns, 'defs');
+  defs.innerHTML = '<filter id="e4Glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>';
+  svg.appendChild(defs);
+
+  // Outer track ring
+  const ring = document.createElementNS(ns, 'path');
+  ring.setAttribute('d', arc(R, SA, SA + SWEEP));
+  ring.setAttribute('fill', 'none'); ring.setAttribute('stroke', 'rgba(255,255,255,0.1)'); ring.setAttribute('stroke-width', '3');
+  svg.appendChild(ring);
+
+  // Red zone 10k–12k
+  const rz = document.createElementNS(ns, 'path');
+  rz.setAttribute('d', arc(R - 1, SA + SWEEP * (10/12), SA + SWEEP));
+  rz.setAttribute('fill', 'none'); rz.setAttribute('stroke', '#bb0000'); rz.setAttribute('stroke-width', '9'); rz.setAttribute('opacity', '0.7');
+  svg.appendChild(rz);
+
+  // Glow arc (dynamic)
+  const ga = document.createElementNS(ns, 'path');
+  ga.setAttribute('d', arc(R, SA, SA + 0.1));
+  ga.setAttribute('fill', 'none'); ga.setAttribute('stroke', 'rgba(255,102,0,0.7)'); ga.setAttribute('stroke-width', '5');
+  ga.setAttribute('filter', 'url(#e4Glow)'); ga.style.display = 'none';
+  svg.appendChild(ga); _e4Arc = ga;
+
+  // Tick marks + labels
+  for (let k = 0; k <= 12; k++) {
+    const deg = SA + SWEEP * (k / 12);
+    const isMaj = Number.isInteger(k);
+    const [x1,y1] = pt(R - 1, deg); const [x2,y2] = pt(R - (isMaj ? 18 : 10), deg);
+    const tick = document.createElementNS(ns, 'line');
+    tick.setAttribute('x1', x1.toFixed(2)); tick.setAttribute('y1', y1.toFixed(2));
+    tick.setAttribute('x2', x2.toFixed(2)); tick.setAttribute('y2', y2.toFixed(2));
+    tick.setAttribute('stroke', k >= 10 ? 'rgba(255,60,60,0.7)' : 'rgba(255,255,255,0.38)');
+    tick.setAttribute('stroke-width', isMaj ? '2' : '1');
+    svg.appendChild(tick);
+    if (isMaj && k > 0 && k < 12) {
+      const [lx, ly] = pt(R - 34, deg);
+      const lbl = document.createElementNS(ns, 'text');
+      lbl.setAttribute('x', lx.toFixed(2)); lbl.setAttribute('y', (ly + 4.5).toFixed(2));
+      lbl.setAttribute('text-anchor', 'middle'); lbl.setAttribute('font-size', '14'); lbl.setAttribute('font-family', 'JetBrains Mono,monospace');
+      lbl.setAttribute('fill', k >= 10 ? 'rgba(255,80,80,0.85)' : 'rgba(255,255,255,0.55)');
+      lbl.textContent = String(k); svg.appendChild(lbl);
+    }
+  }
+  // Half-tick marks
+  for (let i = 0; i <= 23; i++) {
+    const deg = SA + SWEEP * (i / 24);
+    if (i % 2 === 0) continue; // skip major positions
+    const [x1,y1] = pt(R - 1, deg); const [x2,y2] = pt(R - 10, deg);
+    const tick = document.createElementNS(ns, 'line');
+    tick.setAttribute('x1', x1.toFixed(2)); tick.setAttribute('y1', y1.toFixed(2));
+    tick.setAttribute('x2', x2.toFixed(2)); tick.setAttribute('y2', y2.toFixed(2));
+    tick.setAttribute('stroke', 'rgba(255,255,255,0.2)'); tick.setAttribute('stroke-width', '1');
+    svg.appendChild(tick);
+  }
+
+  // RPM label
+  const rpmLbl = document.createElementNS(ns, 'text');
+  rpmLbl.setAttribute('x', CX); rpmLbl.setAttribute('y', '26'); rpmLbl.setAttribute('text-anchor', 'middle');
+  rpmLbl.setAttribute('font-size', '11'); rpmLbl.setAttribute('font-family', 'JetBrains Mono,monospace');
+  rpmLbl.setAttribute('fill', 'rgba(255,255,255,0.25)'); rpmLbl.setAttribute('letter-spacing', '1');
+  rpmLbl.textContent = 'RPM ×1000'; svg.appendChild(rpmLbl);
+
+  // Center hub
+  const hub = document.createElementNS(ns, 'circle');
+  hub.setAttribute('cx', CX); hub.setAttribute('cy', CY); hub.setAttribute('r', '5'); hub.setAttribute('fill', '#ccc');
+  svg.appendChild(hub);
+
+  // Needle
+  const [nx, ny] = pt(R * 0.79, SA);
+  const needle = document.createElementNS(ns, 'line');
+  needle.setAttribute('x1', CX); needle.setAttribute('y1', CY);
+  needle.setAttribute('x2', nx.toFixed(2)); needle.setAttribute('y2', ny.toFixed(2));
+  needle.setAttribute('stroke', 'white'); needle.setAttribute('stroke-width', '2.5'); needle.setAttribute('stroke-linecap', 'round');
+  svg.appendChild(needle); _e4Needle = needle;
+}
+
+function _initE4Map() {
+  if (_e4Map) { setTimeout(() => _e4Map.invalidateSize(), 50); return; }
+  const container = document.getElementById('cir-e4-map');
+  if (!container || typeof L === 'undefined') return;
+  const lat = App.position?.lat || 40.4168, lon = App.position?.lon || -3.7038;
+  _e4Map = L.map(container, {
+    zoomControl: false, attributionControl: false,
+    dragging: false, touchZoom: false, doubleClickZoom: false,
+    scrollWheelZoom: false, keyboard: false
+  }).setView([lat, lon], 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(_e4Map);
+  const icon = L.divIcon({
+    html: '<div style="width:14px;height:14px;background:#ff6600;border:2px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(255,102,0,0.9)"></div>',
+    iconSize: [14,14], iconAnchor: [7,7], className: ''
+  });
+  _e4Marker = L.marker([lat, lon], { icon }).addTo(_e4Map);
+  if (App.routePoints?.length > 1) {
+    L.polyline(App.routePoints.map(p => [p.lat, p.lng ?? p.lon]), { color: '#ff6600', weight: 3, opacity: 0.85 }).addTo(_e4Map);
+  }
+  setTimeout(() => _e4Map.invalidateSize(), 100);
+}
+
+function _updateE4Layout(roll, spd) {
+  const rpm   = App.obd2Rpm  || 0;
+  const gear  = App.obd2Gear || '—';
+  const motor = App.obd2Temp != null ? Math.round(App.obd2Temp)+'°' : '--°';
+  const now   = new Date();
+  const hora  = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  const lean  = Math.abs(roll);
+  const CX = 169, CY = 169, R = 148, SA = 210, SWEEP = 300;
+
+  // Needle + glow arc
+  if (_e4Needle) {
+    const frac = Math.min(rpm / 12000, 1);
+    const deg  = SA + SWEEP * frac;
+    const rad  = (deg - 90) * Math.PI / 180;
+    _e4Needle.setAttribute('x2', (CX + R * 0.79 * Math.cos(rad)).toFixed(2));
+    _e4Needle.setAttribute('y2', (CY + R * 0.79 * Math.sin(rad)).toFixed(2));
+  }
+  if (_e4Arc) {
+    if (rpm > 200) {
+      const frac = Math.min(rpm / 12000, 1);
+      const endDeg = SA + SWEEP * frac;
+      const lg = (endDeg - SA) > 180 ? 1 : 0;
+      const pt = (r, d) => { const rad = (d - 90) * Math.PI / 180; return [CX + r * Math.cos(rad), CY + r * Math.sin(rad)]; };
+      const [x1,y1] = pt(R, SA); const [x2,y2] = pt(R, endDeg);
+      _e4Arc.setAttribute('d', `M${x1.toFixed(2)},${y1.toFixed(2)} A${R},${R} 0 ${lg},1 ${x2.toFixed(2)},${y2.toFixed(2)}`);
+      _e4Arc.style.display = '';
+    } else { _e4Arc.style.display = 'none'; }
+  }
+
+  // TFT
+  const es = $('cir-e4-spd');  if (es) es.textContent = Math.round(spd) || 0;
+  const el = $('cir-e4-lean'); if (el) {
+    el.textContent = (roll < -1 ? '◄ ' : roll > 1 ? '► ' : '') + Math.round(lean) + '°';
+    el.style.color = lean > 45 ? '#ff6600' : lean > 30 ? '#ffb300' : '#29d9ff';
+  }
+  $('cir-e4-gear') && ($('cir-e4-gear').textContent = gear);
+  $('cir-e4-rpm')  && ($('cir-e4-rpm').textContent  = rpm > 0 ? (rpm/1000).toFixed(1)+'k RPM' : '-- RPM');
+
+  // Data strip
+  $('cir-e4-motor') && ($('cir-e4-motor').textContent = motor);
+  $('cir-e4-volt')  && ($('cir-e4-volt').textContent  = App.obd2Volt != null ? App.obd2Volt.toFixed(1)+'v' : '--v');
+  $('cir-e4-tamb')  && ($('cir-e4-tamb').textContent  = App.weather ? App.weather.temp+'°' : '--°');
+  $('cir-e4-hora')  && ($('cir-e4-hora').textContent  = hora);
+
+  // Nav strip
+  const hasRoute = App.routePoints?.length > 1 && App.sessionActive;
+  const navArr  = $('cir-e4-nav-arr');
+  const navDist = $('cir-e4-nav-dist');
+  const navSt   = $('cir-e4-nav-st');
+  const navEta  = $('cir-e4-nav-eta');
+  if (hasRoute && App.position) {
+    let best = Infinity, nearIdx = 0;
+    App.routePoints.forEach((p, i) => { const d = Math.hypot(p.lat - App.position.lat, (p.lng ?? p.lon) - App.position.lon); if (d < best) { best = d; nearIdx = i; } });
+    const nxt = App.routePoints[Math.min(nearIdx + 5, App.routePoints.length - 1)];
+    const distM = Math.round(Math.hypot((nxt.lat - App.position.lat) * 111320, ((nxt.lng ?? nxt.lon) - App.position.lon) * 111320 * Math.cos(App.position.lat * Math.PI / 180)));
+    if (navDist) navDist.textContent = distM < 1000 ? distM + ' m' : (distM/1000).toFixed(1) + ' km';
+    if (navSt)   navSt.textContent   = App.rideDestination || 'Ruta activa';
+    if (navArr)  { navArr.textContent = '↑'; navArr.style.color = '#ff6600'; }
+    if (navEta)  { const eta = new Date(Date.now() + (distM / Math.max(spd/3.6, 5)) * 1000); navEta.textContent = eta.getHours().toString().padStart(2,'0')+':'+eta.getMinutes().toString().padStart(2,'0'); }
+  } else {
+    if (navArr)  navArr.textContent  = '↑';
+    if (navDist) navDist.textContent = 'SIN RUTA';
+    if (navSt)   navSt.textContent   = 'Modo libre';
+    if (navEta)  navEta.textContent  = '--:--';
+  }
+
+  // Map
+  if (_e4Map && App.position) {
+    _e4Marker?.setLatLng([App.position.lat, App.position.lon]);
+    _e4Map.setView([App.position.lat, App.position.lon], 15, { animate: false });
+  }
+}
+
 function _updateTriumphLayout(roll, spd) {
   const rpm  = App.obd2Rpm  || 0;
   const gear = App.obd2Gear || '—';
@@ -1831,12 +2013,10 @@ function _updateTriumphLayout(roll, spd) {
 
 function openCircuit(style) {
   // style: 'estilo1'=triumph, 'estilo2-4'=próximamente, undefined=último usado
-  if (style === 'estilo4') {
-    toast('Próximamente — estilo en desarrollo', 'info'); return;
-  }
   if      (style === 'estilo1') _cirBrand = 'sport-ls';
   else if (style === 'estilo2') _cirBrand = 'sport-pt';
   else if (style === 'estilo3') _cirBrand = 'triumph';
+  else if (style === 'estilo4') _cirBrand = 'e4';
 
   // Highlight active style button
   document.querySelectorAll('.btn-style').forEach(b => b.classList.remove('active'));
@@ -1855,8 +2035,10 @@ function openCircuit(style) {
   initKirkVoice();
   _buildLsSegs();
   _buildTriumphSvg();
+  _buildE4Tach();
   const ov2 = $('circuit-overlay');
   if (ov2) ov2.dataset.brand = _cirBrand;
+  if (_cirBrand === 'e4') setTimeout(_initE4Map, 120);
   setTimeout(() => {
     resizeCircuitCanvases();
     _cirLoop();
@@ -1872,6 +2054,9 @@ function closeCircuit() {
   document.body.classList.remove('circuit-active');
   $('circuit-overlay')?.classList.remove('active');
   if (_cirRaf) { cancelAnimationFrame(_cirRaf); _cirRaf = null; }
+  if (_e4Map) { _e4Map.remove(); _e4Map = null; _e4Marker = null; }
+  _e4Needle = null; _e4Arc = null;
+  const e4svg = document.getElementById('cir-e4-svg'); if (e4svg) delete e4svg.dataset.built;
   window.speechSynthesis?.cancel();
   _kirkRec = null; _kirkListening = false;
 }
@@ -1916,6 +2101,8 @@ function _cirLoop() {
   const spd  = App.gpsSpeed || 0;
   if (_cirBrand === 'triumph') {
     _updateTriumphLayout(roll, spd);
+  } else if (_cirBrand === 'e4') {
+    _updateE4Layout(roll, spd);
   } else if (_cirBrand === 'sport-ls') {
     _updateLsLayout(roll, spd);
   } else { // sport-pt
