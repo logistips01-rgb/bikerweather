@@ -3559,8 +3559,12 @@ async function connectOBD2() {
   try {
     _OBD.device = await navigator.bluetooth.requestDevice({
       filters: [
-        { namePrefix: 'Vgate' }, { namePrefix: 'iCar' },
-        { namePrefix: 'OBD' },   { namePrefix: 'ELM' },
+        { namePrefix: 'Vgate' },        { namePrefix: 'iCar' },
+        { namePrefix: 'OBD' },          { namePrefix: 'ELM' },
+        { namePrefix: 'android-vlink' },{ namePrefix: 'ANDROID' },
+        { namePrefix: 'V-LINK' },       { namePrefix: 'VLINK' },
+        { namePrefix: 'Konnwei' },      { namePrefix: 'OBDII' },
+        { namePrefix: 'Carista' },      { namePrefix: 'LELink' },
         { services: [_OBD.SVC] }
       ],
       optionalServices: [_OBD.SVC, _OBD.SVC2]
