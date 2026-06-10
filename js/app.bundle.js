@@ -1831,10 +1831,11 @@ function _updateTriumphLayout(roll, spd) {
 
 function openCircuit(style) {
   // style: 'estilo1'=triumph, 'estilo2-4'=próximamente, undefined=último usado
-  if (style === 'estilo2' || style === 'estilo3' || style === 'estilo4') {
+  if (style === 'estilo3' || style === 'estilo4') {
     toast('Próximamente — estilo en desarrollo', 'info'); return;
   }
-  if (style === 'estilo1') _cirBrand = 'triumph';
+  if (style === 'estilo1') _cirBrand = 'sport';
+  else if (style === 'estilo2') _cirBrand = 'triumph';
 
   // Highlight active style button
   document.querySelectorAll('.btn-style').forEach(b => b.classList.remove('active'));
