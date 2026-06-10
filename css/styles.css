@@ -2290,3 +2290,47 @@ body.landscape-mode #circuit-overlay {
   background: rgba(41,217,255,0.1) !important;
   box-shadow: 0 0 20px rgba(41,217,255,0.15) !important;
 }
+
+/* ── Display style selector ── */
+.pre-display-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 2px;
+}
+.pre-display-lbl {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  color: rgba(41,217,255,0.7);
+  text-transform: uppercase;
+  padding: 2px 0;
+}
+.pre-style-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.btn-style {
+  padding: 10px 4px;
+  background: rgba(41,217,255,0.05);
+  border: 1px solid rgba(41,217,255,0.22);
+  border-radius: 2px;
+  color: rgba(41,217,255,0.8);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--t);
+}
+.btn-style:hover, .btn-style.active {
+  background: rgba(41,217,255,0.12);
+  border-color: rgba(41,217,255,0.55);
+  box-shadow: 0 0 10px rgba(41,217,255,0.2);
+  color: rgba(41,217,255,1);
+}
+.btn-style.coming-soon {
+  opacity: 0.35;
+  cursor: default;
+}

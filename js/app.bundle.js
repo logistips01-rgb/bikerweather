@@ -1829,7 +1829,17 @@ function _updateTriumphLayout(roll, spd) {
   }
 }
 
-function openCircuit() {
+function openCircuit(style) {
+  // style: 'estilo1'=triumph, 'estilo2-4'=próximamente, undefined=último usado
+  if (style === 'estilo2' || style === 'estilo3' || style === 'estilo4') {
+    toast('Próximamente — estilo en desarrollo', 'info'); return;
+  }
+  if (style === 'estilo1') _cirBrand = 'triumph';
+
+  // Highlight active style button
+  document.querySelectorAll('.btn-style').forEach(b => b.classList.remove('active'));
+  if (style) $('btn-style-' + style.replace('estilo',''))?.classList.add('active');
+
   App.circuitMode  = true;
   _kirkKittPos     = 0; _kirkKittDir = 1; _kirkCooldowns = {};
   _kirkHistory     = []; _telBuffer = []; _telLastTs = 0;
@@ -2683,7 +2693,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-cir-cal')?.addEventListener('click', doCalibrate);
   document.getElementById('toggle-landscape')?.addEventListener('change', toggleLandscapeMode);
   $('btn-map-landscape')?.addEventListener('click', toggleLandscapeMode);
-  $('btn-open-circuit')?.addEventListener('click', openCircuit);
+  $('btn-open-circuit')?.addEventListener('click', () => openCircuit());
+
+  // Estilo buttons — pre-ride style selector
+  $('btn-style-1')?.addEventListener('click', () => openCircuit('estilo1'));
+  $('btn-style-2')?.addEventListener('click', () => openCircuit('estilo2'));
+  $('btn-style-3')?.addEventListener('click', () => openCircuit('estilo3'));
+  $('btn-style-4')?.addEventListener('click', () => openCircuit('estilo4'));
+
+  // OBD2 toggle
+  App.obd2Enabled = localStorage.getItem('bw_obd2') !== 'false';
+  const obd2Chk = document.getElementById('toggle-obd2');
+  if (obd2Chk) {
+    obd2Chk.checked = App.obd2Enabled;
+    obd2Chk.addEventListener('change', () => {
+      App.obd2Enabled = obd2Chk.checked;
+      localStorage.setItem('bw_obd2', App.obd2Enabled);
+      document.body.classList.toggle('no-obd2', !App.obd2Enabled);
+    });
+  }
+  document.body.classList.toggle('no-obd2', !App.obd2Enabled);
   $('btn-cir-start')?.addEventListener('click', startCircuitSession);
   $('btn-cir-stop')?.addEventListener('click', stopCircuitSession);
   $('btn-cir-exit')?.addEventListener('click', closeCircuit);
