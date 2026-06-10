@@ -2285,6 +2285,8 @@ function startCircuitSession() {
   startSession();
   $('btn-cir-start').style.display = 'none';
   $('btn-cir-stop').style.display  = 'flex';
+  if (App.rideDestination && App.rideDestination !== 'Sesión BikerWeather')
+    calculateRoute(App.rideDestination, App.routeSpeed).catch(e => toast(e.message, 'error'));
   kirkSpeak('Sesión iniciada.');
 }
 
@@ -3067,24 +3069,22 @@ function initNav() {
 function _launchStyle(num) {
   const dest = $('ride-dest-input')?.value?.trim() || null;
   if (App.rideMode === 'route' && !dest) { toast('Introduce un destino', 'info'); return; }
+  // Guardamos destino para cuando el usuario pulse ▶ dentro del display
   App.rideDestination = dest;
   document.querySelectorAll('.style-tile').forEach(b => b.classList.remove('active'));
   $('btn-style-' + num)?.classList.add('active');
   if (num === 6) {
-    // Ruta libre — mapa sin circuit overlay
+    // Ruta libre — muestra mapa, inicio manual con btn-map-start
     $('pre-ride-controls').style.display = 'none';
     const mc = $('map-container'); if (mc) mc.style.display = 'block';
     if (!App.mapInitialized) initMap(); else mapClear();
     if (App.position) mapUpdatePosition(App.position.lat, App.position.lon);
     setTimeout(() => { if (App.leafletMap) { App.leafletMap.invalidateSize(); if (App.position) App.leafletMap.setView([App.position.lat, App.position.lon], 15); } }, 200);
     App.rideMode = dest ? 'route' : 'free';
-    if (dest) calculateRoute(dest, App.routeSpeed).catch(e => toast(e.message, 'error'));
-    startSession();
-    toast('Ruta libre iniciada ▶', 'ok');
+    const ms = $('btn-map-start'); if (ms) ms.style.display = 'flex';
   } else {
+    // Estilos 1-5 — abre display, el usuario inicia desde ▶ INICIO del overlay
     openCircuit('estilo' + num);
-    startCircuitSession();
-    if (dest) calculateRoute(dest, App.routeSpeed).catch(e => toast(e.message, 'error'));
   }
 }
 
@@ -3107,6 +3107,12 @@ function initRidingControls() {
   $('btn-recenter')?.addEventListener('click', () => {
     App.followRider = true;
     if (App.position && App.leafletMap) App.leafletMap.setView([App.position.lat, App.position.lon], 15, { animate:true });
+  });
+  $('btn-map-start')?.addEventListener('click', () => {
+    const ms = $('btn-map-start'); if (ms) ms.style.display = 'none';
+    startSession();
+    if (App.rideDestination) calculateRoute(App.rideDestination, App.routeSpeed).catch(e => toast(e.message, 'error'));
+    toast('Ruta libre iniciada ▶', 'ok');
   });
 }
 
