@@ -1511,13 +1511,14 @@ body.circuit-active .location-bar { display: none !important; }
   display: flex; flex-direction: column;
 }
 
-/* Portrait / landscape content switching */
-.cir-portrait  { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+/* Layout visibility controlled by data-brand — independent of phone orientation */
+.cir-portrait  { display: none; flex: 1; min-height: 0; flex-direction: column; }
 .cir-landscape { display: none; flex: 1; min-height: 0; flex-direction: column; }
-body.landscape-mode .cir-portrait  { display: none; }
-body.landscape-mode .cir-landscape { display: flex; }
-/* hide arc canvas in landscape (not needed) */
-body.landscape-mode #cir-arc-cv    { display: none; }
+#cir-arc-cv    { display: none; }
+
+#circuit-overlay[data-brand="sport-pt"] .cir-portrait  { display: flex; }
+#circuit-overlay[data-brand="sport-pt"] #cir-arc-cv    { display: block; }
+#circuit-overlay[data-brand="sport-ls"] .cir-landscape { display: flex; }
 
 /* Arc strip — space for canvas arcs (outer=RPM, inner=speed) */
 .cir-arc-strip {
@@ -1948,9 +1949,7 @@ body.landscape-mode #circuit-overlay {
   background: radial-gradient(ellipse 60% 80% at center, #151c28 0%, #07080b 65%);
 }
 
-#circuit-overlay[data-brand="triumph"] .cir-portrait,
-#circuit-overlay[data-brand="triumph"] .cir-landscape { display: none !important; }
-#circuit-overlay[data-brand="triumph"] .cir-tri-wrap  { display: flex; }
+#circuit-overlay[data-brand="triumph"] .cir-tri-wrap { display: flex; }
 
 /* Side stats */
 .tri-side {

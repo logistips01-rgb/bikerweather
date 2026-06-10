@@ -1280,7 +1280,7 @@ let _cirMaxAng = 0;
 let _cirHue    = 20;
 let _lsSegsRpm = [];
 let _lsSegsSpd = [];
-let _cirBrand  = 'sport';   // 'sport' | 'triumph'
+let _cirBrand  = 'sport-ls'; // 'sport-ls' | 'sport-pt' | 'triumph'
 let _triNeedle = null, _triNeedleGlow = null, _triGlowArc = null;
 
 /* ── Kirk state ── */
@@ -1831,11 +1831,12 @@ function _updateTriumphLayout(roll, spd) {
 
 function openCircuit(style) {
   // style: 'estilo1'=triumph, 'estilo2-4'=próximamente, undefined=último usado
-  if (style === 'estilo3' || style === 'estilo4') {
+  if (style === 'estilo4') {
     toast('Próximamente — estilo en desarrollo', 'info'); return;
   }
-  if (style === 'estilo1') _cirBrand = 'sport';
-  else if (style === 'estilo2') _cirBrand = 'triumph';
+  if      (style === 'estilo1') _cirBrand = 'sport-ls';
+  else if (style === 'estilo2') _cirBrand = 'sport-pt';
+  else if (style === 'estilo3') _cirBrand = 'triumph';
 
   // Highlight active style button
   document.querySelectorAll('.btn-style').forEach(b => b.classList.remove('active'));
@@ -1915,9 +1916,9 @@ function _cirLoop() {
   const spd  = App.gpsSpeed || 0;
   if (_cirBrand === 'triumph') {
     _updateTriumphLayout(roll, spd);
-  } else if (App.landscapeMode) {
+  } else if (_cirBrand === 'sport-ls') {
     _updateLsLayout(roll, spd);
-  } else {
+  } else { // sport-pt
     _drawSpeedArc($('cir-arc-cv'), spd);
     _drawMiniMap($('cir-map-cv'));
     _updateCirData(roll, spd);
@@ -2718,12 +2719,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-cir-stop')?.addEventListener('click', stopCircuitSession);
   $('btn-cir-exit')?.addEventListener('click', closeCircuit);
   $('btn-cir-ls')?.addEventListener('click', () => { toggleLandscapeMode(); $('btn-cir-ls')?.classList.toggle('active', App.landscapeMode); });
-  $('btn-cir-brand')?.addEventListener('click', () => {
-    _cirBrand = _cirBrand === 'triumph' ? 'sport' : 'triumph';
-    const ov = $('circuit-overlay');
-    if (ov) ov.dataset.brand = _cirBrand;
-    $('btn-cir-brand')?.classList.toggle('active', _cirBrand === 'triumph');
-  });
+  // btn-cir-brand removed — style selected from pre-ride screen
   $('btn-cir-mute')?.addEventListener('click', () => {
     _kirkMuted = !_kirkMuted;
     if (_kirkMuted) {
