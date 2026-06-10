@@ -918,12 +918,19 @@ body.landscape-mode .btn-tilt-flip { display: inline-flex; }
 }
 .mode-btn.active { background: var(--orange-dim); border-color: var(--orange); color: var(--orange); }
 
-/* Input destino ruta activa */
+/* Input destino — slide-down */
 .route-dest-wrap {
-  display: flex; gap: 6px;
-  transition: all 0.2s ease;
+  overflow: hidden; max-height: 0; opacity: 0;
+  transition: max-height 0.3s ease, opacity 0.25s ease;
 }
-.route-dest-wrap.hidden { display: none; }
+.route-dest-wrap.open { max-height: 56px; opacity: 1; }
+.route-dest-wrap input {
+  width: 100%; padding: 9px 12px;
+  background: var(--bg3); border: 1px solid var(--border-dim);
+  border-radius: var(--r2); color: var(--text);
+  font-family: var(--font-mono); font-size: 0.82rem; outline: none;
+}
+.route-dest-wrap input:focus { border-color: rgba(41,217,255,0.4); }
 
 /* Botón recentrar mapa */
 .btn-recenter {
@@ -2311,48 +2318,70 @@ body.landscape-mode #circuit-overlay {
   box-shadow: 0 0 20px rgba(41,217,255,0.15) !important;
 }
 
-/* ── Display style selector ── */
-.pre-display-section {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 2px;
+/* ── Destination toggle ── */
+.dest-toggle {
+  display: flex; background: var(--bg3);
+  border: 1px solid var(--border-dim); border-radius: var(--r2);
+  padding: 3px; gap: 3px;
 }
-.pre-display-lbl {
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.16em;
-  color: rgba(41,217,255,0.7);
-  text-transform: uppercase;
-  padding: 2px 0;
-}
-.pre-style-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
-}
-.btn-style {
-  padding: 10px 4px;
-  background: rgba(41,217,255,0.05);
-  border: 1px solid rgba(41,217,255,0.22);
-  border-radius: 2px;
-  color: rgba(41,217,255,0.8);
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  cursor: pointer;
+.dest-tog-btn {
+  flex: 1; padding: 8px 0;
+  border: 1px solid transparent; border-radius: calc(var(--r2) - 2px);
+  background: transparent;
+  font-family: var(--font-hud); font-size: 0.8rem; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-muted); cursor: pointer;
   transition: all var(--t);
 }
-.btn-style:hover, .btn-style.active {
-  background: rgba(41,217,255,0.12);
-  border-color: rgba(41,217,255,0.55);
-  box-shadow: 0 0 10px rgba(41,217,255,0.2);
-  color: rgba(41,217,255,1);
+.dest-tog-btn.active {
+  background: var(--bg4); color: var(--text);
+  border-color: var(--border-mid);
 }
-.btn-style.coming-soon {
-  opacity: 0.35;
-  cursor: default;
+
+/* ── Display style selector ── */
+.pre-display-section {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.pre-display-lbl {
+  font-family: var(--font-mono); font-size: 0.64rem;
+  letter-spacing: 0.14em; color: rgba(41,217,255,0.65);
+  text-transform: uppercase; padding: 2px 0;
+}
+.style-launch-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+}
+.style-tile {
+  display: flex; flex-direction: column; align-items: center;
+  position: relative; overflow: hidden;
+  background: var(--bg3); border: 1px solid var(--border-dim);
+  border-radius: var(--r2); padding: 0; cursor: pointer; min-height: 76px;
+  transition: background var(--t), border-color var(--t), transform 0.1s;
+}
+.style-tile:active { transform: scale(0.94); }
+.style-tile:hover  { background: var(--bg4); border-color: var(--border-mid); }
+.style-tile.active {
+  border-color: rgba(41,217,255,0.45); background: rgba(41,217,255,0.05);
+}
+.st-free.active {
+  border-color: rgba(255,102,0,0.4); background: rgba(255,85,0,0.05);
+}
+.st-bar {
+  width: 100%; height: 2px; background: var(--sc, var(--ice)); flex-shrink: 0;
+}
+.st-icon {
+  flex: 1; width: 30px; max-height: 30px;
+  display: block; margin: 4px auto 2px;
+  color: rgba(255,255,255,0.5);
+}
+.st-name {
+  font-family: var(--font-hud); font-size: 0.65rem; font-weight: 700;
+  letter-spacing: 0.07em; color: var(--text); text-align: center; padding: 0 3px;
+}
+.st-sub {
+  font-family: var(--font-mono); font-size: 0.42rem;
+  color: var(--text-muted); text-align: center;
+  padding: 1px 4px 6px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;
 }
 
 /* ══════════════════════════════════════════════════════

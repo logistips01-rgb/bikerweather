@@ -2280,7 +2280,7 @@ function _updateE5Layout(roll, spd) {
 
 function startCircuitSession() {
   App.rideMode = 'circuit';
-  App.rideDestination = 'Sesión de circuito';
+  if (!App.rideDestination) App.rideDestination = 'Sesión BikerWeather';
   _cirMaxSpd = 0; _cirMaxAng = 0;
   startSession();
   $('btn-cir-start').style.display = 'none';
@@ -3064,32 +3064,45 @@ function initNav() {
 /* ═══════════════════════════════════════
    RIDING CONTROLS
 ═══════════════════════════════════════ */
-function initRidingControls() {
-  $('mode-free')?.addEventListener('click', () => {
-    App.rideMode = 'free';
-    $('mode-free').classList.add('active');
-    $('mode-dest').classList.remove('active');
-    $('ride-dest-wrap').classList.add('hidden');
-  });
-  $('mode-dest')?.addEventListener('click', () => {
-    App.rideMode = 'route';
-    $('mode-dest').classList.add('active');
-    $('mode-free').classList.remove('active');
-    $('ride-dest-wrap').classList.remove('hidden');
-  });
-  $('btn-start-route')?.addEventListener('click', async () => {
-    if (!App.position) { toast('Esperando GPS…', 'info'); return; }
-    App.rideDestination = App.rideMode === 'route' ? ($('ride-dest-input')?.value?.trim() || null) : null;
-    if (App.rideMode === 'route' && !App.rideDestination) { toast('Introduce un destino', 'info'); return; }
+function _launchStyle(num) {
+  const dest = $('ride-dest-input')?.value?.trim() || null;
+  if (App.rideMode === 'route' && !dest) { toast('Introduce un destino', 'info'); return; }
+  App.rideDestination = dest;
+  document.querySelectorAll('.style-tile').forEach(b => b.classList.remove('active'));
+  $('btn-style-' + num)?.classList.add('active');
+  if (num === 6) {
+    // Ruta libre — mapa sin circuit overlay
     $('pre-ride-controls').style.display = 'none';
     const mc = $('map-container'); if (mc) mc.style.display = 'block';
     if (!App.mapInitialized) initMap(); else mapClear();
     if (App.position) mapUpdatePosition(App.position.lat, App.position.lon);
-    setTimeout(() => { if (App.leafletMap) { App.leafletMap.invalidateSize(); App.leafletMap.setView([App.position.lat, App.position.lon], 15); } }, 200);
-    if (App.rideDestination) calculateRoute(App.rideDestination, App.routeSpeed).catch(e => toast(e.message, 'error'));
+    setTimeout(() => { if (App.leafletMap) { App.leafletMap.invalidateSize(); if (App.position) App.leafletMap.setView([App.position.lat, App.position.lon], 15); } }, 200);
+    App.rideMode = dest ? 'route' : 'free';
+    if (dest) calculateRoute(dest, App.routeSpeed).catch(e => toast(e.message, 'error'));
     startSession();
-    toast('Ruta iniciada ▶', 'ok');
+    toast('Ruta libre iniciada ▶', 'ok');
+  } else {
+    openCircuit('estilo' + num);
+    startCircuitSession();
+    if (dest) calculateRoute(dest, App.routeSpeed).catch(e => toast(e.message, 'error'));
+  }
+}
+
+function initRidingControls() {
+  $('dest-tog-free')?.addEventListener('click', () => {
+    App.rideMode = 'free';
+    $('dest-tog-free').classList.add('active');
+    $('dest-tog-dest').classList.remove('active');
+    $('ride-dest-wrap').classList.remove('open');
   });
+  $('dest-tog-dest')?.addEventListener('click', () => {
+    App.rideMode = 'route';
+    $('dest-tog-dest').classList.add('active');
+    $('dest-tog-free').classList.remove('active');
+    $('ride-dest-wrap').classList.add('open');
+    setTimeout(() => $('ride-dest-input')?.focus(), 320);
+  });
+  $('ride-dest-input')?.addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
   $('btn-stop-route')?.addEventListener('click', () => stopSession());
   $('btn-recenter')?.addEventListener('click', () => {
     App.followRider = true;
@@ -3191,12 +3204,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-map-landscape')?.addEventListener('click', toggleLandscapeMode);
   $('btn-open-circuit')?.addEventListener('click', () => openCircuit());
 
-  // Estilo buttons — pre-ride style selector
-  $('btn-style-1')?.addEventListener('click', () => openCircuit('estilo1'));
-  $('btn-style-2')?.addEventListener('click', () => openCircuit('estilo2'));
-  $('btn-style-3')?.addEventListener('click', () => openCircuit('estilo3'));
-  $('btn-style-4')?.addEventListener('click', () => openCircuit('estilo4'));
-  $('btn-style-5')?.addEventListener('click', () => openCircuit('estilo5'));
+  // Style tiles — tap = arranca ruta con ese display
+  for (let i = 1; i <= 6; i++) $('btn-style-' + i)?.addEventListener('click', () => _launchStyle(i));
 
   // OBD2 toggle
   App.obd2Enabled = localStorage.getItem('bw_obd2') !== 'false';

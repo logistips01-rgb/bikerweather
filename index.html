@@ -384,23 +384,20 @@
     <div id="section-riding" class="section riding-section">
 
       <!-- Controles de inicio (visibles antes de empezar) -->
-      <div id="pre-ride-controls" style="display:flex;flex-direction:column;gap:8px;">
+      <div id="pre-ride-controls" style="display:flex;flex-direction:column;gap:10px;">
 
-        <!-- Selector de modo -->
-        <div class="mode-selector">
-          <button class="mode-btn active" id="mode-free">🗺 Ruta libre</button>
-          <button class="mode-btn" id="mode-dest">📍 Con destino</button>
+        <!-- Toggle Sin/Con destino -->
+        <div class="dest-toggle">
+          <button class="dest-tog-btn active" id="dest-tog-free">Sin destino</button>
+          <button class="dest-tog-btn" id="dest-tog-dest">Con destino</button>
         </div>
 
-        <!-- Input destino (solo en modo con destino) -->
-        <div class="route-dest-wrap hidden" id="ride-dest-wrap">
+        <!-- Input destino (slide-down cuando activo) -->
+        <div class="route-dest-wrap" id="ride-dest-wrap">
           <input id="ride-dest-input" type="text" placeholder="Destino: Logroño, Teruel…" autocomplete="off" />
         </div>
 
-        <!-- Botón iniciar -->
-        <button class="btn-start-route" id="btn-start-route">▶ INICIAR RUTA</button>
-
-        <!-- Toggles + Display styles -->
+        <!-- Toggles -->
         <div class="pre-ride-bottom">
           <div class="pre-ride-toggle-row">
             <span class="pre-toggle-lbl">MODO HORIZONTAL</span>
@@ -416,15 +413,91 @@
               <span class="toggle-sw-track"></span>
             </label>
           </div>
-          <div class="pre-display-section">
-            <span class="pre-display-lbl">◈ DISPLAY BIKERWEATHER</span>
-            <div class="pre-style-grid">
-              <button class="btn-style" id="btn-style-1">ESTILO 1</button>
-              <button class="btn-style" id="btn-style-2">ESTILO 2</button>
-              <button class="btn-style" id="btn-style-3">ESTILO 3</button>
-              <button class="btn-style" id="btn-style-4">ESTILO 4</button>
-              <button class="btn-style" id="btn-style-5">ESTILO 5</button>
-            </div>
+        </div>
+
+        <!-- Grid de estilos — tap = arranca ruta -->
+        <div class="pre-display-section">
+          <span class="pre-display-lbl">◈ ELIGE DISPLAY — ARRANCA RUTA</span>
+          <div class="style-launch-grid">
+
+            <button class="style-tile" id="btn-style-1">
+              <div class="st-bar" style="--sc:#29d9ff"></div>
+              <svg class="st-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <path d="M8 30 A12 12 0 0 1 32 30"/>
+                <line x1="20" y1="30" x2="28" y2="17"/>
+                <circle cx="20" cy="30" r="2.5" fill="currentColor" stroke="none"/>
+                <line x1="9" y1="30" x2="12" y2="30"/><line x1="31" y1="30" x2="28" y2="30"/>
+                <line x1="20" y1="16" x2="20" y2="19"/>
+              </svg>
+              <div class="st-name">SPORT LS</div>
+              <div class="st-sub">Velocímetro</div>
+            </button>
+
+            <button class="style-tile" id="btn-style-2">
+              <div class="st-bar" style="--sc:#29d9ff"></div>
+              <svg class="st-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <path d="M10 31 A10 10 0 0 1 30 31"/>
+                <line x1="20" y1="31" x2="28" y2="19"/>
+                <circle cx="20" cy="31" r="2" fill="currentColor" stroke="none"/>
+                <line x1="11" y1="31" x2="14" y2="31"/><line x1="29" y1="31" x2="26" y2="31"/>
+                <line x1="20" y1="19" x2="20" y2="22"/>
+              </svg>
+              <div class="st-name">SPORT PT</div>
+              <div class="st-sub">Retrato</div>
+            </button>
+
+            <button class="style-tile" id="btn-style-3">
+              <div class="st-bar" style="--sc:#ff6600"></div>
+              <svg class="st-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <path d="M7 31 A13 13 0 0 1 33 31"/>
+                <path d="M11 31 A9 9 0 0 1 29 31" opacity="0.4"/>
+                <line x1="20" y1="31" x2="27" y2="17"/>
+                <circle cx="20" cy="31" r="2" fill="currentColor" stroke="none"/>
+              </svg>
+              <div class="st-name">TRIUMPH</div>
+              <div class="st-sub">Doble arco</div>
+            </button>
+
+            <button class="style-tile" id="btn-style-4">
+              <div class="st-bar" style="--sc:#29d9ff"></div>
+              <svg class="st-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <path d="M7 28 A13 13 0 0 1 33 28"/>
+                <line x1="20" y1="28" x2="20" y2="15"/>
+                <circle cx="20" cy="28" r="2" fill="currentColor" stroke="none"/>
+                <rect x="26" y="14" width="8" height="8" rx="1" opacity="0.45" stroke-width="1.2"/>
+                <line x1="27.5" y1="17" x2="32.5" y2="17" opacity="0.45" stroke-width="1"/>
+                <line x1="27.5" y1="19" x2="32.5" y2="19" opacity="0.45" stroke-width="1"/>
+              </svg>
+              <div class="st-name">BMW TFT</div>
+              <div class="st-sub">Tacómetro · Mapa</div>
+            </button>
+
+            <button class="style-tile" id="btn-style-5">
+              <div class="st-bar" style="--sc:#29d9ff"></div>
+              <svg class="st-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <path d="M4 30 A8 8 0 0 1 18 30"/>
+                <path d="M22 30 A8 8 0 0 1 36 30"/>
+                <line x1="11" y1="30" x2="15" y2="22"/>
+                <line x1="29" y1="30" x2="25" y2="22"/>
+                <circle cx="11" cy="30" r="1.5" fill="currentColor" stroke="none"/>
+                <circle cx="29" cy="30" r="1.5" fill="currentColor" stroke="none"/>
+              </svg>
+              <div class="st-name">DUAL GAUGE</div>
+              <div class="st-sub">Vel · Mapa · RPM</div>
+            </button>
+
+            <button class="style-tile st-free" id="btn-style-6">
+              <div class="st-bar" style="--sc:#ff6600"></div>
+              <svg class="st-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <circle cx="20" cy="13" r="4.5"/>
+                <path d="M20 18 C16 22 14 26 14 34"/>
+                <path d="M20 18 C24 22 26 26 26 34"/>
+                <line x1="14" y1="34" x2="26" y2="34"/>
+              </svg>
+              <div class="st-name">RUTA LIBRE</div>
+              <div class="st-sub">Mapa · Sin HUD</div>
+            </button>
+
           </div>
         </div>
       </div>
