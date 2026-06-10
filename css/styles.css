@@ -719,8 +719,28 @@ body.landscape-mode main {
 }
 body.landscape-mode .riding-section    { flex: 1; min-height: 0; }
 body.landscape-mode .bottom-nav        { display: none; }
-body.landscape-mode .app-header        { display: none; }
 body.landscape-mode .location-bar      { display: none; }
+
+/* Header compacto en landscape — mantiene identidad de marca */
+body.landscape-mode .app-header {
+  padding: 3px 10px;
+  min-height: 0;
+  background: rgba(5,5,8,0.88);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  position: relative; z-index: 110;
+}
+body.landscape-mode .logo-icon  { width: 20px; height: 20px; font-size: 9px; }
+body.landscape-mode .logo-text  { font-size: 0.72rem; }
+body.landscape-mode .logo-sub   { display: none; }
+body.landscape-mode .logo       { gap: 6px; }
+body.landscape-mode .wakelock-btn          { display: none; }
+body.landscape-mode .status-pill           { font-size: 0.5rem; padding: 2px 4px; gap: 3px; }
+body.landscape-mode .status-pill .dot      { width: 4px; height: 4px; }
+body.landscape-mode .btn-home              { width: 24px; height: 24px; border-radius: 3px; }
+body.landscape-mode .btn-home svg          { width: 13px; height: 13px; }
+body.landscape-mode .hdr-right            { gap: 5px; }
+body.landscape-mode .status-pills         { gap: 4px; }
 body.landscape-mode .section           { gap: 0; }
 
 /* Mapa: position:fixed dentro del #app transformado =
