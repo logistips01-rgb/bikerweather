@@ -107,6 +107,8 @@ body::before {
 .status-pill.active .dot { background: var(--green); box-shadow: 0 0 5px var(--green); }
 .status-pill.error { border-color: rgba(255,34,85,0.3); color: var(--red); }
 .status-pill.error .dot { background: var(--red); }
+.status-pill-btn { cursor: pointer; }
+.status-pill-btn:active { opacity: 0.7; }
 .status-pill.warn { border-color: rgba(255,179,0,0.3); color: var(--amber); }
 .status-pill.warn .dot { background: var(--amber); }
 

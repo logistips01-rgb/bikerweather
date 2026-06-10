@@ -213,6 +213,12 @@ const App = {
   followRider:      true,
   refollowTimer:    null,
   fbUserId:         null,
+  obdConnected: false,
+  obd2Rpm:      null,
+  obd2Gear:     null,
+  obd2Temp:     null,
+  obd2Volt:     null,
+  obd2Speed:    null,
   _fb:              null
 };
 
@@ -3213,7 +3219,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Style tiles — tap = arranca ruta con ese display
   for (let i = 1; i <= 6; i++) $('btn-style-' + i)?.addEventListener('click', () => _launchStyle(i));
 
-  // OBD2 toggle
+  // OBD2 toggle + status pill click → connect/disconnect
   App.obd2Enabled = localStorage.getItem('bw_obd2') !== 'false';
   const obd2Chk = document.getElementById('toggle-obd2');
   if (obd2Chk) {
@@ -3222,9 +3228,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       App.obd2Enabled = obd2Chk.checked;
       localStorage.setItem('bw_obd2', App.obd2Enabled);
       document.body.classList.toggle('no-obd2', !App.obd2Enabled);
+      if (!App.obd2Enabled) disconnectOBD2();
     });
   }
   document.body.classList.toggle('no-obd2', !App.obd2Enabled);
+  $('status-obd')?.addEventListener('click', () => {
+    if (!App.obd2Enabled) { toast('Activa OBD2 en Configuración', 'info'); return; }
+    if (App.obdConnected) disconnectOBD2(); else connectOBD2();
+  });
   $('btn-cir-start')?.addEventListener('click', startCircuitSession);
   $('btn-cir-stop')?.addEventListener('click', stopCircuitSession);
   $('btn-cir-exit')?.addEventListener('click', closeCircuit);
@@ -3410,6 +3421,164 @@ document.addEventListener('DOMContentLoaded', async () => {
     sl.addEventListener('input', upd); upd();
   }
 });
+
+/* ═══════════════════════════════════════
+   BLE OBD2 — ELM327 / Vgate iCar Pro BLE 4.0
+   Perfil: FFF0 / FFF1(write) / FFF2(notify)
+   Fallback: Nordic UART Service (NUS)
+═══════════════════════════════════════ */
+const _OBD = {
+  SVC:    '0000fff0-0000-1000-8000-00805f9b34fb',
+  WRITE:  '0000fff1-0000-1000-8000-00805f9b34fb',
+  NOTIF:  '0000fff2-0000-1000-8000-00805f9b34fb',
+  SVC2:   '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
+  WRITE2: '6e400002-b5a3-f393-e0a9-e50e24dcca9e',
+  NOTIF2: '6e400003-b5a3-f393-e0a9-e50e24dcca9e',
+  device: null, writeChr: null, buf: '', resolvers: [],
+  pollTimer: null, pollIdx: 0, reconnTimer: null, _busy: false,
+  PIDS: ['010C','010D','0105','0142'],
+};
+
+async function connectOBD2() {
+  if (!navigator.bluetooth) { toast('Web Bluetooth no disponible — usa Chrome en Android', 'error'); return; }
+  if (_OBD._busy) return;
+  _OBD._busy = true;
+  setStatusPill('obd', 'warn');
+  try {
+    _OBD.device = await navigator.bluetooth.requestDevice({
+      filters: [
+        { namePrefix: 'Vgate' }, { namePrefix: 'iCar' },
+        { namePrefix: 'OBD' },   { namePrefix: 'ELM' },
+        { services: [_OBD.SVC] }
+      ],
+      optionalServices: [_OBD.SVC, _OBD.SVC2]
+    });
+    _OBD.device.addEventListener('gattserverdisconnected', _obdOnDisconnect);
+    await _obdInit();
+  } catch(e) {
+    _OBD._busy = false;
+    if (e.name !== 'NotFoundError' && e.name !== 'NotAllowedError')
+      toast('OBD2: ' + e.message, 'error');
+    setStatusPill('obd', '');
+  }
+}
+
+async function _obdInit() {
+  try {
+    const server = await _OBD.device.gatt.connect();
+    let writeChr, notifyChr;
+    try {
+      const s = await server.getPrimaryService(_OBD.SVC);
+      writeChr  = await s.getCharacteristic(_OBD.WRITE);
+      notifyChr = await s.getCharacteristic(_OBD.NOTIF);
+    } catch {
+      const s = await server.getPrimaryService(_OBD.SVC2);
+      writeChr  = await s.getCharacteristic(_OBD.WRITE2);
+      notifyChr = await s.getCharacteristic(_OBD.NOTIF2);
+    }
+    await notifyChr.startNotifications();
+    notifyChr.addEventListener('characteristicvaluechanged', _obdOnData);
+    _OBD.writeChr = writeChr;
+    _OBD.buf = ''; _OBD.resolvers = [];
+
+    await _obdCmd('ATZ');
+    await new Promise(r => setTimeout(r, 1200));
+    for (const c of ['ATE0','ATH0','ATL0','ATSP0','ATAT2','ATST0A']) await _obdCmd(c);
+
+    App.obdConnected = true;
+    _OBD._busy = false;
+    setStatusPill('obd', 'active');
+    toast('OBD2 conectado ✓', 'ok');
+    _obdStartPoll();
+  } catch(e) {
+    _OBD._busy = false;
+    App.obdConnected = false;
+    setStatusPill('obd', 'error');
+    toast('OBD2 fallo: ' + e.message, 'error');
+  }
+}
+
+function _obdOnDisconnect() {
+  App.obdConnected = false;
+  clearInterval(_OBD.pollTimer);
+  setStatusPill('obd', 'error');
+  toast('OBD2 desconectado', 'warn');
+  if (App.obd2Enabled) {
+    clearTimeout(_OBD.reconnTimer);
+    _OBD.reconnTimer = setTimeout(() => {
+      if (!App.obdConnected && _OBD.device) { _OBD._busy = false; _obdInit(); }
+    }, 4000);
+  }
+}
+
+function _obdOnData(ev) {
+  _OBD.buf += new TextDecoder().decode(new Uint8Array(ev.target.value.buffer));
+  while (_OBD.buf.includes('>')) {
+    const i = _OBD.buf.indexOf('>');
+    const line = _OBD.buf.slice(0, i).replace(/[\r\n]+/g, ' ').trim();
+    _OBD.buf = _OBD.buf.slice(i + 1);
+    if (_OBD.resolvers.length) _OBD.resolvers.shift()(line);
+  }
+}
+
+function _obdCmd(cmd) {
+  return new Promise(resolve => {
+    const tid = setTimeout(() => {
+      const ix = _OBD.resolvers.findIndex(r => r === res);
+      if (ix !== -1) _OBD.resolvers.splice(ix, 1);
+      resolve('TIMEOUT');
+    }, 2500);
+    const res = r => { clearTimeout(tid); resolve(r); };
+    _OBD.resolvers.push(res);
+    const data = new TextEncoder().encode(cmd + '\r');
+    _OBD.writeChr?.writeValue(data).catch(() => resolve('ERR'));
+  });
+}
+
+function _obdStartPoll() {
+  clearInterval(_OBD.pollTimer);
+  _OBD.pollIdx = 0;
+  _OBD.pollTimer = setInterval(_obdPoll, 260);
+}
+
+async function _obdPoll() {
+  if (!App.obdConnected || !_OBD.writeChr) return;
+  const pid = _OBD.PIDS[_OBD.pollIdx++ % _OBD.PIDS.length];
+  const raw = await _obdCmd(pid);
+  _obdParse(pid, raw);
+}
+
+function _obdParse(pid, raw) {
+  const bytes = raw.replace(/[^0-9A-Fa-f ]/g,' ').trim().split(/\s+/)
+    .filter(h => h.length === 2).map(h => parseInt(h, 16));
+  const d = bytes.slice(2);
+  if (!d.length) return;
+  const A = d[0], B = d[1] ?? 0;
+  switch(pid) {
+    case '010C': App.obd2Rpm   = ((A*256+B)/4)|0; break;
+    case '010D': App.obd2Speed = A;                break;
+    case '0105': App.obd2Temp  = A - 40;           break;
+    case '0142': App.obd2Volt  = (A*256+B)/1000;   break;
+  }
+  _obdGear();
+}
+
+function _obdGear() {
+  const rpm = App.obd2Rpm, spd = App.gpsSpeed ?? App.obd2Speed;
+  if (!rpm || !spd || rpm < 600 || spd < 5) { App.obd2Gear = null; return; }
+  const r = rpm / spd;
+  App.obd2Gear = r>40?1 : r>26?2 : r>19?3 : r>14?4 : r>11?5 : 6;
+}
+
+function disconnectOBD2() {
+  clearInterval(_OBD.pollTimer); clearTimeout(_OBD.reconnTimer);
+  _OBD.writeChr = null;
+  if (_OBD.device?.gatt?.connected) _OBD.device.gatt.disconnect();
+  App.obdConnected = false;
+  App.obd2Rpm = App.obd2Gear = App.obd2Temp = App.obd2Volt = App.obd2Speed = null;
+  setStatusPill('obd', '');
+  toast('OBD2 desconectado', 'info');
+}
 
 /* ═══════════════════════════════════════
    FIREBASE
