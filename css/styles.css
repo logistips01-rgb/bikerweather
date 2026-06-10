@@ -2452,3 +2452,81 @@ body.landscape-mode #circuit-overlay {
 }
 /* Leaflet dark map tiles overlay */
 .cir-e4-map .leaflet-tile { filter: brightness(0.75) saturate(0.6); }
+
+/* ══════════════════════════════════════════════════════
+   ESTILO 5 — Dual Gauge + Mapa landscape
+   ══════════════════════════════════════════════════════ */
+.cir-e5-wrap {
+  display: none; flex: 1; min-height: 0; flex-direction: row;
+}
+#circuit-overlay[data-brand="e5"] .cir-e5-wrap  { display: flex; }
+#circuit-overlay[data-brand="e5"] .cir-hue-slider { display: none; }
+
+/* Gauge panels */
+.cir-e5-dial {
+  width: 44vw; max-width: 200px; flex-shrink: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  position: relative;
+  background: radial-gradient(ellipse at center, rgba(0,20,35,0.9) 0%, rgba(0,0,0,0.95) 70%);
+  border: 1px solid rgba(41,217,255,0.12);
+}
+.cir-e5-svg { width: 100%; max-width: 200px; flex-shrink: 0; }
+.cir-e5-gdata {
+  position: absolute; bottom: 12%; text-align: center; pointer-events: none;
+}
+.cir-e5-gval {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.5rem; font-weight: 700; color: #fff; line-height: 1;
+}
+.cir-e5-glbl {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.42rem; letter-spacing: 0.12em;
+  color: rgba(255,255,255,0.45); margin-top: 2px;
+}
+
+/* Center map panel */
+.cir-e5-mid {
+  flex: 1; min-width: 0; position: relative; overflow: hidden;
+  background: #0a0c12;
+}
+.cir-e5-map { position: absolute; inset: 0; }
+.cir-e5-map .leaflet-tile { filter: brightness(0.7) saturate(0.5); }
+
+/* Nav strip — top of center */
+.cir-e5-nav-strip {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 5;
+  display: flex; align-items: center; gap: 6px; padding: 3px 8px;
+  background: rgba(0,0,0,0.72);
+  border-bottom: 1px solid rgba(41,217,255,0.25);
+}
+.cir-e5-nav-arr {
+  font-size: 1.3rem; color: #29d9ff; line-height: 1; flex-shrink: 0;
+}
+.cir-e5-nav-dist {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.62rem;
+  color: rgba(255,255,255,0.85); flex: 1;
+}
+.cir-e5-nav-eta {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.55rem;
+  color: rgba(255,255,255,0.5);
+}
+
+/* HUD — bottom of center */
+.cir-e5-hud {
+  position: absolute; bottom: 0; left: 0; right: 0; z-index: 5;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 5px 8px 6px;
+  background: rgba(0,0,0,0.72);
+  border-top: 1px solid rgba(41,217,255,0.25);
+}
+.cir-e5-lean {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.05rem; font-weight: 700;
+  color: rgba(255,255,255,0.7); line-height: 1;
+}
+.cir-e5-sub {
+  display: flex; gap: 12px; margin-top: 2px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.58rem; color: rgba(255,255,255,0.55);
+}

@@ -1283,6 +1283,8 @@ let _lsSegsSpd = [];
 let _cirBrand  = 'sport-ls'; // 'sport-ls' | 'sport-pt' | 'triumph' | 'e4'
 let _triNeedle = null, _triNeedleGlow = null, _triGlowArc = null;
 let _e4Needle  = null, _e4Arc = null, _e4Map = null, _e4Marker = null;
+let _e5SpdNeedle = null, _e5SpdArc = null, _e5RpmNeedle = null, _e5RpmArc = null;
+let _e5Map = null, _e5Marker = null;
 
 /* ── Kirk state ── */
 let _kirkSpeaking  = false;
@@ -2017,6 +2019,7 @@ function openCircuit(style) {
   else if (style === 'estilo2') _cirBrand = 'sport-pt';
   else if (style === 'estilo3') _cirBrand = 'triumph';
   else if (style === 'estilo4') _cirBrand = 'e4';
+  else if (style === 'estilo5') _cirBrand = 'e5';
 
   // Highlight active style button
   document.querySelectorAll('.btn-style').forEach(b => b.classList.remove('active'));
@@ -2036,9 +2039,11 @@ function openCircuit(style) {
   _buildLsSegs();
   _buildTriumphSvg();
   _buildE4Tach();
+  _buildE5Gauges();
   const ov2 = $('circuit-overlay');
   if (ov2) ov2.dataset.brand = _cirBrand;
   if (_cirBrand === 'e4') setTimeout(_initE4Map, 120);
+  if (_cirBrand === 'e5') setTimeout(_initE5Map, 120);
   setTimeout(() => {
     resizeCircuitCanvases();
     _cirLoop();
@@ -2057,8 +2062,216 @@ function closeCircuit() {
   if (_e4Map) { _e4Map.remove(); _e4Map = null; _e4Marker = null; }
   _e4Needle = null; _e4Arc = null;
   const e4svg = document.getElementById('cir-e4-svg'); if (e4svg) delete e4svg.dataset.built;
+  if (_e5Map) { _e5Map.remove(); _e5Map = null; _e5Marker = null; }
+  _e5SpdNeedle = null; _e5SpdArc = null; _e5RpmNeedle = null; _e5RpmArc = null;
+  ['cir-e5-spd','cir-e5-rpm'].forEach(id => { const s = document.getElementById(id); if (s) delete s.dataset.built; });
   window.speechSynthesis?.cancel();
   _kirkRec = null; _kirkListening = false;
+}
+
+/* ── ESTILO 5: Dual Gauge + Mapa landscape ── */
+function _buildE5Gauge(svgId, maxVal, isRpm) {
+  const svg = document.getElementById(svgId);
+  if (!svg || svg.dataset.built) return;
+  svg.dataset.built = '1';
+  const ns = 'http://www.w3.org/2000/svg';
+  const CX = 110, CY = 110, R = 90, SA = 210, SWEEP = 300;
+  const pt  = (r, d) => { const rad = (d - 90) * Math.PI / 180; return [CX + r * Math.cos(rad), CY + r * Math.sin(rad)]; };
+  const arc = (r, s, e) => { const lg = (e - s) > 180 ? 1 : 0; const [x1,y1]=pt(r,s); const [x2,y2]=pt(r,e); return `M${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${lg},1 ${x2.toFixed(2)},${y2.toFixed(2)}`; };
+  const fid = 'e5g_' + svgId;
+
+  const defs = document.createElementNS(ns, 'defs');
+  defs.innerHTML = `<filter id="${fid}" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+  svg.appendChild(defs);
+
+  // Outer glow ring (blue neon)
+  const glowR = document.createElementNS(ns, 'circle');
+  glowR.setAttribute('cx', CX); glowR.setAttribute('cy', CY); glowR.setAttribute('r', String(R + 10));
+  glowR.setAttribute('fill', 'none'); glowR.setAttribute('stroke', '#29d9ff');
+  glowR.setAttribute('stroke-width', '7'); glowR.setAttribute('opacity', '0.55');
+  glowR.setAttribute('filter', `url(#${fid})`);
+  svg.appendChild(glowR);
+  // Bright white core ring
+  const coreR = document.createElementNS(ns, 'circle');
+  coreR.setAttribute('cx', CX); coreR.setAttribute('cy', CY); coreR.setAttribute('r', String(R + 8));
+  coreR.setAttribute('fill', 'none'); coreR.setAttribute('stroke', 'rgba(210,245,255,0.75)');
+  coreR.setAttribute('stroke-width', '2');
+  svg.appendChild(coreR);
+
+  // Track arc
+  const track = document.createElementNS(ns, 'path');
+  track.setAttribute('d', arc(R, SA, SA + SWEEP));
+  track.setAttribute('fill', 'none'); track.setAttribute('stroke', 'rgba(255,255,255,0.12)'); track.setAttribute('stroke-width', '3');
+  svg.appendChild(track);
+
+  // Red zone
+  const redFrac = isRpm ? 6 / maxVal : 160 / maxVal;
+  const rz = document.createElementNS(ns, 'path');
+  rz.setAttribute('d', arc(R, SA + SWEEP * redFrac, SA + SWEEP));
+  rz.setAttribute('fill', 'none'); rz.setAttribute('stroke', '#cc1010'); rz.setAttribute('stroke-width', '7'); rz.setAttribute('opacity', '0.75');
+  svg.appendChild(rz);
+
+  // Glow arc (dynamic progress)
+  const ga = document.createElementNS(ns, 'path');
+  ga.setAttribute('d', arc(R, SA, SA + 0.1));
+  ga.setAttribute('fill', 'none'); ga.setAttribute('stroke', 'rgba(41,217,255,0.75)');
+  ga.setAttribute('stroke-width', '4'); ga.setAttribute('filter', `url(#${fid})`); ga.style.display = 'none';
+  svg.appendChild(ga);
+  if (isRpm) _e5RpmArc = ga; else _e5SpdArc = ga;
+
+  // Tick marks + labels
+  const steps  = isRpm ? maxVal : maxVal / 20;
+  const step   = isRpm ? 1 : 20;
+  for (let i = 0; i <= steps; i++) {
+    const deg  = SA + SWEEP * (i / steps);
+    const val  = i * step;
+    const isRed = isRpm ? val >= 6 : val >= 160;
+    const [x1,y1] = pt(R - 1, deg); const [x2,y2] = pt(R - 19, deg);
+    const tick = document.createElementNS(ns, 'line');
+    tick.setAttribute('x1', x1.toFixed(2)); tick.setAttribute('y1', y1.toFixed(2));
+    tick.setAttribute('x2', x2.toFixed(2)); tick.setAttribute('y2', y2.toFixed(2));
+    tick.setAttribute('stroke', isRed ? 'rgba(255,70,70,0.95)' : 'rgba(255,255,255,0.82)');
+    tick.setAttribute('stroke-width', '2.5');
+    svg.appendChild(tick);
+    // Half-tick
+    if (i < steps) {
+      const md = SA + SWEEP * ((i + 0.5) / steps);
+      const [mx1,my1] = pt(R - 1, md); const [mx2,my2] = pt(R - 10, md);
+      const mt = document.createElementNS(ns, 'line');
+      mt.setAttribute('x1', mx1.toFixed(2)); mt.setAttribute('y1', my1.toFixed(2));
+      mt.setAttribute('x2', mx2.toFixed(2)); mt.setAttribute('y2', my2.toFixed(2));
+      mt.setAttribute('stroke', 'rgba(255,255,255,0.42)'); mt.setAttribute('stroke-width', '1');
+      svg.appendChild(mt);
+    }
+    // Label
+    const [lx,ly] = pt(R - 34, deg);
+    const lbl = document.createElementNS(ns, 'text');
+    lbl.setAttribute('x', lx.toFixed(2)); lbl.setAttribute('y', (ly + 4.5).toFixed(2));
+    lbl.setAttribute('text-anchor', 'middle');
+    lbl.setAttribute('font-size', isRpm ? '13' : '10');
+    lbl.setAttribute('font-family', 'JetBrains Mono,monospace');
+    lbl.setAttribute('fill', isRed ? 'rgba(255,90,90,0.95)' : 'rgba(255,255,255,0.88)');
+    lbl.textContent = isRpm ? String(val) : (val > 0 ? String(val) : '0');
+    svg.appendChild(lbl);
+  }
+
+  // Center hub + needle
+  const hub = document.createElementNS(ns, 'circle');
+  hub.setAttribute('cx', CX); hub.setAttribute('cy', CY); hub.setAttribute('r', '6'); hub.setAttribute('fill', '#ddd');
+  svg.appendChild(hub);
+  const [nx,ny] = pt(R * 0.82, SA);
+  const needle = document.createElementNS(ns, 'line');
+  needle.setAttribute('x1', CX); needle.setAttribute('y1', CY);
+  needle.setAttribute('x2', nx.toFixed(2)); needle.setAttribute('y2', ny.toFixed(2));
+  needle.setAttribute('stroke', 'white'); needle.setAttribute('stroke-width', '2.5'); needle.setAttribute('stroke-linecap', 'round');
+  svg.appendChild(needle);
+  if (isRpm) _e5RpmNeedle = needle; else _e5SpdNeedle = needle;
+}
+
+function _buildE5Gauges() {
+  _buildE5Gauge('cir-e5-spd', 200, false);
+  _buildE5Gauge('cir-e5-rpm', 8,   true);
+}
+
+function _initE5Map() {
+  if (_e5Map) { setTimeout(() => _e5Map.invalidateSize(), 50); return; }
+  const container = document.getElementById('cir-e5-map');
+  if (!container) return;
+  const lat = App.position?.lat ?? 40.4168;
+  const lon = App.position?.lon ?? -3.7038;
+  _e5Map = L.map(container, { zoomControl: false, attributionControl: false }).setView([lat, lon], 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(_e5Map);
+  const icon = L.divIcon({
+    html: '<div style="width:12px;height:12px;background:#29d9ff;border:2px solid #fff;border-radius:50%;box-shadow:0 0 8px rgba(41,217,255,0.9)"></div>',
+    iconSize: [12,12], iconAnchor: [6,6], className: ''
+  });
+  _e5Marker = L.marker([lat, lon], { icon }).addTo(_e5Map);
+  if (App.routePoints?.length > 1) {
+    L.polyline(App.routePoints.map(p => [p.lat, p.lng ?? p.lon]), { color: '#29d9ff', weight: 3, opacity: 0.85 }).addTo(_e5Map);
+  }
+  setTimeout(() => _e5Map.invalidateSize(), 100);
+}
+
+function _updateE5Layout(roll, spd) {
+  const rpm  = App.obd2Rpm  || 0;
+  const lean = Math.abs(roll);
+  const now  = new Date();
+  const hora = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  const CX = 110, CY = 110, R = 90, SA = 210, SWEEP = 300;
+  const pt = (r, d) => { const rad = (d - 90) * Math.PI / 180; return [CX + r * Math.cos(rad), CY + r * Math.sin(rad)]; };
+
+  // Speedometer needle + arc
+  if (_e5SpdNeedle) {
+    const deg = SA + SWEEP * Math.min(spd / 200, 1);
+    const rad = (deg - 90) * Math.PI / 180;
+    _e5SpdNeedle.setAttribute('x2', (CX + R * 0.82 * Math.cos(rad)).toFixed(2));
+    _e5SpdNeedle.setAttribute('y2', (CY + R * 0.82 * Math.sin(rad)).toFixed(2));
+  }
+  if (_e5SpdArc) {
+    if (spd > 2) {
+      const endDeg = SA + SWEEP * Math.min(spd / 200, 1);
+      const lg = (endDeg - SA) > 180 ? 1 : 0;
+      const [x1,y1] = pt(R, SA); const [x2,y2] = pt(R, endDeg);
+      _e5SpdArc.setAttribute('d', `M${x1.toFixed(2)},${y1.toFixed(2)} A${R},${R} 0 ${lg},1 ${x2.toFixed(2)},${y2.toFixed(2)}`);
+      _e5SpdArc.style.display = '';
+    } else { _e5SpdArc.style.display = 'none'; }
+  }
+
+  // Tachometer needle + arc
+  if (_e5RpmNeedle) {
+    const deg = SA + SWEEP * Math.min(rpm / 8000, 1);
+    const rad = (deg - 90) * Math.PI / 180;
+    _e5RpmNeedle.setAttribute('x2', (CX + R * 0.82 * Math.cos(rad)).toFixed(2));
+    _e5RpmNeedle.setAttribute('y2', (CY + R * 0.82 * Math.sin(rad)).toFixed(2));
+  }
+  if (_e5RpmArc) {
+    if (rpm > 200) {
+      const endDeg = SA + SWEEP * Math.min(rpm / 8000, 1);
+      const lg = (endDeg - SA) > 180 ? 1 : 0;
+      const [x1,y1] = pt(R, SA); const [x2,y2] = pt(R, endDeg);
+      _e5RpmArc.setAttribute('d', `M${x1.toFixed(2)},${y1.toFixed(2)} A${R},${R} 0 ${lg},1 ${x2.toFixed(2)},${y2.toFixed(2)}`);
+      _e5RpmArc.style.display = '';
+    } else { _e5RpmArc.style.display = 'none'; }
+  }
+
+  // Digital readouts under gauges
+  const spdEl = document.getElementById('cir-e5-spd-v'); if (spdEl) spdEl.textContent = Math.round(spd) || 0;
+  const rpmEl = document.getElementById('cir-e5-rpm-v'); if (rpmEl) rpmEl.textContent = (rpm / 1000).toFixed(1);
+
+  // HUD
+  const leanEl = document.getElementById('cir-e5-lean');
+  if (leanEl) {
+    leanEl.textContent = (roll < -1 ? '◄ ' : roll > 1 ? '► ' : '') + Math.round(lean) + '°';
+    leanEl.style.color = lean > 45 ? '#ffffff' : lean > 30 ? '#29d9ff' : 'rgba(255,255,255,0.7)';
+  }
+  const gearEl = document.getElementById('cir-e5-gear'); if (gearEl) gearEl.textContent = App.obd2Gear ? 'M' + App.obd2Gear : '—';
+  const horaEl = document.getElementById('cir-e5-hora'); if (horaEl) horaEl.textContent = hora;
+  const tambEl = document.getElementById('cir-e5-tamb'); if (tambEl) tambEl.textContent = App.weather?.temp != null ? Math.round(App.weather.temp) + '°' : '--°';
+
+  // Map update
+  if (_e5Map && App.position?.lat) {
+    _e5Map.setView([App.position.lat, App.position.lon], undefined, { animate: false });
+    if (_e5Marker) _e5Marker.setLatLng([App.position.lat, App.position.lon]);
+  }
+
+  // Nav strip
+  const hasRoute = App.routePoints?.length > 1 && App.sessionActive;
+  const navArr = document.getElementById('cir-e5-arr');
+  const navDist = document.getElementById('cir-e5-dist');
+  const navEta  = document.getElementById('cir-e5-eta');
+  if (hasRoute && App.position) {
+    let best = Infinity, nearIdx = 0;
+    App.routePoints.forEach((p, i) => { const d = Math.hypot(p.lat - App.position.lat, (p.lng ?? p.lon) - App.position.lon); if (d < best) { best = d; nearIdx = i; } });
+    const nxt = App.routePoints[Math.min(nearIdx + 5, App.routePoints.length - 1)];
+    const distM = Math.round(Math.hypot((nxt.lat - App.position.lat) * 111320, ((nxt.lng ?? nxt.lon) - App.position.lon) * 111320 * Math.cos(App.position.lat * Math.PI / 180)));
+    if (navDist) navDist.textContent = distM < 1000 ? distM + ' m' : (distM / 1000).toFixed(1) + ' km';
+    if (navArr)  { navArr.textContent = '↑'; navArr.style.color = '#29d9ff'; }
+    if (navEta)  { const eta = new Date(Date.now() + (distM / Math.max(spd / 3.6, 5)) * 1000); navEta.textContent = eta.getHours().toString().padStart(2,'0') + ':' + eta.getMinutes().toString().padStart(2,'0'); }
+  } else {
+    if (navArr)  navArr.textContent  = '↑';
+    if (navDist) navDist.textContent = 'SIN RUTA';
+    if (navEta)  navEta.textContent  = '--:--';
+  }
 }
 
 function startCircuitSession() {
@@ -2103,6 +2316,8 @@ function _cirLoop() {
     _updateTriumphLayout(roll, spd);
   } else if (_cirBrand === 'e4') {
     _updateE4Layout(roll, spd);
+  } else if (_cirBrand === 'e5') {
+    _updateE5Layout(roll, spd);
   } else if (_cirBrand === 'sport-ls') {
     _updateLsLayout(roll, spd);
   } else { // sport-pt
@@ -2889,6 +3104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-style-2')?.addEventListener('click', () => openCircuit('estilo2'));
   $('btn-style-3')?.addEventListener('click', () => openCircuit('estilo3'));
   $('btn-style-4')?.addEventListener('click', () => openCircuit('estilo4'));
+  $('btn-style-5')?.addEventListener('click', () => openCircuit('estilo5'));
 
   // OBD2 toggle
   App.obd2Enabled = localStorage.getItem('bw_obd2') !== 'false';
