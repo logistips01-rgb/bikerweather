@@ -2649,3 +2649,87 @@ body.home-active .home-screen { display: flex; }
 }
 .btn-home svg { width: 17px; height: 17px; }
 .btn-home:active { color: var(--ice); border-color: rgba(41,217,255,0.4); }
+
+/* ══════════════════════════════════════════════════════
+   INTRO SPLASH SCREEN
+   ══════════════════════════════════════════════════════ */
+@keyframes introZoom {
+  0%   { transform: scale(0.05); filter: blur(20px); opacity: 0; }
+  25%  { opacity: 1; }
+  100% { transform: scale(1);    filter: blur(0);    opacity: 1; }
+}
+@keyframes introFadeUp {
+  0%   { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.intro-screen {
+  position: fixed; inset: 0; z-index: 998;
+  background: #000;
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity 0.65s ease;
+}
+.intro-screen.intro-out { opacity: 0; pointer-events: none; }
+
+.intro-inner {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 48px;
+}
+
+/* Logo block — same structure as .logo in header, scaled up */
+.intro-logo {
+  display: flex; align-items: center; gap: 18px;
+  animation: introZoom 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Hexagon icon — mirror of .logo-icon but larger */
+.intro-hex {
+  width: 64px; height: 64px;
+  background: var(--orange);
+  clip-path: polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; flex-shrink: 0;
+  box-shadow: 0 0 40px var(--orange-glow), 0 0 80px rgba(255,85,0,0.15);
+}
+
+.intro-wordmark {
+  display: flex; flex-direction: column;
+}
+.intro-brand {
+  font-family: var(--font-hud);
+  font-size: 2.6rem; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  line-height: 1; color: var(--text);
+}
+.intro-brand em { color: var(--orange); font-style: normal; }
+.intro-tagline {
+  font-family: var(--font-mono);
+  font-size: 0.72rem; letter-spacing: 0.25em;
+  color: var(--text-muted); text-transform: uppercase;
+  margin-top: 5px;
+}
+
+/* Status chips */
+.intro-status-bar {
+  display: flex; gap: 10px;
+  opacity: 0;
+  animation: introFadeUp 0.5s ease 1.6s forwards;
+}
+.intro-chip {
+  font-family: var(--font-mono); font-size: 0.65rem;
+  padding: 4px 10px; border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.35);
+  background: rgba(255,255,255,0.03);
+  letter-spacing: 0.1em;
+  transition: color 0.35s, border-color 0.35s, background 0.35s;
+}
+.intro-chip.ic-ok {
+  color: var(--green);
+  border-color: rgba(0,240,160,0.35);
+  background: rgba(0,240,160,0.07);
+}
+.intro-chip.ic-err {
+  color: var(--text-muted);
+  border-color: rgba(255,255,255,0.06);
+}

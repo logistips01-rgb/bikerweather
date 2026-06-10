@@ -2958,6 +2958,34 @@ function shareWhatsApp(r) {
 }
 
 /* ═══════════════════════════════════════
+   INTRO SPLASH
+═══════════════════════════════════════ */
+function initIntroScreen() {
+  const screen = $('intro-screen');
+  if (!screen) return;
+  const MIN_MS = 3000, MAX_MS = 7000;
+  const start = Date.now();
+
+  function setChip(id, ok, err) {
+    const el = $(id); if (!el) return;
+    if (ok)  { el.classList.add('ic-ok');  el.textContent = el.textContent.replace('…','') + ' ✓'; }
+    if (err) { el.classList.add('ic-err'); el.textContent = el.textContent.replace('…','') + ' ✗'; }
+  }
+
+  const iv = setInterval(() => {
+    const elapsed = Date.now() - start;
+    setChip('ic-gps', !!App.position, false);
+    setChip('ic-met', !!App.weather,  false);
+    setChip('ic-gyr', App.tiltFilter?.gyroReady, !('DeviceOrientationEvent' in window));
+    if (elapsed >= MIN_MS && (App.position || elapsed >= MAX_MS)) {
+      clearInterval(iv);
+      screen.classList.add('intro-out');
+      setTimeout(() => screen.remove(), 700);
+    }
+  }, 400);
+}
+
+/* ═══════════════════════════════════════
    HOME SCREEN
 ═══════════════════════════════════════ */
 function showHome() {
@@ -3132,6 +3160,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 
   detectAPIs();
+  initIntroScreen();
   initHomeScreen();
   initNav();
   initSpeedSlider();
