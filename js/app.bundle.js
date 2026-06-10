@@ -2958,6 +2958,64 @@ function shareWhatsApp(r) {
 }
 
 /* ═══════════════════════════════════════
+   HOME SCREEN
+═══════════════════════════════════════ */
+function showHome() {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.body.classList.add('home-active');
+  const bh = $('btn-home'); if (bh) bh.style.display = 'none';
+  _updateHomeTiles();
+}
+
+function showSection(sectionId) {
+  document.body.classList.remove('home-active');
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  const sec = $(sectionId); if (sec) sec.classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.section === sectionId);
+  });
+  const bh = $('btn-home'); if (bh) bh.style.display = 'flex';
+  if (sectionId === 'section-riding' && App.mapInitialized) setTimeout(() => App.leafletMap.invalidateSize(), 100);
+  if (sectionId === 'section-history') renderHistory();
+  if (sectionId === 'section-social') loadRanking();
+}
+
+function _updateHomeTiles() {
+  const now = new Date();
+  const tEl = $('hm-time');
+  if (tEl) tEl.textContent = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  if (App.weather?.temp !== undefined) {
+    const tempEl = $('hm-temp'); if (tempEl) tempEl.textContent = Math.round(App.weather.temp) + '°';
+    const dashEl = $('ht-sub-dash'); if (dashEl) {
+      const ws = App.weather.windSpeed !== undefined ? Math.round(App.weather.windSpeed * 3.6) + ' km/h' : '--';
+      dashEl.textContent = Math.round(App.weather.temp) + '° · ' + ws;
+    }
+  }
+  const gpsEl = $('hm-gps'); if (gpsEl) gpsEl.classList.toggle('hm-dot-on', !!App.position);
+  const obdEl = $('hm-obd'); if (obdEl) obdEl.classList.toggle('hm-dot-on', App.obd2Rpm != null);
+  const metEl = $('hm-met'); if (metEl) metEl.classList.toggle('hm-dot-on', !!App.weather);
+  if (App.sessionActive) {
+    const mins = Math.round((Date.now() - (App.sessionStart || Date.now())) / 60000);
+    const enEl = $('ht-sub-enruta'); if (enEl) enEl.textContent = 'Sesión · ' + mins + ' min';
+  }
+  try {
+    const hist = JSON.parse(localStorage.getItem('bw_route_history') || '[]');
+    const hEl = $('ht-sub-hist');
+    if (hEl && hist.length > 0) hEl.textContent = hist.length + ' sesión' + (hist.length !== 1 ? 'es' : '') + ' guardada' + (hist.length !== 1 ? 's' : '');
+  } catch(e) {}
+}
+
+function initHomeScreen() {
+  document.querySelectorAll('.home-tile').forEach(tile => {
+    tile.addEventListener('click', () => showSection(tile.dataset.goto));
+  });
+  $('btn-home')?.addEventListener('click', showHome);
+  showHome();
+  setInterval(_updateHomeTiles, 30000);
+}
+
+/* ═══════════════════════════════════════
    NAV
 ═══════════════════════════════════════ */
 function initNav() {
@@ -3074,6 +3132,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 
   detectAPIs();
+  initHomeScreen();
   initNav();
   initSpeedSlider();
   initRouteControls();
