@@ -3229,7 +3229,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-cir-stop')?.addEventListener('click', stopCircuitSession);
   $('btn-cir-exit')?.addEventListener('click', closeCircuit);
   $('btn-cir-ls')?.addEventListener('click', () => { toggleLandscapeMode(); $('btn-cir-ls')?.classList.toggle('active', App.landscapeMode); });
-  // btn-cir-brand removed — style selected from pre-ride screen
+  // Botón T: alterna el slider entre modo color (hue) e intensidad (glow)
+  let _sliderMode = 'hue';
+  $('btn-cir-brand')?.addEventListener('click', () => {
+    _sliderMode = _sliderMode === 'hue' ? 'glow' : 'hue';
+    const slider = $('cir-hue');
+    const btn = $('btn-cir-brand');
+    if (!slider) return;
+    if (_sliderMode === 'glow') {
+      slider.min = '0'; slider.max = '100';
+      const curG = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cir-g').trim()) || 0.8;
+      slider.value = Math.round(curG * 100);
+      slider.classList.add('mode-glow');
+      if (btn) { btn.textContent = 'I'; btn.classList.add('active'); }
+    } else {
+      slider.min = '0'; slider.max = '360';
+      slider.value = _cirHue || 20;
+      slider.classList.remove('mode-glow');
+      if (btn) { btn.textContent = 'T'; btn.classList.remove('active'); }
+    }
+  });
   $('btn-cir-mute')?.addEventListener('click', () => {
     _kirkMuted = !_kirkMuted;
     if (_kirkMuted) {
@@ -3360,29 +3379,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Ranking
   $('btn-reload-ranking')?.addEventListener('click', loadRanking);
 
-  // Circuit HUD accent hue
+  // Circuit HUD accent hue + glow intensity (slider compartido, alternado por botón T)
   const savedHue = localStorage.getItem('bw_cir_hue') || '20';
   _cirHue = parseInt(savedHue);
   document.documentElement.style.setProperty('--cir-h', savedHue);
+  const savedGlow = localStorage.getItem('bw_cir_glow') || '80';
+  document.documentElement.style.setProperty('--cir-g', (parseInt(savedGlow) / 100).toFixed(2));
   const hueSlider = $('cir-hue');
   if (hueSlider) {
     hueSlider.value = savedHue;
     hueSlider.addEventListener('input', e => {
-      _cirHue = parseInt(e.target.value);
-      document.documentElement.style.setProperty('--cir-h', e.target.value);
-      localStorage.setItem('bw_cir_hue', e.target.value);
-    });
-  }
-
-  // Circuit glow intensity
-  const savedGlow = localStorage.getItem('bw_cir_glow') || '80';
-  document.documentElement.style.setProperty('--cir-g', (parseInt(savedGlow) / 100).toFixed(2));
-  const glowSlider = $('cir-glow');
-  if (glowSlider) {
-    glowSlider.value = savedGlow;
-    glowSlider.addEventListener('input', e => {
-      document.documentElement.style.setProperty('--cir-g', (parseInt(e.target.value) / 100).toFixed(2));
-      localStorage.setItem('bw_cir_glow', e.target.value);
+      if (_sliderMode === 'glow') {
+        document.documentElement.style.setProperty('--cir-g', (parseInt(e.target.value) / 100).toFixed(2));
+        localStorage.setItem('bw_cir_glow', e.target.value);
+      } else {
+        _cirHue = parseInt(e.target.value);
+        document.documentElement.style.setProperty('--cir-h', e.target.value);
+        localStorage.setItem('bw_cir_hue', e.target.value);
+      }
     });
   }
 

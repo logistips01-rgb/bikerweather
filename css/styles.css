@@ -1509,7 +1509,7 @@ body.landscape-mode .btn-map-landscape {
 /* ═══════════════════════════════════════════════════════════
    CIRCUIT HUD — Premium Dashboard
    ═══════════════════════════════════════════════════════════ */
-:root { --cir-h: 20; --cir-g: 0.80; }   /* hue: color del display; glow: intensidad 0-1 */
+:root { --cir-h: 20; --cir-g: 0.80; }   /* --cir-h: accent hue 0-360 | --cir-g: glow intensity 0-1 */
 
 #circuit-overlay {
   display: none;
@@ -1779,24 +1779,15 @@ body.circuit-active .location-bar { display: none !important; }
   box-shadow: 0 0 6px hsla(var(--cir-h), 100%, 55%, 0.7);
   cursor: pointer;
 }
-
-/* Slider intensidad glow */
-.cir-glow-slider {
-  width: 42px; height: 4px;
-  -webkit-appearance: none; appearance: none;
-  border-radius: 2px; cursor: pointer; outline: none;
-  background: linear-gradient(to right, rgba(255,255,255,0.04) 0%, hsl(var(--cir-h),90%,55%) 100%);
-  border: 1px solid rgba(255,255,255,0.1);
-  flex-shrink: 0;
+/* Slider en modo intensidad (toggled by T button) */
+.cir-hue-slider.mode-glow {
+  background: linear-gradient(to right,
+    hsl(var(--cir-h), 20%, 8%) 0%,
+    hsl(var(--cir-h), 90%, 20%) 100%);
 }
-.cir-glow-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 14px; height: 14px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.85);
-  border: 2px solid rgba(255,255,255,0.6);
-  box-shadow: 0 0 6px rgba(255,255,255,0.4);
-  cursor: pointer;
+.cir-hue-slider.mode-glow::-webkit-slider-thumb {
+  background: hsl(var(--cir-h), 85%, 55%);
+  box-shadow: 0 0 8px hsla(var(--cir-h), 100%, 55%, 0.8);
 }
 .cir-btn-mic {
   font-size: 15px; width: 36px;
@@ -1848,7 +1839,7 @@ body.landscape-mode .cir-lean-panel { width: 110px; overflow: hidden; }
 /* ── Default skin variables (Sport) ── */
 #circuit-overlay {
   --sk-bg:        #04050a;
-  --sk-bg-glow:   hsla(var(--cir-h),90%,14%,var(--cir-g));
+  --sk-bg-glow:   hsl(var(--cir-h), calc(28% + var(--cir-g) * 62%), calc(5% + var(--cir-g) * 13%));
   --sk-txt:       rgba(255,255,255,0.90);
   --sk-txt2:      rgba(255,255,255,0.50);
   --sk-border:    rgba(255,255,255,0.06);
