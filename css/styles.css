@@ -110,6 +110,74 @@ body::before {
 .status-pill-btn { cursor: pointer; }
 .status-pill-btn:active { opacity: 0.7; }
 
+/* ── Radio player ── */
+.radio-panel {
+  background: var(--panel); border: 1px solid var(--border-dim);
+  border-radius: var(--r3); overflow: hidden; margin: 0 0 8px;
+}
+.radio-panel-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 14px 7px;
+  border-bottom: 1px solid var(--border-dim);
+}
+.radio-hdr-lbl { font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.18em; color: #8888aa; }
+.radio-now-playing { font-family: var(--font-mono); font-size: 0.65rem; color: var(--ice); max-width: 55%; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+.radio-stations { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px 4px; }
+.radio-station-btn {
+  font-family: var(--font-mono); font-size: 0.60rem; font-weight: 700;
+  letter-spacing: 0.06em; padding: 7px 10px; border-radius: 4px; cursor: pointer;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.65); transition: all 0.15s; white-space: nowrap;
+}
+.radio-station-btn.active {
+  background: rgba(41,217,255,0.1); border-color: rgba(41,217,255,0.4);
+  color: var(--ice); box-shadow: 0 0 8px rgba(41,217,255,0.15);
+}
+.radio-station-btn:active { opacity: 0.7; }
+.radio-controls {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px 10px;
+}
+.radio-btn {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+  width: 36px; height: 32px; border-radius: 4px; cursor: pointer;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.7); transition: all 0.15s; flex-shrink: 0;
+}
+.radio-btn-play {
+  width: 48px; background: rgba(41,217,255,0.08);
+  border-color: rgba(41,217,255,0.3); color: var(--ice); font-size: 14px;
+}
+.radio-btn:active { opacity: 0.6; }
+.radio-vol-slider {
+  flex: 1; height: 4px; -webkit-appearance: none; appearance: none;
+  border-radius: 2px; cursor: pointer; outline: none;
+  background: linear-gradient(to right, var(--ice) 0%, rgba(41,217,255,0.2) 100%);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.radio-vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--ice); border: 2px solid rgba(255,255,255,0.8); cursor: pointer;
+}
+/* Radio mini-player inside HUD */
+.radio-mini {
+  flex-shrink: 0; height: 32px;
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 10px;
+  background: rgba(4,5,10,0.92);
+  border-top: 1px solid rgba(41,217,255,0.12);
+}
+.radio-mini-name {
+  flex: 1; font-family: var(--font-mono); font-size: 0.62rem;
+  color: var(--ice); letter-spacing: 0.06em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.radio-mini-btn {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+  width: 28px; height: 22px; border-radius: 3px; cursor: pointer;
+  background: rgba(41,217,255,0.06); border: 1px solid rgba(41,217,255,0.2);
+  color: var(--ice); flex-shrink: 0;
+}
+
 /* ── OBD2 Diagnóstico panel ── */
 .obd-badge {
   font-family: var(--font-mono); font-size: 0.55rem; letter-spacing: 0.12em;

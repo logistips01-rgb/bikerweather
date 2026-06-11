@@ -587,6 +587,21 @@
         <button id="btn-map-start" class="btn-map-start" style="display:none">▶ INICIAR SESIÓN</button>
       </div>
 
+        <!-- Radio -->
+        <div class="radio-panel">
+          <div class="radio-panel-hdr">
+            <span class="radio-hdr-lbl">📻 RADIO</span>
+            <div class="radio-now-playing" id="radio-now-playing">Sin reproducción</div>
+          </div>
+          <div class="radio-stations" id="radio-stations"></div>
+          <div class="radio-controls">
+            <button class="radio-btn" id="btn-radio-prev">◀</button>
+            <button class="radio-btn radio-btn-play" id="btn-radio-play">▶</button>
+            <button class="radio-btn" id="btn-radio-next">▶▶</button>
+            <input type="range" id="radio-vol" class="radio-vol-slider" min="0" max="100" value="80" title="Volumen">
+          </div>
+        </div>
+
     </div><!-- /section-riding -->
 
     <!-- ════════════════════════════
@@ -1063,6 +1078,14 @@
       <div class="cir-ai-bar">
         <div class="cir-ai-pill">AI</div>
         <span id="cir-kirk-msg" class="cir-kirk-txt">RIDING ASSISTANT READY</span>
+      </div>
+
+      <!-- Radio mini-player (visible when playing) -->
+      <div class="radio-mini" id="radio-mini" style="display:none">
+        <button class="radio-mini-btn" id="btn-mini-prev">◀</button>
+        <span class="radio-mini-name" id="radio-mini-name">—</span>
+        <button class="radio-mini-btn" id="btn-mini-play">⏸</button>
+        <button class="radio-mini-btn" id="btn-mini-next">▶</button>
       </div>
 
       <!-- ── SHARED: Controls ── -->

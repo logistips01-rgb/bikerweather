@@ -3366,6 +3366,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Detección de caída
   startFallDetection();
 
+  // Radio
+  initRadio();
+
   // OBD2 diagnóstico — botones del panel
   $('btn-obd-read')?.addEventListener('click',    () => obdReadDTCs('stored'));
   $('btn-obd-pending')?.addEventListener('click', () => obdReadDTCs('pending'));
@@ -3698,6 +3701,129 @@ function disconnectOBD2() {
   App.obd2Rpm = App.obd2Gear = App.obd2Temp = App.obd2Volt = App.obd2Speed = null;
   setStatusPill('obd', '');
   toast('OBD2 desconectado', 'info');
+}
+
+/* ═══════════════════════════════════════
+   RADIO — Reproductor emisoras internet
+═══════════════════════════════════════ */
+const RADIO_STATIONS = [
+  { name: 'Los 40',      url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/LOS40.mp3' },
+  { name: 'Europa FM',   url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/EUROPA_FM.mp3' },
+  { name: 'Cadena 100',  url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/CADENA100.mp3' },
+  { name: 'Rock FM',     url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/ROCKFM.mp3' },
+  { name: 'Cadena SER',  url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/SER.mp3' },
+  { name: 'KISS FM',     url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/KISSFM.mp3' },
+  { name: 'M80',         url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/M80.mp3' },
+  { name: 'RNE Radio 3', url: 'https://dispatcher.rndfnk.com/rne/rne3/live/mp3/high' },
+  { name: 'Máxima FM',   url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/MAXIMAFM.mp3' },
+  { name: 'Mega',        url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/MEGA.mp3' },
+];
+
+const _Radio = {
+  audio: null,
+  idx: -1,
+  playing: false,
+};
+
+function _radioGetAudio() {
+  if (!_Radio.audio) {
+    _Radio.audio = new Audio();
+    _Radio.audio.preload = 'none';
+    _Radio.audio.volume = parseFloat(localStorage.getItem('bw_radio_vol') || '0.8');
+    _Radio.audio.addEventListener('error', () => {
+      toast('Error al cargar emisora', 'error');
+      _radioSetPlaying(false);
+    });
+    _Radio.audio.addEventListener('playing', () => _radioSetPlaying(true));
+    _Radio.audio.addEventListener('pause',   () => _radioSetPlaying(false));
+  }
+  return _Radio.audio;
+}
+
+function radioPlay(idx) {
+  const station = RADIO_STATIONS[idx];
+  if (!station) return;
+  const audio = _radioGetAudio();
+  _Radio.idx = idx;
+  localStorage.setItem('bw_radio_idx', idx);
+  audio.src = station.url;
+  audio.play().catch(() => toast('No se puede reproducir — comprueba conexión', 'warn'));
+  _radioUpdateUI();
+}
+
+function radioToggle() {
+  if (_Radio.idx < 0) { radioPlay(0); return; }
+  const audio = _radioGetAudio();
+  if (_Radio.playing) audio.pause(); else audio.play();
+}
+
+function radioPrev() { radioPlay((_Radio.idx - 1 + RADIO_STATIONS.length) % RADIO_STATIONS.length); }
+function radioNext() { radioPlay((_Radio.idx + 1) % RADIO_STATIONS.length); }
+
+function _radioSetPlaying(playing) {
+  _Radio.playing = playing;
+  _radioUpdateUI();
+}
+
+function _radioUpdateUI() {
+  const station = _Radio.idx >= 0 ? RADIO_STATIONS[_Radio.idx] : null;
+  const name    = station ? station.name : 'Sin reproducción';
+  const icon    = _Radio.playing ? '⏸' : '▶';
+
+  // Panel principal
+  const np = $('radio-now-playing'); if (np) np.textContent = name;
+  const bp = $('btn-radio-play');    if (bp) bp.textContent = icon;
+  document.querySelectorAll('.radio-station-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', i === _Radio.idx && _Radio.playing);
+  });
+
+  // Mini-player HUD
+  const mini = $('radio-mini');
+  if (mini) mini.style.display = _Radio.playing ? 'flex' : 'none';
+  const mn = $('radio-mini-name');    if (mn) mn.textContent = name;
+  const mp = $('btn-mini-play');      if (mp) mp.textContent = icon;
+}
+
+function initRadio() {
+  // Renderizar botones de emisoras
+  const container = $('radio-stations');
+  if (container) {
+    container.innerHTML = RADIO_STATIONS.map((s, i) =>
+      `<button class="radio-station-btn" data-idx="${i}">${s.name}</button>`
+    ).join('');
+    container.addEventListener('click', e => {
+      const btn = e.target.closest('.radio-station-btn');
+      if (!btn) return;
+      const idx = parseInt(btn.dataset.idx);
+      if (_Radio.idx === idx && _Radio.playing) { _radioGetAudio().pause(); }
+      else radioPlay(idx);
+    });
+  }
+
+  // Controles panel
+  $('btn-radio-play')?.addEventListener('click', radioToggle);
+  $('btn-radio-prev')?.addEventListener('click', radioPrev);
+  $('btn-radio-next')?.addEventListener('click', radioNext);
+
+  // Controles mini-player HUD
+  $('btn-mini-play')?.addEventListener('click', radioToggle);
+  $('btn-mini-prev')?.addEventListener('click', radioPrev);
+  $('btn-mini-next')?.addEventListener('click', radioNext);
+
+  // Volumen
+  const vol = $('radio-vol');
+  if (vol) {
+    vol.value = Math.round((_Radio.audio?.volume ?? parseFloat(localStorage.getItem('bw_radio_vol') || '0.8')) * 100);
+    vol.addEventListener('input', e => {
+      const v = parseInt(e.target.value) / 100;
+      if (_Radio.audio) _Radio.audio.volume = v;
+      localStorage.setItem('bw_radio_vol', v.toFixed(2));
+    });
+  }
+
+  // Restaurar última emisora (sin autoplay)
+  const saved = localStorage.getItem('bw_radio_idx');
+  if (saved !== null) _Radio.idx = parseInt(saved);
 }
 
 /* ═══════════════════════════════════════
