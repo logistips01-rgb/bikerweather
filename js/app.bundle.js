@@ -3585,7 +3585,10 @@ async function connectOBD2() {
     }
     toast('Buscando… desempareja primero en Ajustes BT si no aparece', 'info');
     _OBD.device = await navigator.bluetooth.requestDevice({
-      acceptAllDevices: true,
+      filters: [
+        { services: [_OBD.SVC]  },
+        { services: [_OBD.SVC2] },
+      ],
       optionalServices: [_OBD.SVC, _OBD.SVC2]
     });
     _OBD.device.addEventListener('gattserverdisconnected', _obdOnDisconnect);
