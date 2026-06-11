@@ -3562,6 +3562,8 @@ const _OBD = {
   SVC2:   '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
   WRITE2: '6e400002-b5a3-f393-e0a9-e50e24dcca9e',
   NOTIF2: '6e400003-b5a3-f393-e0a9-e50e24dcca9e',
+  SVC3:   '0000ffe0-0000-1000-8000-00805f9b34fb',  // Vgate iCar Pro BLE (ios-vlink)
+  CHR3:   '0000ffe1-0000-1000-8000-00805f9b34fb',  // write+notify combined
   device: null, writeChr: null, buf: '', resolvers: [],
   pollTimer: null, pollIdx: 0, reconnTimer: null, _busy: false,
   PIDS: ['010C','010D','0105','0142'],
@@ -3586,7 +3588,7 @@ async function connectOBD2() {
     toast('Buscando… desempareja primero en Ajustes BT si no aparece', 'info');
     _OBD.device = await navigator.bluetooth.requestDevice({
       acceptAllDevices: true,
-      optionalServices: [_OBD.SVC, _OBD.SVC2]
+      optionalServices: [_OBD.SVC, _OBD.SVC2, _OBD.SVC3]
     });
     _OBD.device.addEventListener('gattserverdisconnected', _obdOnDisconnect);
     await _obdInit();
@@ -3609,9 +3611,15 @@ async function _obdInit() {
       writeChr  = await s.getCharacteristic(_OBD.WRITE);
       notifyChr = await s.getCharacteristic(_OBD.NOTIF);
     } catch {
-      const s = await server.getPrimaryService(_OBD.SVC2);
-      writeChr  = await s.getCharacteristic(_OBD.WRITE2);
-      notifyChr = await s.getCharacteristic(_OBD.NOTIF2);
+      try {
+        const s = await server.getPrimaryService(_OBD.SVC3);
+        const c  = await s.getCharacteristic(_OBD.CHR3);
+        writeChr = notifyChr = c;
+      } catch {
+        const s = await server.getPrimaryService(_OBD.SVC2);
+        writeChr  = await s.getCharacteristic(_OBD.WRITE2);
+        notifyChr = await s.getCharacteristic(_OBD.NOTIF2);
+      }
     }
     await notifyChr.startNotifications();
     notifyChr.addEventListener('characteristicvaluechanged', _obdOnData);
