@@ -3574,15 +3574,7 @@ async function connectOBD2() {
   setStatusPill('obd', 'warn');
   try {
     _OBD.device = await navigator.bluetooth.requestDevice({
-      filters: [
-        { namePrefix: 'Vgate' },        { namePrefix: 'iCar' },
-        { namePrefix: 'OBD' },          { namePrefix: 'ELM' },
-        { namePrefix: 'android-vlink' },{ namePrefix: 'ANDROID' },
-        { namePrefix: 'V-LINK' },       { namePrefix: 'VLINK' },
-        { namePrefix: 'Konnwei' },      { namePrefix: 'OBDII' },
-        { namePrefix: 'Carista' },      { namePrefix: 'LELink' },
-        { services: [_OBD.SVC] }
-      ],
+      acceptAllDevices: true,
       optionalServices: [_OBD.SVC, _OBD.SVC2]
     });
     _OBD.device.addEventListener('gattserverdisconnected', _obdOnDisconnect);
