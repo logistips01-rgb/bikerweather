@@ -1345,6 +1345,15 @@ function _kirkStopListening() {
   $('btn-cir-mic')?.classList.remove('active');
 }
 
+function _radioDuck() {
+  if (_Radio.audio && _Radio.playing) _Radio.audio.volume = 0.07;
+}
+function _radioUnduck() {
+  if (_Radio.audio) {
+    _Radio.audio.volume = parseFloat(localStorage.getItem('bw_radio_vol') || '0.8');
+  }
+}
+
 function kirkSpeak(text) {
   if (!text || !window.speechSynthesis || _kirkMuted) return;
   _kirkStopListening();
@@ -1355,11 +1364,15 @@ function kirkSpeak(text) {
   if (voice) utt.voice = voice;
   _kirkSpeaking = true;
   _kirkShowMsg(text);
-  utt.onend = () => {
+  _radioDuck();
+  const _onKirkDone = () => {
     _kirkSpeaking = false;
+    _radioUnduck();
     setTimeout(_kirkHideMsg, 2000);
     if ((App.circuitMode || App.sessionActive) && _kirkAutoListen) setTimeout(_kirkStartListening, 400);
   };
+  utt.onend  = _onKirkDone;
+  utt.onerror = _onKirkDone;
   window.speechSynthesis.speak(utt);
 }
 
@@ -3709,13 +3722,13 @@ function disconnectOBD2() {
 const RADIO_STATIONS = [
   { name: 'Los 40',      url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/LOS40.mp3' },
   { name: 'Cadena SER',  url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/CADENASER.mp3' },
-  { name: 'Europa FM',   url: 'https://icecast-streaming.nice264.com/europafm' },
-  { name: 'Onda Cero',   url: 'https://icecast-streaming.nice264.com/ondacero' },
+  { name: 'Europa FM',   url: 'https://radio-atres-live.ondacero.es/api/livestream-redirect/EFMAAC.aac' },
+  { name: 'Onda Cero',   url: 'https://radio-atres-live.ondacero.es/api/livestream-redirect/OCAAC.aac' },
   { name: 'KISS FM',     url: 'https://kissfm.kissfmradio.cires21.com/kissfm.mp3' },
   { name: 'M80',         url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/M80RADIO.mp3' },
-  { name: 'Máxima FM',   url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/MAXIMAFM.mp3' },
-  { name: 'Cadena Dial', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/DIAL.mp3' },
-  { name: 'Mega',        url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/MEGA.mp3' },
+  { name: '40 Dance',    url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/LOS40DANCE.mp3' },
+  { name: 'Cadena Dial', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/CADENADIAL.mp3' },
+  { name: 'Radiolé',     url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/RADIOLEE.mp3' },
   { name: 'RNE Radio 3', url: 'https://dispatcher.rndfnk.com/rne/rne3/live/mp3/high' },
 ];
 
