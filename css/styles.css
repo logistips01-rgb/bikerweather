@@ -1901,13 +1901,13 @@ body.landscape-mode .cir-lean-panel { width: 110px; overflow: hidden; }
 }
 
 
-/* Apply skin bg — radial glow, full screen coverage */
+/* Apply skin bg — color vívido en centro, degradado a negro en bordes */
 body.landscape-mode #circuit-overlay {
   background: radial-gradient(
     ellipse 180% 150% at 55% center,
-    var(--sk-bg-glow)                                                        0%,
-    hsl(var(--cir-h), calc(15% + var(--cir-g) * 25%), calc(4% + var(--cir-g) * 8%)) 55%,
-    var(--sk-bg)                                                             100%
+    var(--sk-bg-glow)                                                          0%,
+    hsl(var(--cir-h), calc(20% + var(--cir-g) * 30%), calc(5% + var(--cir-g) * 10%)) 42%,
+    var(--sk-bg)                                                               68%
   );
 }
 
