@@ -1548,7 +1548,8 @@ body.landscape-mode .btn-map-landscape {
 /* ═══════════════════════════════════════════════════════════
    CIRCUIT HUD — Premium Dashboard
    ═══════════════════════════════════════════════════════════ */
-:root { --cir-h: 20; --cir-g: 0.80; }   /* --cir-h: accent hue 0-360 | --cir-g: glow intensity 0-1 */
+
+:root { --cir-h: 20; --cir-g: 0.80; }   /* cir-h: tono 0-360 | cir-g: intensidad fondo 0-1 */
 
 #circuit-overlay {
   display: none;
@@ -1878,7 +1879,8 @@ body.landscape-mode .cir-lean-panel { width: 110px; overflow: hidden; }
 /* ── Default skin variables (Sport) ── */
 #circuit-overlay {
   --sk-bg:        #04050a;
-  --sk-bg-glow:   hsl(var(--cir-h), calc(28% + var(--cir-g) * 62%), calc(5% + var(--cir-g) * 13%));
+
+  --sk-bg-glow:   hsl(var(--cir-h), calc(35% + var(--cir-g) * 55%), calc(8% + var(--cir-g) * 24%));
   --sk-txt:       rgba(255,255,255,0.90);
   --sk-txt2:      rgba(255,255,255,0.50);
   --sk-border:    rgba(255,255,255,0.06);
@@ -1898,12 +1900,14 @@ body.landscape-mode .cir-lean-panel { width: 110px; overflow: hidden; }
   --sk-bar-lbl:   hsla(var(--cir-h),80%,60%,0.60);
 }
 
-/* Apply skin bg — radial glow centrado en el velocímetro */
+
+/* Apply skin bg — radial glow, full screen coverage */
 body.landscape-mode #circuit-overlay {
   background: radial-gradient(
-    ellipse 72% 62% at 63% center,
-    var(--sk-bg-glow) 0%,
-    var(--sk-bg)      62%
+    ellipse 180% 150% at 55% center,
+    var(--sk-bg-glow)                                                        0%,
+    hsl(var(--cir-h), calc(15% + var(--cir-g) * 25%), calc(4% + var(--cir-g) * 8%)) 55%,
+    var(--sk-bg)                                                             100%
   );
 }
 
