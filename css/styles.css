@@ -824,7 +824,7 @@ body.landscape-mode main {
   gap: 0;
   min-height: 0;
 }
-body.landscape-mode .riding-section    { flex: 1; min-height: 0; }
+body.landscape-mode .riding-section    { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 body.landscape-mode .bottom-nav        { display: none; }
 body.landscape-mode .location-bar      { display: none; }
 
