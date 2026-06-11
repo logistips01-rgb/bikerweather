@@ -827,6 +827,14 @@ body.landscape-mode main {
 body.landscape-mode .riding-section    { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 body.landscape-mode .bottom-nav        { display: none; }
 body.landscape-mode .location-bar      { display: none; }
+/* Radio panel sube al top en landscape para ser visible sin scroll */
+body.landscape-mode .radio-panel       { order: -1; margin: 0 0 4px; }
+body.landscape-mode .radio-panel-hdr   { padding: 5px 12px 4px; }
+body.landscape-mode .radio-stations    { padding: 5px 10px 3px; gap: 4px; }
+body.landscape-mode .radio-station-btn { font-size: 0.55rem; padding: 4px 7px; }
+body.landscape-mode .radio-controls    { padding: 5px 10px 6px; gap: 6px; }
+body.landscape-mode .radio-btn         { height: 26px; font-size: 10px; }
+body.landscape-mode .radio-btn-play    { width: 40px; }
 
 /* Header compacto en landscape — mantiene identidad de marca */
 body.landscape-mode .app-header {

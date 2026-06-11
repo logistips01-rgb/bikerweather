@@ -3708,15 +3708,15 @@ function disconnectOBD2() {
 ═══════════════════════════════════════ */
 const RADIO_STATIONS = [
   { name: 'Los 40',      url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/LOS40.mp3' },
-  { name: 'Europa FM',   url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/EUROPA_FM.mp3' },
-  { name: 'Cadena 100',  url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/CADENA100.mp3' },
-  { name: 'Rock FM',     url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/ROCKFM.mp3' },
-  { name: 'Cadena SER',  url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/SER.mp3' },
-  { name: 'KISS FM',     url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/KISSFM.mp3' },
-  { name: 'M80',         url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/M80.mp3' },
-  { name: 'RNE Radio 3', url: 'https://dispatcher.rndfnk.com/rne/rne3/live/mp3/high' },
+  { name: 'Cadena SER',  url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/CADENASER.mp3' },
+  { name: 'Europa FM',   url: 'https://icecast-streaming.nice264.com/europafm' },
+  { name: 'Onda Cero',   url: 'https://icecast-streaming.nice264.com/ondacero' },
+  { name: 'KISS FM',     url: 'https://kissfm.kissfmradio.cires21.com/kissfm.mp3' },
+  { name: 'M80',         url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/M80RADIO.mp3' },
   { name: 'Máxima FM',   url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/MAXIMAFM.mp3' },
+  { name: 'Cadena Dial', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/DIAL.mp3' },
   { name: 'Mega',        url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/MEGA.mp3' },
+  { name: 'RNE Radio 3', url: 'https://dispatcher.rndfnk.com/rne/rne3/live/mp3/high' },
 ];
 
 const _Radio = {
