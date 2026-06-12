@@ -3805,7 +3805,7 @@ function _obdGear() {
   if (!rpm || rpm < 600) { App.obd2Gear = null; return; }
   if (!spd || spd < 5)   { App.obd2Gear = 'N'; return; }
   const r = rpm / spd;
-  App.obd2Gear = r>40?1 : r>26?2 : r>19?3 : r>14?4 : r>11?5 : 6;
+  App.obd2Gear = r>100?1 : r>70?2 : r>53?3 : r>42?4 : r>35?5 : 6;
 }
 
 function disconnectOBD2() {
