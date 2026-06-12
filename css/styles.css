@@ -2002,20 +2002,38 @@ body.landscape-mode #circuit-overlay {
 .cir-lsn-rpm  { color:var(--sk-rpm-c); }
 .cir-lsn-spd  { color:var(--sk-bar-ang); }
 
-/* Info strip */
-.cir-ls-info {
-  flex-shrink:0; display:flex;
-  border-top:1px solid var(--sk-border);
-  border-bottom:1px solid var(--sk-border);
+/* Right info column */
+.cir-ls-right {
+  flex-shrink:0; width:62px;
+  display:flex; flex-direction:column; justify-content:space-evenly;
+  border-left:1px solid var(--sk-border);
+  padding:4px 5px;
 }
-.cir-ls-cell { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:4px 2px; }
-.cir-ls-cell + .cir-ls-cell { border-left:1px solid var(--sk-border2); }
-.cir-ls-cnum { font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; line-height:1; }
-.cir-ls-clbl { font-family:'JetBrains Mono',monospace; font-size:6px; letter-spacing:2px; margin-top:2px; }
+.cir-ls-rc {
+  display:flex; flex-direction:column; align-items:flex-start; gap:1px;
+}
+.cir-ls-rv {
+  font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:700; line-height:1;
+}
+.cir-ls-rl {
+  font-family:'JetBrains Mono',monospace; font-size:6px; letter-spacing:2px;
+  color:var(--sk-txt2); opacity:.7;
+}
+/* Gear in center below speed */
+.cir-ls-ghud { display:flex; flex-direction:column; align-items:center; margin-top:2px; }
+.cir-ls-gnum {
+  font-family:'Rajdhani',sans-serif; font-size:clamp(36px,8vh,54px); font-weight:900;
+  color:var(--sk-gear-c); line-height:0.9;
+  text-shadow:0 0 22px rgba(0,240,160,0.75);
+}
+.cir-ls-glbl {
+  font-family:'JetBrains Mono',monospace; font-size:7px; letter-spacing:4px;
+  color:var(--sk-gear-c); opacity:.7; margin-top:1px;
+}
 .cir-lsc-rpm  { color:var(--sk-rpm-c); }
 .cir-lsc-temp { color:var(--sk-temp-c); }
 .cir-lsc-volt { color:var(--sk-volt-c); }
-.cir-lsc-gear { color:var(--sk-gear-c); font-size:38px; text-shadow:0 0 18px rgba(0,240,160,0.7); }
+.cir-lsc-gear { color:var(--sk-gear-c); }
 .cir-lsc-hora { color:rgba(255,255,255,0.85); font-size:18px; letter-spacing:0.05em; }
 
 /* Stats label/value reuse skin txt */
@@ -2043,7 +2061,7 @@ body.landscape-mode #circuit-overlay {
   text-shadow:0 0 10px color-mix(in srgb, var(--sk-bar-ang) 50%, transparent);
 }
 .cir-ls-vtrack {
-  width:22px; flex:1;
+  width:32px; flex:1;
   border-radius:3px; overflow:hidden;
   background:var(--sk-bar-trk);
   border:1px solid var(--sk-bar-bdr);
@@ -2064,7 +2082,7 @@ body.landscape-mode #circuit-overlay {
 /* Speed center block */
 .cir-ls-vctr { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
 .cir-ls-spd {
-  font-size:clamp(50px,11vh,75px); font-weight:700;
+  font-size:clamp(64px,14vh,96px); font-weight:700;
   color:var(--sk-spd-c); line-height:0.9; letter-spacing:-2px;
   font-family:'Rajdhani',sans-serif;
 }

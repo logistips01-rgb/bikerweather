@@ -928,30 +928,7 @@
             <span class="cir-ls-seg-num cir-lsn-spd" id="cir-ls-spd-bar">--</span>
           </div>
         </div>
-        <!-- Info strip -->
-        <div class="cir-ls-info">
-          <div class="cir-ls-cell">
-            <div class="cir-ls-cnum cir-lsc-rpm" id="cir-ls-rpm-num">--k</div>
-            <div class="cir-ls-clbl cir-lsl-rpm">RPM</div>
-          </div>
-          <div class="cir-ls-cell">
-            <div class="cir-ls-cnum cir-lsc-temp" id="cir-ls-temp">--°</div>
-            <div class="cir-ls-clbl cir-lsl-temp">MOTOR</div>
-          </div>
-          <div class="cir-ls-cell">
-            <div class="cir-ls-cnum cir-lsc-volt" id="cir-ls-volt">--v</div>
-            <div class="cir-ls-clbl cir-lsl-volt">VOLTAJE</div>
-          </div>
-          <div class="cir-ls-cell">
-            <div class="cir-ls-cnum cir-lsc-gear" id="cir-ls-gear">—</div>
-            <div class="cir-ls-clbl cir-lsl-gear">MARCHA</div>
-          </div>
-          <div class="cir-ls-cell">
-            <div class="cir-ls-cnum cir-lsc-hora" id="cir-ls-hora">--:--</div>
-            <div class="cir-ls-clbl">HORA</div>
-          </div>
-        </div>
-        <!-- Mid: stats + V lean + speed -->
+        <!-- Mid: stats + lean bars + speed + right info column -->
         <div class="cir-ls-mid">
           <div class="cir-ls-stats">
             <div class="cir-stat"><span class="cir-sl">SESIÓN</span><span id="cir-ls-sess" class="cir-sv">--:--</span></div>
@@ -972,6 +949,10 @@
             <div class="cir-ls-vctr">
               <div class="cir-ls-spd" id="cir-ls-spd">0</div>
               <div class="cir-ls-spdu">KM/H</div>
+              <div class="cir-ls-ghud">
+                <div class="cir-ls-gnum" id="cir-ls-gear-ctr">—</div>
+                <div class="cir-ls-glbl">GEAR</div>
+              </div>
               <div class="cir-ls-gf"><span id="cir-ls-glon">0.00</span>↑ <span id="cir-ls-glat">0.00</span>→ G</div>
             </div>
             <div class="cir-ls-vside cir-ls-vr">
@@ -979,6 +960,14 @@
               <div class="cir-ls-vtrack"><div class="cir-ls-vfill" id="cir-ls-fr"></div></div>
               <span class="cir-ls-vlbl">R</span>
             </div>
+          </div>
+          <!-- Right info column (replaces horizontal strip) -->
+          <div class="cir-ls-right">
+            <div class="cir-ls-rc"><span class="cir-ls-rv cir-lsc-rpm" id="cir-ls-rpm-num">--k</span><span class="cir-ls-rl">RPM</span></div>
+            <div class="cir-ls-rc"><span class="cir-ls-rv cir-lsc-temp" id="cir-ls-temp">--°</span><span class="cir-ls-rl">MOT</span></div>
+            <div class="cir-ls-rc"><span class="cir-ls-rv cir-lsc-volt" id="cir-ls-volt">--v</span><span class="cir-ls-rl">VOLT</span></div>
+            <div class="cir-ls-rc"><span class="cir-ls-rv cir-lsc-gear" id="cir-ls-gear">—</span><span class="cir-ls-rl cir-lsl-gear">GEAR</span></div>
+            <div class="cir-ls-rc"><span class="cir-ls-rv" id="cir-ls-hora" style="color:rgba(255,255,255,0.85);font-size:13px;letter-spacing:0.03em">--:--</span><span class="cir-ls-rl">HORA</span></div>
           </div>
         </div>
       </div>

@@ -1653,7 +1653,8 @@ function _updateLsLayout(roll, spd) {
   const rn = $('cir-ls-rpm-num'); if (rn) rn.textContent = rpm > 0 ? (rpm/1000).toFixed(1)+'k' : '--k';
   const tn = $('cir-ls-temp');    if (tn) tn.textContent = motor;
   const vn = $('cir-ls-volt');    if (vn) vn.textContent = App.obd2Volt != null ? App.obd2Volt.toFixed(1)+'v' : '--v';
-  const gn = $('cir-ls-gear');    if (gn) gn.textContent = gear;
+  const gn = $('cir-ls-gear');     if (gn) gn.textContent = gear;
+  const gc = $('cir-ls-gear-ctr'); if (gc) gc.textContent = gear;
   const hn = $('cir-ls-hora');    if (hn) hn.textContent = hora;
 
   // Stats
