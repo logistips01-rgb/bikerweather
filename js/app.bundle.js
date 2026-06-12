@@ -3258,17 +3258,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('toggle-landscape')?.addEventListener('change', toggleLandscapeMode);
   $('btn-map-landscape')?.addEventListener('click', toggleLandscapeMode);
 
-  // Auto-rotate with device orientation
+  // Auto-rotate with device orientation — always follow physical orientation
   const _orientEvt = screen.orientation ? 'change' : 'orientationchange';
   const _orientTarget = screen.orientation || window;
   _orientTarget.addEventListener(_orientEvt, _handleOrientationChange);
-  // Restore landscape preference on load
-  if (localStorage.getItem('bw_landscape') === '1') {
-    _applyLandscapeMode(true);
-  } else {
-    // Sync with current physical orientation on first load
-    _handleOrientationChange();
-  }
+  _handleOrientationChange();
   $('btn-open-circuit')?.addEventListener('click', () => openCircuit());
 
   // Style tiles — tap = arranca ruta con ese display
@@ -3699,16 +3693,13 @@ async function _obdInit() {
     toast('OBD2 detectando protocolo…', 'info');
     const proto = await _obdCmdLong('0100', 18000);
     console.log('OBD2 0100:', proto);
-    if (proto.includes('UNABLE') || proto === 'TIMEOUT') {
-      throw new Error('Moto no responde OBD2 — comprueba conector y motor en marcha');
-    }
-
+    const noEcu = proto.includes('UNABLE') || proto === 'TIMEOUT' || proto.includes('NO DATA');
     App.obdConnected = true;
     _OBD._busy = false;
-    setStatusPill('obd', 'active');
+    setStatusPill('obd', noEcu ? 'warn' : 'active');
     const _badge = $('obd-diag-status-badge');
-    if (_badge) { _badge.textContent = 'CONECTADO'; _badge.className = 'obd-badge ok'; }
-    toast('OBD2 conectado ✓', 'ok');
+    if (_badge) { _badge.textContent = noEcu ? 'SIN ECU' : 'CONECTADO'; _badge.className = noEcu ? 'obd-badge warn' : 'obd-badge ok'; }
+    toast(noEcu ? 'OBD2 conectado — arranca la moto para ver datos' : 'OBD2 conectado ✓', noEcu ? 'info' : 'ok');
     _obdStartPoll();
   } catch(e) {
     _OBD._busy = false;
