@@ -3721,6 +3721,8 @@ async function _obdPoll() {
   if (!App.obdConnected || !_OBD.writeChr) return;
   const pid = _OBD.PIDS[_OBD.pollIdx++ % _OBD.PIDS.length];
   const raw = await _obdCmd(pid);
+  console.log('OBD2 PID', pid, '→', raw);
+  if (!_OBD._firstData && _OBD.pollIdx <= 8) toast('OBD: ' + pid + '=' + raw.slice(0,20), 'info');
   _obdParse(pid, raw);
 }
 
