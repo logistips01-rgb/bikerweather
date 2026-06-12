@@ -219,6 +219,9 @@ const App = {
   obd2Temp:     null,
   obd2Volt:     null,
   obd2Speed:    null,
+  obd2OilTemp:  null,
+  obd2Load:     null,
+  obd2Throttle: null,
   _fb:              null
 };
 
@@ -1662,7 +1665,11 @@ function _updateLsLayout(roll, spd) {
   const lc = $('cir-ls-curves'); if (lc) lc.textContent = App.sessionCurves?.length || 0;
   const lv = $('cir-ls-vmax');   if (lv) lv.textContent = _cirMaxSpd;
   const la = $('cir-ls-amax');   if (la) la.textContent = Math.round(_cirMaxAng)+'°';
-  const lt = $('cir-ls-tamb');   if (lt) lt.textContent = App.weather ? App.weather.temp+'°' : '--°';
+  const wcTemp = App.windChill ?? App.weather?.temp;
+  const lt = $('cir-ls-tamb');   if (lt) lt.textContent = wcTemp != null ? Math.round(wcTemp)+'°' : '--°';
+  const lo = $('cir-ls-oil');    if (lo) lo.textContent = App.obd2OilTemp  != null ? App.obd2OilTemp+'°'  : '--°';
+  const ll = $('cir-ls-load');   if (ll) ll.textContent = App.obd2Load     != null ? App.obd2Load+'%'     : '--%';
+  const lh = $('cir-ls-thr');    if (lh) lh.textContent = App.obd2Throttle != null ? App.obd2Throttle+'%' : '--%';
 
   // Speed
   const ls = $('cir-ls-spd'); if (ls) ls.textContent = Math.round(spd) || 0;
@@ -1940,7 +1947,8 @@ function _updateE4Layout(roll, spd) {
   // Data strip
   $('cir-e4-motor') && ($('cir-e4-motor').textContent = motor);
   $('cir-e4-volt')  && ($('cir-e4-volt').textContent  = App.obd2Volt != null ? App.obd2Volt.toFixed(1)+'v' : '--v');
-  $('cir-e4-tamb')  && ($('cir-e4-tamb').textContent  = App.weather ? App.weather.temp+'°' : '--°');
+  const _wc4 = App.windChill ?? App.weather?.temp;
+  $('cir-e4-tamb')  && ($('cir-e4-tamb').textContent  = _wc4 != null ? Math.round(_wc4)+'°' : '--°');
   $('cir-e4-hora')  && ($('cir-e4-hora').textContent  = hora);
 
   // Nav strip
@@ -2269,7 +2277,8 @@ function _updateE5Layout(roll, spd) {
   }
   const gearEl = document.getElementById('cir-e5-gear'); if (gearEl) gearEl.textContent = App.obd2Gear === 'N' ? 'N' : App.obd2Gear ? 'M' + App.obd2Gear : '—';
   const horaEl = document.getElementById('cir-e5-hora'); if (horaEl) horaEl.textContent = hora;
-  const tambEl = document.getElementById('cir-e5-tamb'); if (tambEl) tambEl.textContent = App.weather?.temp != null ? Math.round(App.weather.temp) + '°' : '--°';
+  const _wc5 = App.windChill ?? App.weather?.temp;
+  const tambEl = document.getElementById('cir-e5-tamb'); if (tambEl) tambEl.textContent = _wc5 != null ? Math.round(_wc5) + '°' : '--°';
 
   // Map update
   if (_e5Map && App.position?.lat) {
@@ -2528,7 +2537,8 @@ function _updateCirData(roll, spd) {
   const cc = $('cir-curve-cnt'); if (cc) cc.textContent = App.sessionCurves?.length || 0;
   const sm = $('cir-spd-max');   if (sm) sm.textContent = _cirMaxSpd;
   const am = $('cir-ang-max');   if (am) am.textContent = Math.round(_cirMaxAng) + '°';
-  const tv = $('cir-temp-val');  if (tv) tv.textContent = App.weather ? App.weather.temp + '°' : '--°';
+  const _wcPt = App.windChill ?? App.weather?.temp;
+  const tv = $('cir-temp-val');  if (tv) tv.textContent = _wcPt != null ? Math.round(_wcPt) + '°' : '--°';
 
   // Big speed
   const sv = $('cir-spd-val');
@@ -3571,7 +3581,7 @@ const _OBD = {
   CHR5:   'bef8d6c9-9c21-4c9e-b632-bd58c1009f9f',
   device: null, writeChr: null, buf: '', resolvers: [],
   pollTimer: null, pollIdx: 0, reconnTimer: null, _busy: false, _firstData: false,
-  PIDS: ['010C','010D','0105','0142'],
+  PIDS: ['010C','010D','0105','0142','0104','0111','015C'],
 };
 
 async function connectOBD2() {
@@ -3749,10 +3759,13 @@ function _obdParse(pid, raw) {
   if (!_OBD._firstData) { _OBD._firstData = true; toast('OBD2 datos OK ✓', 'ok'); }
   const A = d[0], B = d[1] ?? 0;
   switch(pid) {
-    case '010C': App.obd2Rpm   = ((A*256+B)/4)|0; break;
-    case '010D': App.obd2Speed = A;                break;
-    case '0105': App.obd2Temp  = A - 40;           break;
-    case '0142': App.obd2Volt  = (A*256+B)/1000;   break;
+    case '010C': App.obd2Rpm      = ((A*256+B)/4)|0;           break;
+    case '010D': App.obd2Speed    = A;                         break;
+    case '0105': App.obd2Temp     = A - 40;                    break;
+    case '0142': App.obd2Volt     = (A*256+B)/1000;            break;
+    case '0104': App.obd2Load     = Math.round(A / 2.55);      break;
+    case '0111': App.obd2Throttle = Math.round(A / 2.55);      break;
+    case '015C': App.obd2OilTemp  = A - 40;                    break;
   }
   _obdGear();
 }
@@ -3771,6 +3784,7 @@ function disconnectOBD2() {
   if (_OBD.device?.gatt?.connected) _OBD.device.gatt.disconnect();
   App.obdConnected = false;
   App.obd2Rpm = App.obd2Gear = App.obd2Temp = App.obd2Volt = App.obd2Speed = null;
+  App.obd2OilTemp = App.obd2Load = App.obd2Throttle = null;
   _OBD._firstData = false; _OBD._diagLog = [];
   setStatusPill('obd', '');
   toast('OBD2 desconectado', 'info');
