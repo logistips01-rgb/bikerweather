@@ -1445,16 +1445,11 @@ function initKirkVoice() {
     _kirkListening = false;
     $('btn-cir-mic')?.classList.remove('active');
     $('btn-hud-mic')?.classList.remove('active');
-    if ((App.circuitMode || App.sessionActive) && _kirkAutoListen && !_kirkSpeaking) {
-      setTimeout(_kirkStartListening, 300);
-    }
+    // Solo reinicia si Kirk acaba de hablar (modo conversacional), no en bucle continuo
   };
   _kirkRec.onerror = e => {
     _kirkListening = false;
-    const delay = e.error === 'no-speech' ? 300 : 1500;
-    if ((App.circuitMode || App.sessionActive) && _kirkAutoListen && !_kirkSpeaking) {
-      setTimeout(_kirkStartListening, delay);
-    }
+    // No reiniciar automáticamente — evita el pitido de micrófono cada 5s
   };
 }
 
