@@ -2015,7 +2015,7 @@ body.landscape-mode #circuit-overlay {
 .cir-lsc-rpm  { color:var(--sk-rpm-c); }
 .cir-lsc-temp { color:var(--sk-temp-c); }
 .cir-lsc-volt { color:var(--sk-volt-c); }
-.cir-lsc-gear { color:var(--sk-gear-c); font-size:24px; }
+.cir-lsc-gear { color:var(--sk-gear-c); font-size:38px; text-shadow:0 0 18px rgba(0,240,160,0.7); }
 .cir-lsc-hora { color:rgba(255,255,255,0.85); font-size:18px; letter-spacing:0.05em; }
 
 /* Stats label/value reuse skin txt */
@@ -2185,6 +2185,10 @@ body.landscape-mode #circuit-overlay {
 .tri-tft-sub span {
   font-family: 'JetBrains Mono', monospace;
   font-size: 8px; color: rgba(255,255,255,0.4);
+}
+#cir-tri-gear {
+  font-size: 1rem; font-weight: 900;
+  color: var(--sk-gear-c); text-shadow: 0 0 14px rgba(0,240,160,0.6);
 }
 
 
@@ -2582,6 +2586,11 @@ body.landscape-mode #circuit-overlay {
   font-size: 0.95rem; font-weight: 700;
   color: #29d9ff; letter-spacing: 0.05em;
 }
+#cir-e4-gear {
+  font-size: 2rem; font-weight: 900;
+  color: var(--sk-gear-c); text-shadow: 0 0 16px rgba(0,240,160,0.65);
+  line-height: 1;
+}
 .cir-e4-sub {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.6rem; color: rgba(255,255,255,0.5);
@@ -2727,9 +2736,14 @@ body.landscape-mode #circuit-overlay {
   color: rgba(255,255,255,0.7); line-height: 1;
 }
 .cir-e5-sub {
-  display: flex; gap: 12px; margin-top: 2px;
+  display: flex; gap: 12px; margin-top: 2px; align-items: baseline;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.58rem; color: rgba(255,255,255,0.55);
+}
+#cir-e5-gear {
+  font-size: 1.6rem; font-weight: 900;
+  color: var(--sk-gear-c); text-shadow: 0 0 16px rgba(0,240,160,0.65);
+  line-height: 1;
 }
 
 /* ══════════════════════════════════════════════════════

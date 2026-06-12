@@ -2267,7 +2267,7 @@ function _updateE5Layout(roll, spd) {
     leanEl.textContent = (roll < -1 ? '◄ ' : roll > 1 ? '► ' : '') + Math.round(lean) + '°';
     leanEl.style.color = lean > 45 ? '#ffffff' : lean > 30 ? '#29d9ff' : 'rgba(255,255,255,0.7)';
   }
-  const gearEl = document.getElementById('cir-e5-gear'); if (gearEl) gearEl.textContent = App.obd2Gear ? 'M' + App.obd2Gear : '—';
+  const gearEl = document.getElementById('cir-e5-gear'); if (gearEl) gearEl.textContent = App.obd2Gear === 'N' ? 'N' : App.obd2Gear ? 'M' + App.obd2Gear : '—';
   const horaEl = document.getElementById('cir-e5-hora'); if (horaEl) horaEl.textContent = hora;
   const tambEl = document.getElementById('cir-e5-tamb'); if (tambEl) tambEl.textContent = App.weather?.temp != null ? Math.round(App.weather.temp) + '°' : '--°';
 
@@ -3759,7 +3759,8 @@ function _obdParse(pid, raw) {
 
 function _obdGear() {
   const rpm = App.obd2Rpm, spd = App.gpsSpeed ?? App.obd2Speed;
-  if (!rpm || !spd || rpm < 600 || spd < 5) { App.obd2Gear = null; return; }
+  if (!rpm || rpm < 600) { App.obd2Gear = null; return; }
+  if (!spd || spd < 5)   { App.obd2Gear = 'N'; return; }
   const r = rpm / spd;
   App.obd2Gear = r>40?1 : r>26?2 : r>19?3 : r>14?4 : r>11?5 : 6;
 }
