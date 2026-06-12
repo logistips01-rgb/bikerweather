@@ -3604,6 +3604,15 @@ async function _obdInit() {
   try {
     const server = await _OBD.device.gatt.connect();
     let writeChr, notifyChr;
+
+    /* Descubrir servicios disponibles para diagnóstico */
+    const allSvcs = await server.getPrimaryServices().catch(() => []);
+    if (allSvcs.length) {
+      const uuids = allSvcs.map(s => s.uuid).join(', ');
+      console.log('OBD2 servicios:', uuids);
+      toast('OBD servicios: ' + uuids, 'info');
+    }
+
     try {
       const s = await server.getPrimaryService(_OBD.SVC);
       writeChr  = await s.getCharacteristic(_OBD.WRITE);
