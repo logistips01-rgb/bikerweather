@@ -1113,7 +1113,7 @@ function startSession() {
   _kirkHistory   = [];
   _telBuffer     = [];
   _telLastTs     = 0;
-  _kirkAutoListen = true;
+  _kirkAutoListen = false;
   setEl('hud-curves-l', '0');
   setEl('hud-curves-r', '0');
   $('session-timer')?.classList.add('show');
@@ -1298,7 +1298,7 @@ let _e5Map = null, _e5Marker = null;
 /* ── Kirk state ── */
 let _kirkSpeaking  = false;
 let _kirkListening = false;
-let _kirkAutoListen = true;
+let _kirkAutoListen = false;
 let _kirkMuted     = false;
 let _kirkKittPos   = 0;
 let _kirkKittDir   = 1;
@@ -1372,7 +1372,6 @@ function kirkSpeak(text) {
     _kirkSpeaking = false;
     _radioUnduck();
     setTimeout(_kirkHideMsg, 2000);
-    if ((App.circuitMode || App.sessionActive) && _kirkAutoListen) setTimeout(_kirkStartListening, 400);
   };
   utt.onend  = _onKirkDone;
   utt.onerror = _onKirkDone;
@@ -1501,10 +1500,9 @@ async function askKirk(userText) {
     const data = await res.json();
     const reply = data.choices?.[0]?.message?.content?.trim();
     if (reply) { _kirkHistory.push({ role:'assistant', content:reply }); kirkSpeak(reply); }
-    else { _kirkShowMsg('❌ ' + (data.error?.message || 'Sin respuesta')); setTimeout(_kirkStartListening, 500); }
+    else { _kirkShowMsg('❌ ' + (data.error?.message || 'Sin respuesta')); }
   } catch(e) {
     _kirkShowMsg('❌ Sin conexión');
-    setTimeout(_kirkStartListening, 1000);
   }
 }
 
