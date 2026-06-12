@@ -3720,7 +3720,8 @@ async function _obdInit() {
 
 function _obdOnDisconnect() {
   App.obdConnected = false;
-  clearInterval(_OBD.pollTimer);
+  _OBD._polling = false;
+  clearTimeout(_OBD.pollTimer);
   setStatusPill('obd', 'error');
   const _badge = $('obd-diag-status-badge');
   if (_badge) { _badge.textContent = 'DESCONECTADO'; _badge.className = 'obd-badge err'; }
@@ -3765,16 +3766,22 @@ function _obdCmd(cmd, ms = 2500) {
 function _obdCmdLong(cmd, ms) { return _obdCmd(cmd, ms); }
 
 function _obdStartPoll() {
-  clearInterval(_OBD.pollTimer);
+  clearTimeout(_OBD.pollTimer);
   _OBD.pollIdx = 0;
-  _OBD.pollTimer = setInterval(_obdPoll, 260);
+  _OBD._polling = true;
+  _obdPollLoop();
+}
+
+async function _obdPollLoop() {
+  if (!_OBD._polling) return;
+  await _obdPoll();
+  if (_OBD._polling) _OBD.pollTimer = setTimeout(_obdPollLoop, 80);
 }
 
 async function _obdPoll() {
   if (!App.obdConnected || !_OBD.writeChr) return;
   const pid = _OBD.PIDS[_OBD.pollIdx++ % _OBD.PIDS.length];
   const raw = await _obdCmd(pid);
-  console.log('OBD2 PID', pid, '→', raw);
   if (!_OBD._firstData) _OBD._diagLog = (_OBD._diagLog || []).concat(pid + ':' + raw.slice(0,12));
   if (!_OBD._firstData && _OBD._diagLog?.length === 4) {
     toast('OBD diag: ' + _OBD._diagLog.join(' | '), 'info');
@@ -3811,7 +3818,8 @@ function _obdGear() {
 }
 
 function disconnectOBD2() {
-  clearInterval(_OBD.pollTimer); clearTimeout(_OBD.reconnTimer);
+  _OBD._polling = false;
+  clearTimeout(_OBD.pollTimer); clearTimeout(_OBD.reconnTimer);
   _OBD.writeChr = null;
   if (_OBD.device?.gatt?.connected) _OBD.device.gatt.disconnect();
   App.obdConnected = false;
