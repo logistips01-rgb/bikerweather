@@ -739,34 +739,47 @@ function updateRollOverlay(roll) {
 }
 
 
-function toggleLandscapeMode() {
-  App.landscapeMode = !App.landscapeMode;
-  document.body.classList.toggle('landscape-mode', App.landscapeMode);
+function _applyLandscapeMode(on) {
+  App.landscapeMode = on;
+  document.body.classList.toggle('landscape-mode', on);
+  localStorage.setItem('bw_landscape', on ? '1' : '0');
 
-  // Sync both landscape toggle buttons (pre-ride + in-session)
-  const on = App.landscapeMode;
   const chk = document.getElementById('toggle-landscape');
   if (chk) chk.checked = on;
   const btnMap = $('btn-map-landscape');
   if (btnMap) { btnMap.textContent = on ? '⊡' : '⊞'; btnMap.classList.toggle('active', on); btnMap.title = on ? 'Salir modo horizontal' : 'Modo horizontal'; }
+  $('btn-cir-ls')?.classList.toggle('active', on);
 
-  // Re-bootstrap del CF con los ejes correctos para la nueva orientación
   App.tiltFilter.gyroReady = false;
   App.tiltFilter.roll      = 0;
   App.tiltFilter.pitch     = 0;
   App.tiltFilter.lastTime  = null;
 
-  // Resize circuit canvases when orientation changes
   if (App.circuitMode) setTimeout(resizeCircuitCanvases, 150);
-
-  // Leaflet necesita saber el nuevo tamaño tras la rotación
   if (App.mapInitialized) {
     setTimeout(() => App.leafletMap.invalidateSize(), 100);
     setTimeout(() => App.leafletMap.invalidateSize(), 400);
   }
-
   updateRollOverlay((App.gyroData.gamma || 0) * (App.rollFlip ? -1 : 1));
 }
+
+function toggleLandscapeMode() {
+  _applyLandscapeMode(!App.landscapeMode);
+  // Manual toggle disables auto-orientation so user keeps their choice
+  App._landscapeManual = true;
+}
+
+function _handleOrientationChange() {
+  // Use Screen Orientation API if available, else fallback to window.orientation
+  let isLandscape;
+  if (screen.orientation) {
+    isLandscape = screen.orientation.type.startsWith('landscape');
+  } else {
+    isLandscape = Math.abs(window.orientation) === 90;
+  }
+  _applyLandscapeMode(isLandscape);
+}
+
 
 /* ═══════════════════════════════════════
    WAKE LOCK
@@ -3244,6 +3257,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-cir-cal')?.addEventListener('click', doCalibrate);
   document.getElementById('toggle-landscape')?.addEventListener('change', toggleLandscapeMode);
   $('btn-map-landscape')?.addEventListener('click', toggleLandscapeMode);
+
+  // Auto-rotate with device orientation
+  const _orientEvt = screen.orientation ? 'change' : 'orientationchange';
+  const _orientTarget = screen.orientation || window;
+  _orientTarget.addEventListener(_orientEvt, _handleOrientationChange);
+  // Restore landscape preference on load
+  if (localStorage.getItem('bw_landscape') === '1') {
+    _applyLandscapeMode(true);
+  } else {
+    // Sync with current physical orientation on first load
+    _handleOrientationChange();
+  }
   $('btn-open-circuit')?.addEventListener('click', () => openCircuit());
 
   // Style tiles — tap = arranca ruta con ese display
