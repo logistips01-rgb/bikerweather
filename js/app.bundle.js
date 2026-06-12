@@ -3562,8 +3562,13 @@ const _OBD = {
   SVC2:   '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
   WRITE2: '6e400002-b5a3-f393-e0a9-e50e24dcca9e',
   NOTIF2: '6e400003-b5a3-f393-e0a9-e50e24dcca9e',
-  SVC3:   '0000ffe0-0000-1000-8000-00805f9b34fb',  // Vgate iCar Pro BLE (ios-vlink)
-  CHR3:   '0000ffe1-0000-1000-8000-00805f9b34fb',  // write+notify combined
+  SVC3:   '0000ffe0-0000-1000-8000-00805f9b34fb',
+  CHR3:   '0000ffe1-0000-1000-8000-00805f9b34fb',
+  SVC4:   '000018f0-0000-1000-8000-00805f9b34fb',  // Vgate iCar Pro BLE 4.0 IOS-VLINK (nRF confirmed)
+  NOTIF4: '00002af0-0000-1000-8000-00805f9b34fb',
+  WRITE4: '00002af1-0000-1000-8000-00805f9b34fb',
+  SVC5:   'e7810a71-73ae-499d-8c15-faa9aef0c3f2',  // Vgate proprietary (nRF confirmed, write+notify)
+  CHR5:   'bef8d6c9-9c21-4c9e-b632-bd58c1009f9f',
   device: null, writeChr: null, buf: '', resolvers: [],
   pollTimer: null, pollIdx: 0, reconnTimer: null, _busy: false,
   PIDS: ['010C','010D','0105','0142'],
@@ -3586,7 +3591,7 @@ async function connectOBD2() {
     }
     _OBD.device = await navigator.bluetooth.requestDevice({
       acceptAllDevices: true,
-      optionalServices: [_OBD.SVC, _OBD.SVC2, _OBD.SVC3]
+      optionalServices: [_OBD.SVC4, _OBD.SVC5, _OBD.SVC, _OBD.SVC2, _OBD.SVC3]
     });
     _OBD.device.addEventListener('gattserverdisconnected', _obdOnDisconnect);
     await _obdInit();
@@ -3605,27 +3610,37 @@ async function _obdInit() {
     const server = await _OBD.device.gatt.connect();
     let writeChr, notifyChr;
 
-    /* Descubrir servicios disponibles para diagnóstico */
     const allSvcs = await server.getPrimaryServices().catch(() => []);
-    if (allSvcs.length) {
-      const uuids = allSvcs.map(s => s.uuid).join(', ');
-      console.log('OBD2 servicios:', uuids);
-      toast('OBD servicios: ' + uuids, 'info');
-    }
+    console.log('OBD2 servicios:', allSvcs.map(s => s.uuid).join(', '));
 
+    // Try services in order of likelihood for Vgate iCar Pro BLE 4.0 (IOS-VLINK)
     try {
-      const s = await server.getPrimaryService(_OBD.SVC);
-      writeChr  = await s.getCharacteristic(_OBD.WRITE);
-      notifyChr = await s.getCharacteristic(_OBD.NOTIF);
+      // e7810a71 — Vgate proprietary (single chr for write+notify, confirmed via nRF Connect)
+      const s = await server.getPrimaryService(_OBD.SVC5);
+      const c  = await s.getCharacteristic(_OBD.CHR5);
+      writeChr = notifyChr = c;
     } catch {
       try {
-        const s = await server.getPrimaryService(_OBD.SVC3);
-        const c  = await s.getCharacteristic(_OBD.CHR3);
-        writeChr = notifyChr = c;
+        // 18F0 — standard OBD2 BLE (confirmed via nRF Connect)
+        const s = await server.getPrimaryService(_OBD.SVC4);
+        writeChr  = await s.getCharacteristic(_OBD.WRITE4);
+        notifyChr = await s.getCharacteristic(_OBD.NOTIF4);
       } catch {
-        const s = await server.getPrimaryService(_OBD.SVC2);
-        writeChr  = await s.getCharacteristic(_OBD.WRITE2);
-        notifyChr = await s.getCharacteristic(_OBD.NOTIF2);
+        try {
+          const s = await server.getPrimaryService(_OBD.SVC);
+          writeChr  = await s.getCharacteristic(_OBD.WRITE);
+          notifyChr = await s.getCharacteristic(_OBD.NOTIF);
+        } catch {
+          try {
+            const s = await server.getPrimaryService(_OBD.SVC3);
+            const c  = await s.getCharacteristic(_OBD.CHR3);
+            writeChr = notifyChr = c;
+          } catch {
+            const s = await server.getPrimaryService(_OBD.SVC2);
+            writeChr  = await s.getCharacteristic(_OBD.WRITE2);
+            notifyChr = await s.getCharacteristic(_OBD.NOTIF2);
+          }
+        }
       }
     }
     await notifyChr.startNotifications();
