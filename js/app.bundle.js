@@ -3649,8 +3649,17 @@ async function _obdInit() {
     _OBD.buf = ''; _OBD.resolvers = [];
 
     await _obdCmd('ATZ');
-    await new Promise(r => setTimeout(r, 1200));
-    for (const c of ['ATE0','ATH0','ATL0','ATSP0','ATAT1']) await _obdCmd(c);
+    await new Promise(r => setTimeout(r, 1500));
+    for (const c of ['ATE0','ATH0','ATL0','ATAT1']) await _obdCmd(c);
+
+    // ATSP0 = auto-detect protocol; 0100 forces detection (may take up to 15s on first connect)
+    await _obdCmd('ATSP0');
+    toast('OBD2 detectando protocolo…', 'info');
+    const proto = await _obdCmdLong('0100', 18000);
+    console.log('OBD2 0100:', proto);
+    if (proto.includes('UNABLE') || proto === 'TIMEOUT') {
+      throw new Error('Moto no responde OBD2 — comprueba conector y motor en marcha');
+    }
 
     App.obdConnected = true;
     _OBD._busy = false;
@@ -3692,13 +3701,13 @@ function _obdOnData(ev) {
   }
 }
 
-function _obdCmd(cmd) {
+function _obdCmd(cmd, ms = 2500) {
   return new Promise(resolve => {
     const tid = setTimeout(() => {
       const ix = _OBD.resolvers.findIndex(r => r === res);
       if (ix !== -1) _OBD.resolvers.splice(ix, 1);
       resolve('TIMEOUT');
-    }, 2500);
+    }, ms);
     const res = r => { clearTimeout(tid); resolve(r); };
     _OBD.resolvers.push(res);
     const data = new TextEncoder().encode(cmd + '\r');
@@ -3710,6 +3719,8 @@ function _obdCmd(cmd) {
     writeP.catch(() => resolve('ERR'));
   });
 }
+
+function _obdCmdLong(cmd, ms) { return _obdCmd(cmd, ms); }
 
 function _obdStartPoll() {
   clearInterval(_OBD.pollTimer);
