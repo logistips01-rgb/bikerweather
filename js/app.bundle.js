@@ -3722,7 +3722,11 @@ async function _obdPoll() {
   const pid = _OBD.PIDS[_OBD.pollIdx++ % _OBD.PIDS.length];
   const raw = await _obdCmd(pid);
   console.log('OBD2 PID', pid, '→', raw);
-  if (!_OBD._firstData && _OBD.pollIdx <= 8) toast('OBD: ' + pid + '=' + raw.slice(0,20), 'info');
+  if (!_OBD._firstData) _OBD._diagLog = (_OBD._diagLog || []).concat(pid + ':' + raw.slice(0,12));
+  if (!_OBD._firstData && _OBD._diagLog?.length === 4) {
+    toast('OBD diag: ' + _OBD._diagLog.join(' | '), 'info');
+    _OBD._diagLog = [];
+  }
   _obdParse(pid, raw);
 }
 
@@ -3755,7 +3759,7 @@ function disconnectOBD2() {
   if (_OBD.device?.gatt?.connected) _OBD.device.gatt.disconnect();
   App.obdConnected = false;
   App.obd2Rpm = App.obd2Gear = App.obd2Temp = App.obd2Volt = App.obd2Speed = null;
-  _OBD._firstData = false;
+  _OBD._firstData = false; _OBD._diagLog = [];
   setStatusPill('obd', '');
   toast('OBD2 desconectado', 'info');
 }
