@@ -3575,17 +3575,7 @@ async function connectOBD2() {
   _OBD._busy = true;
   setStatusPill('obd', 'warn');
   try {
-    /* Intentar reconectar con dispositivo ya autorizado anteriormente */
-    if (navigator.bluetooth.getDevices) {
-      const known = await navigator.bluetooth.getDevices();
-      if (known.length) {
-        _OBD.device = known[0];
-        _OBD.device.addEventListener('gattserverdisconnected', _obdOnDisconnect);
-        await _obdInit();
-        return;
-      }
-    }
-    toast('Buscando… desempareja primero en Ajustes BT si no aparece', 'info');
+    toast('Selecciona "ios-vlink" en el picker', 'info');
     _OBD.device = await navigator.bluetooth.requestDevice({
       acceptAllDevices: true,
       optionalServices: [_OBD.SVC, _OBD.SVC2, _OBD.SVC3]
