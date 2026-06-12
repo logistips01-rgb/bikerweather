@@ -3570,7 +3570,7 @@ const _OBD = {
   SVC5:   'e7810a71-73ae-499d-8c15-faa9aef0c3f2',  // Vgate proprietary (nRF confirmed, write+notify)
   CHR5:   'bef8d6c9-9c21-4c9e-b632-bd58c1009f9f',
   device: null, writeChr: null, buf: '', resolvers: [],
-  pollTimer: null, pollIdx: 0, reconnTimer: null, _busy: false,
+  pollTimer: null, pollIdx: 0, reconnTimer: null, _busy: false, _firstData: false,
   PIDS: ['010C','010D','0105','0142'],
 };
 
@@ -3650,7 +3650,7 @@ async function _obdInit() {
 
     await _obdCmd('ATZ');
     await new Promise(r => setTimeout(r, 1200));
-    for (const c of ['ATE0','ATH0','ATL0','ATSP0','ATAT2','ATST0A']) await _obdCmd(c);
+    for (const c of ['ATE0','ATH0','ATL0','ATSP0','ATAT1']) await _obdCmd(c);
 
     App.obdConnected = true;
     _OBD._busy = false;
@@ -3702,7 +3702,12 @@ function _obdCmd(cmd) {
     const res = r => { clearTimeout(tid); resolve(r); };
     _OBD.resolvers.push(res);
     const data = new TextEncoder().encode(cmd + '\r');
-    _OBD.writeChr?.writeValue(data).catch(() => resolve('ERR'));
+    const chr = _OBD.writeChr;
+    if (!chr) { resolve('ERR'); return; }
+    const writeP = chr.properties?.writeWithoutResponse
+      ? chr.writeValueWithoutResponse(data)
+      : chr.writeValue(data);
+    writeP.catch(() => resolve('ERR'));
   });
 }
 
@@ -3724,6 +3729,7 @@ function _obdParse(pid, raw) {
     .filter(h => h.length === 2).map(h => parseInt(h, 16));
   const d = bytes.slice(2);
   if (!d.length) return;
+  if (!_OBD._firstData) { _OBD._firstData = true; toast('OBD2 datos OK ✓', 'ok'); }
   const A = d[0], B = d[1] ?? 0;
   switch(pid) {
     case '010C': App.obd2Rpm   = ((A*256+B)/4)|0; break;
@@ -3747,6 +3753,7 @@ function disconnectOBD2() {
   if (_OBD.device?.gatt?.connected) _OBD.device.gatt.disconnect();
   App.obdConnected = false;
   App.obd2Rpm = App.obd2Gear = App.obd2Temp = App.obd2Volt = App.obd2Speed = null;
+  _OBD._firstData = false;
   setStatusPill('obd', '');
   toast('OBD2 desconectado', 'info');
 }
