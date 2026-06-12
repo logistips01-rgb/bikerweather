@@ -1133,7 +1133,8 @@ function startSession() {
       t: elapsed, lat: App.position?.lat, lon: App.position?.lon,
       speed: App.gpsSpeed, roll: App.gyroData.gamma, wc: App.windChill, temp: App.weather?.temp,
       gLong: Math.round(App.gForce.long * 100) / 100,
-      gLat:  Math.round(App.gForce.lat  * 100) / 100
+      gLat:  Math.round(App.gForce.lat  * 100) / 100,
+      volt:  App.obd2Volt ?? null
     });
     // Route mode: update telemetry buffer + run Kirk alerts every 2s
     if (!App.circuitMode) {
@@ -1247,6 +1248,7 @@ function buildReport() {
   const rolls   = App.sessionSamples.map(s => s.roll).filter(v => v != null);
   const gLongs  = App.sessionSamples.map(s => s.gLong).filter(v => v != null);
   const gLats   = App.sessionSamples.map(s => s.gLat).filter(v => v != null);
+  const volts   = App.sessionSamples.map(s => s.volt).filter(v => v != null);
   const cL      = App.sessionCurves.filter(c => c.dir === 'L');
   const cR      = App.sessionCurves.filter(c => c.dir === 'R');
   const maxAng  = App.sessionCurves.length ? Math.max(...App.sessionCurves.map(c => c.maxAngle)) : 0;
@@ -1260,7 +1262,8 @@ function buildReport() {
     thermal:  { minWC: wcs.length?Math.min(...wcs):null, avgWC: wcs.length?Math.round(wcs.reduce((a,b)=>a+b,0)/wcs.length*10)/10:null, history: wcs },
     inclin:   { maxAngle: Math.max(...(rolls.length?rolls.map(Math.abs):[0])), history: rolls },
     curves:   { total: App.sessionCurves.length, left: cL.length, right: cR.length, list: App.sessionCurves, maxAngle: maxAng, avgAngle: avgAng },
-    gForces:  { peakBraking: peakBrk, peakAccel: peakAcc, peakLateral: peakLat, historyLong: gLongs, historyLat: gLats }
+    gForces:  { peakBraking: peakBrk, peakAccel: peakAcc, peakLateral: peakLat, historyLong: gLongs, historyLat: gLats },
+    electrical: volts.length ? { min: Math.round(Math.min(...volts)*10)/10, avg: Math.round(volts.reduce((a,b)=>a+b,0)/volts.length*10)/10, history: volts } : null
   };
 }
 
@@ -1393,10 +1396,13 @@ function kirkCheckAlerts() {
   const roll = Math.abs(App.gyroData.gamma || 0);
   const totG = Math.sqrt((App.gForce?.long||0)**2 + (App.gForce?.lat||0)**2);
   const ws   = App.weather?.windSpeed || 0;
+  const volt = App.obd2Volt;
   if      (spd  > 140 && _kirkCanAlert('spd',  30000)) kirkSpeak('Velocidad ' + spd + '.');
   else if (roll > 43  && _kirkCanAlert('roll', 10000)) kirkSpeak('Inclinación crítica.');
   else if (totG > 0.85 && _kirkCanAlert('g',   15000)) kirkSpeak('Fuerzas G elevadas.');
   else if (ws   > 50  && _kirkCanAlert('wind', 60000)) kirkSpeak('Viento fuerte, ' + ws + ' kilómetros.');
+  else if (volt != null && volt < 13.0 && App.obd2Rpm > 600 && _kirkCanAlert('volt', 60000))
+    kirkSpeak('Voltaje bajo, ' + volt.toFixed(1) + ' voltios. Revisa la batería.');
 }
 
 function _drawKitt(cv) {
@@ -2800,6 +2806,13 @@ function renderReport(r) {
     (r.gForces?.historyLong?.length > 2 ? '<div class="report-section"><div class="report-section-title">FUERZAS G LONGITUDINALES</div>' + gForceLongChartSVG(r.gForces.historyLong) + '</div>' : '') +
     '<div class="report-section"><div class="report-section-title">PERFIL DE INCLINACIÓN</div>' + inclinChartSVG(r.inclin.history, r.curves.list) + '</div>' +
     '<div class="report-section"><div class="report-section-title">SENSACIÓN TÉRMICA EN RUTA</div>' + lineChartSVG(r.thermal.history, '#29d9ff', r.thermal.minWC != null ? r.thermal.minWC-2 : 0, r.thermal.avgWC != null ? r.thermal.avgWC+5 : 20, '°C') + '</div>' +
+    (r.electrical ? '<div class="report-section"><div class="report-section-title">VOLTAJE ELÉCTRICO</div>' +
+      '<div class="report-kpis" style="margin-top:6px">' +
+        '<div class="report-kpi"><div class="kpi-value" style="color:' + (r.electrical.min < 13.0 ? '#ff3250' : '#00f0a0') + '">' + r.electrical.min.toFixed(1) + 'v</div><div class="kpi-label">MÍN.</div></div>' +
+        '<div class="report-kpi"><div class="kpi-value" style="color:#ffb300">' + r.electrical.avg.toFixed(1) + 'v</div><div class="kpi-label">MEDIA</div></div>' +
+        (r.electrical.min < 13.0 ? '<div class="report-kpi"><div class="kpi-value" style="color:#ff3250;font-size:0.7rem">⚠ BATERÍA</div><div class="kpi-label">REVISAR</div></div>' : '<div class="report-kpi"><div class="kpi-value" style="color:#00f0a0;font-size:0.7rem">✓ OK</div><div class="kpi-label">ELÉCTRICO</div></div>') +
+      '</div>' +
+      lineChartSVG(r.electrical.history, '#00f0a0', 11, 15.5, 'v') + '</div>' : '') +
     topCurvesHTML(r.curves.list) +
 
     '<div class="report-section report-rating"><div class="report-section-title">CLASIFICACIÓN DE PILOTO</div>' +
