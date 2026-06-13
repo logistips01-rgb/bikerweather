@@ -1388,6 +1388,8 @@ function kirkSpeak(text) {
     _kirkSpeaking = false;
     _radioUnduck();
     setTimeout(_kirkHideMsg, 2000);
+    // Vuelve a escuchar tras hablar
+    if (_kirkAutoListen) setTimeout(_kirkStartListening, 600);
   };
   utt.onend  = _onKirkDone;
   utt.onerror = _onKirkDone;
@@ -1463,11 +1465,11 @@ function initKirkVoice() {
     _kirkListening = false;
     $('btn-cir-mic')?.classList.remove('active');
     $('btn-hud-mic')?.classList.remove('active');
-    // Solo reinicia si Kirk acaba de hablar (modo conversacional), no en bucle continuo
+    if (_kirkAutoListen && !_kirkSpeaking) setTimeout(_kirkStartListening, 300);
   };
   _kirkRec.onerror = e => {
     _kirkListening = false;
-    // No reiniciar automáticamente — evita el pitido de micrófono cada 5s
+    if (_kirkAutoListen && !_kirkSpeaking && e.error !== 'not-allowed') setTimeout(_kirkStartListening, 1000);
   };
 }
 
