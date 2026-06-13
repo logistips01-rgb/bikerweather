@@ -3453,7 +3453,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-open-circuit')?.addEventListener('click', () => openCircuit());
 
   // Style tiles — tap = arranca ruta con ese display
-  for (let i = 1; i <= 6; i++) $('btn-style-' + i)?.addEventListener('click', () => _launchStyle(i));
+  for (let i = 1; i <= 7; i++) $('btn-style-' + i)?.addEventListener('click', () => _launchStyle(i));
 
   // OBD2 toggle + status pill click → connect/disconnect
   App.obd2Enabled = localStorage.getItem('bw_obd2') !== 'false';
