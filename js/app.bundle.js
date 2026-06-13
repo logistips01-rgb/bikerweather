@@ -3173,6 +3173,12 @@ function initRidingControls() {
   let _tileLayers = [];
   let _tileLabelTimer = null;
 
+  function _updateTileBtn() {
+    const t = MAP_TILES[_tileIdx];
+    const btn = $('btn-map-tiles-pre');
+    if (btn) btn.textContent = t.name;
+  }
+
   function _applyTiles() {
     const t = MAP_TILES[_tileIdx];
     localStorage.setItem('bw_tiles', t.id);
@@ -3184,19 +3190,14 @@ function initRidingControls() {
       layer.setZIndex(0);
       _tileLayers.push({ map: m, layer });
     });
-    // Mostrar etiqueta brevemente
-    let lbl = document.querySelector('.map-tiles-label');
-    if (!lbl) { lbl = document.createElement('div'); lbl.className = 'map-tiles-label'; document.querySelector('.map-wrap')?.appendChild(lbl); }
-    lbl.textContent = t.name;
-    lbl.classList.add('show');
-    clearTimeout(_tileLabelTimer);
-    _tileLabelTimer = setTimeout(() => lbl.classList.remove('show'), 2000);
+    _updateTileBtn();
   }
 
-  $('btn-map-tiles')?.addEventListener('click', () => {
+  $('btn-map-tiles-pre')?.addEventListener('click', () => {
     _tileIdx = (_tileIdx + 1) % MAP_TILES.length;
     _applyTiles();
   });
+  _updateTileBtn();
   // Aplicar estilo guardado al arrancar (después de que el mapa se inicialice)
   setTimeout(_applyTiles, 800);
   $('btn-map-start')?.addEventListener('click', () => {

@@ -1093,25 +1093,23 @@ body.landscape-mode .btn-map-landscape {
   background: rgba(5,5,8,0.75);
 }
 
-/* Botón selector estilo mapa */
-.btn-map-tiles {
-  position: absolute;
-  bottom: 168px; right: 10px;
-  z-index: 501;
-  width: 36px; height: 36px;
-  background: rgba(5,5,8,0.88);
-  backdrop-filter: blur(8px);
+/* Botón ciclar estilo mapa en pre-ruta */
+.map-tiles-cycle-btn {
+  background: rgba(255,255,255,0.05);
   border: 1px solid var(--border-mid);
   border-radius: var(--r2);
-  color: var(--text-dim);
-  font-size: 1rem;
-  display: flex; align-items: center; justify-content: center;
+  color: var(--orange);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 4px 10px;
   cursor: pointer;
   transition: all var(--t);
-  pointer-events: auto;
+  white-space: nowrap;
 }
-.btn-map-tiles:hover { border-color: var(--orange); color: var(--orange); }
-/* Etiqueta del estilo actual */
+.map-tiles-cycle-btn:hover { border-color: var(--orange); background: rgba(255,120,0,0.1); }
+
+/* Etiqueta del estilo actual (durante sesión) */
 .map-tiles-label {
   position: absolute;
   bottom: 175px; right: 52px;
