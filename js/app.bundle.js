@@ -994,11 +994,38 @@ async function calculateRoute(destQuery, speed) {
 /* ═══════════════════════════════════════
    MAPA (Leaflet)
 ═══════════════════════════════════════ */
+const MAP_TILES = [
+  { id: 'osm',         name: 'OSM Estándar', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',                           opts: { maxZoom: 19 } },
+  { id: 'carto-dark',  name: 'Dark Matter',  url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',                opts: { maxZoom: 19, subdomains: 'abcd' } },
+  { id: 'carto-voy',   name: 'Voyager',      url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',     opts: { maxZoom: 19, subdomains: 'abcd' } },
+  { id: 'carto-light', name: 'Carto Light',  url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',               opts: { maxZoom: 19, subdomains: 'abcd' } },
+  { id: 'topo',        name: 'Topográfico',  url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',                             opts: { maxZoom: 17 } },
+];
+let _tileIdx = Math.max(0, MAP_TILES.findIndex(t => t.id === (localStorage.getItem('bw_tiles') || 'osm')));
+
+function _updateMapTileBtn() {
+  const btn = document.getElementById('btn-map-tiles-pre');
+  if (btn) btn.textContent = MAP_TILES[_tileIdx].name;
+}
+
+function applyMapTiles(map) {
+  const t = MAP_TILES[_tileIdx];
+  localStorage.setItem('bw_tiles', t.id);
+  const maps = map ? [map] : [App.leafletMap, _e4Map, _e5Map].filter(Boolean);
+  maps.forEach(m => {
+    const toRemove = [];
+    m.eachLayer(l => { if (l._url) toRemove.push(l); });
+    toRemove.forEach(l => m.removeLayer(l));
+    L.tileLayer(t.url, t.opts).addTo(m);
+  });
+  _updateMapTileBtn();
+}
+
 function initMap() {
   if (App.mapInitialized || typeof L === 'undefined') return;
   App.leafletMap = L.map('leaflet-map', { zoomControl: false, attributionControl: false })
     .setView([App.position?.lat || 40.4, App.position?.lon || -3.7], 15);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(App.leafletMap);
+  applyMapTiles(App.leafletMap);
   L.control.zoom({ position: 'bottomright' }).addTo(App.leafletMap);
   App.leafletMap.on('dragstart', () => {
     App.followRider = false;
@@ -1909,7 +1936,7 @@ function _initE4Map() {
     dragging: false, touchZoom: false, doubleClickZoom: false,
     scrollWheelZoom: false, keyboard: false
   }).setView([lat, lon], 15);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(_e4Map);
+  applyMapTiles(_e4Map);
   const icon = L.divIcon({
     html: '<div style="width:14px;height:14px;background:#29d9ff;border:2px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(41,217,255,0.9)"></div>',
     iconSize: [14,14], iconAnchor: [7,7], className: ''
@@ -2228,7 +2255,7 @@ function _initE5Map() {
   const lat = App.position?.lat ?? 40.4168;
   const lon = App.position?.lon ?? -3.7038;
   _e5Map = L.map(container, { zoomControl: false, attributionControl: false }).setView([lat, lon], 15);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(_e5Map);
+  applyMapTiles(_e5Map);
   const icon = L.divIcon({
     html: '<div style="width:12px;height:12px;background:#29d9ff;border:2px solid #fff;border-radius:50%;box-shadow:0 0 8px rgba(41,217,255,0.9)"></div>',
     iconSize: [12,12], iconAnchor: [6,6], className: ''
@@ -3307,43 +3334,12 @@ function initRidingControls() {
     if (App.position && App.leafletMap) App.leafletMap.setView([App.position.lat, App.position.lon], 15, { animate:true });
   });
 
-  // Selector de estilos de mapa
-  const MAP_TILES = [
-    { id: 'osm',         name: 'OSM Estándar',  url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',                              opts: { maxZoom: 19 } },
-    { id: 'carto-dark',  name: 'Dark Matter',   url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',                   opts: { maxZoom: 19, subdomains: 'abcd' } },
-    { id: 'carto-voy',   name: 'Voyager',       url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',        opts: { maxZoom: 19, subdomains: 'abcd' } },
-    { id: 'carto-light', name: 'Carto Light',   url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',                  opts: { maxZoom: 19, subdomains: 'abcd' } },
-    { id: 'topo',        name: 'Topográfico',   url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',                                opts: { maxZoom: 17 } },
-  ];
-  let _tileIdx = MAP_TILES.findIndex(t => t.id === (localStorage.getItem('bw_tiles') || 'osm'));
-  if (_tileIdx < 0) _tileIdx = 0;
-  let _tileLayers = [];
-  let _tileLabelTimer = null;
-
-  function _updateTileBtn() {
-    const t = MAP_TILES[_tileIdx];
-    const btn = $('btn-map-tiles-pre');
-    if (btn) btn.textContent = t.name;
-  }
-
-  function _applyTiles() {
-    const t = MAP_TILES[_tileIdx];
-    localStorage.setItem('bw_tiles', t.id);
-    const maps = [App.leafletMap, _e4Map, _e5Map].filter(Boolean);
-    maps.forEach(m => {
-      m.eachLayer(l => { if (l instanceof L.TileLayer) m.removeLayer(l); });
-      L.tileLayer(t.url, t.opts).addTo(m);
-    });
-    _updateTileBtn();
-  }
-
+  // Selector de estilos de mapa — botón en pre-ruta
   $('btn-map-tiles-pre')?.addEventListener('click', () => {
     _tileIdx = (_tileIdx + 1) % MAP_TILES.length;
-    _applyTiles();
+    applyMapTiles();
   });
-  _updateTileBtn();
-  // Aplicar estilo guardado al arrancar (después de que el mapa se inicialice)
-  setTimeout(_applyTiles, 800);
+  _updateMapTileBtn();
   $('btn-map-start')?.addEventListener('click', () => {
     const ms = $('btn-map-start'); if (ms) ms.style.display = 'none';
     startSession();
