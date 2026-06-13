@@ -1093,6 +1093,45 @@ body.landscape-mode .btn-map-landscape {
   background: rgba(5,5,8,0.75);
 }
 
+/* Botón selector estilo mapa */
+.btn-map-tiles {
+  position: absolute;
+  bottom: 168px; right: 10px;
+  z-index: 501;
+  width: 36px; height: 36px;
+  background: rgba(5,5,8,0.88);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--r2);
+  color: var(--text-dim);
+  font-size: 1rem;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all var(--t);
+  pointer-events: auto;
+}
+.btn-map-tiles:hover { border-color: var(--orange); color: var(--orange); }
+/* Etiqueta del estilo actual */
+.map-tiles-label {
+  position: absolute;
+  bottom: 175px; right: 52px;
+  z-index: 501;
+  background: rgba(5,5,8,0.88);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--r2);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 4px 8px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+  white-space: nowrap;
+}
+.map-tiles-label.show { opacity: 1; }
+
 /* Recuadro info sesión activa (tiempo transcurrido) */
 .session-timer {
   position: absolute;

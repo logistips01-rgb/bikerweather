@@ -3159,6 +3159,46 @@ function initRidingControls() {
     App.followRider = true;
     if (App.position && App.leafletMap) App.leafletMap.setView([App.position.lat, App.position.lon], 15, { animate:true });
   });
+
+  // Selector de estilos de mapa
+  const MAP_TILES = [
+    { id: 'osm',         name: 'OSM Estándar',  url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',                              opts: { maxZoom: 19 } },
+    { id: 'carto-dark',  name: 'Dark Matter',   url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',                   opts: { maxZoom: 19, subdomains: 'abcd' } },
+    { id: 'carto-voy',   name: 'Voyager',       url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',        opts: { maxZoom: 19, subdomains: 'abcd' } },
+    { id: 'carto-light', name: 'Carto Light',   url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',                  opts: { maxZoom: 19, subdomains: 'abcd' } },
+    { id: 'topo',        name: 'Topográfico',   url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',                                opts: { maxZoom: 17 } },
+  ];
+  let _tileIdx = MAP_TILES.findIndex(t => t.id === (localStorage.getItem('bw_tiles') || 'osm'));
+  if (_tileIdx < 0) _tileIdx = 0;
+  let _tileLayers = [];
+  let _tileLabelTimer = null;
+
+  function _applyTiles() {
+    const t = MAP_TILES[_tileIdx];
+    localStorage.setItem('bw_tiles', t.id);
+    const maps = [App.leafletMap, _e4Map, _e5Map].filter(Boolean);
+    _tileLayers.forEach(l => { try { l.map.removeLayer(l.layer); } catch(e){} });
+    _tileLayers = [];
+    maps.forEach(m => {
+      const layer = L.tileLayer(t.url, t.opts).addTo(m);
+      layer.setZIndex(0);
+      _tileLayers.push({ map: m, layer });
+    });
+    // Mostrar etiqueta brevemente
+    let lbl = document.querySelector('.map-tiles-label');
+    if (!lbl) { lbl = document.createElement('div'); lbl.className = 'map-tiles-label'; document.querySelector('.map-wrap')?.appendChild(lbl); }
+    lbl.textContent = t.name;
+    lbl.classList.add('show');
+    clearTimeout(_tileLabelTimer);
+    _tileLabelTimer = setTimeout(() => lbl.classList.remove('show'), 2000);
+  }
+
+  $('btn-map-tiles')?.addEventListener('click', () => {
+    _tileIdx = (_tileIdx + 1) % MAP_TILES.length;
+    _applyTiles();
+  });
+  // Aplicar estilo guardado al arrancar (después de que el mapa se inicialice)
+  setTimeout(_applyTiles, 800);
   $('btn-map-start')?.addEventListener('click', () => {
     const ms = $('btn-map-start'); if (ms) ms.style.display = 'none';
     startSession();
