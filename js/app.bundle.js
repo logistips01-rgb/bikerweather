@@ -2062,6 +2062,7 @@ function openCircuit(style) {
   else if (style === 'estilo3') _cirBrand = 'triumph';
   else if (style === 'estilo4') _cirBrand = 'e4';
   else if (style === 'estilo5') _cirBrand = 'e5';
+  else if (style === 'estilo7') _cirBrand = 'cross';
 
   // Highlight active style button
   document.querySelectorAll('.btn-style').forEach(b => b.classList.remove('active'));
@@ -2086,6 +2087,7 @@ function openCircuit(style) {
   if (ov2) ov2.dataset.brand = _cirBrand;
   if (_cirBrand === 'e4') setTimeout(_initE4Map, 120);
   if (_cirBrand === 'e5') setTimeout(_initE5Map, 150);
+  if (_cirBrand === 'cross') _initCrossHud();
   setTimeout(() => {
     resizeCircuitCanvases();
     _cirLoop();
@@ -2357,6 +2359,149 @@ function resizeCircuitCanvases() {
   }
 }
 
+/* ── CROSS HUD ── */
+const _CX_CIRC = 2 * Math.PI * 110; // SVG arc circumference (r=110)
+const _CX_ARC  = _CX_CIRC * 270 / 360; // 270° sweep
+const _CX_RPM_MAX = 10500;
+
+function _initCrossHud() {
+  const solBtn = $('btn-cx-sol');
+  if (solBtn) {
+    solBtn.classList.toggle('active', !!App.solMode);
+    solBtn.onclick = () => {
+      App.solMode = !App.solMode;
+      document.body.classList.toggle('sol-mode', App.solMode);
+      solBtn.classList.toggle('active', App.solMode);
+      $('btn-cir-sol')?.classList.toggle('active', App.solMode);
+      localStorage.setItem('bw_sol', App.solMode ? '1' : '0');
+      const cs = $('cir-contrast'); if (cs) { cs.value = App.solMode ? '160' : '100'; cs.dispatchEvent(new Event('input')); }
+      const cxcs = $('cir-cx-contrast'); if (cxcs) { cxcs.value = App.solMode ? '160' : '100'; cxcs.dispatchEvent(new Event('input')); }
+    };
+  }
+  const hueSlider = $('cir-cx-hue');
+  if (hueSlider) {
+    hueSlider.value = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cir-h')) || 30;
+    hueSlider.oninput = () => {
+      document.documentElement.style.setProperty('--cir-h', hueSlider.value);
+      const mainH = $('cir-hue'); if (mainH) mainH.value = hueSlider.value;
+    };
+  }
+  const contSlider = $('cir-cx-contrast');
+  if (contSlider) {
+    contSlider.oninput = () => {
+      const v = contSlider.value / 100;
+      document.getElementById('circuit-overlay')?.style.setProperty('filter', `contrast(${v})`);
+    };
+  }
+}
+
+function _drawCrossCompass(canvas, heading) {
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width || canvas.offsetWidth || 300;
+  const H = 36;
+  canvas.width = W; canvas.height = H;
+  ctx.clearRect(0, 0, W, H);
+
+  const dirs = [
+    { label: 'N',  deg: 0 },   { label: 'NE', deg: 45 },
+    { label: 'E',  deg: 90 },  { label: 'SE', deg: 135 },
+    { label: 'S',  deg: 180 }, { label: 'SO', deg: 225 },
+    { label: 'O',  deg: 270 }, { label: 'NO', deg: 315 },
+  ];
+  const degPerPx = W / 120; // 120° visible span
+
+  dirs.forEach(({ label, deg }) => {
+    // Normalize offset from current heading
+    let diff = ((deg - heading) % 360 + 540) % 360 - 180;
+    const x = W / 2 + diff * degPerPx;
+    if (x < -20 || x > W + 20) return;
+    const isN = label === 'N';
+    ctx.font = isN ? `bold 13px monospace` : `11px monospace`;
+    ctx.fillStyle = isN ? '#ffaa00' : 'rgba(255,255,255,0.65)';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, x, H - 6);
+    ctx.strokeStyle = isN ? 'rgba(255,170,0,0.6)' : 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = isN ? 2 : 1;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, isN ? 12 : 8); ctx.stroke();
+  });
+
+  // Center heading triangle
+  const cx = W / 2;
+  ctx.fillStyle = '#ffaa00';
+  ctx.beginPath(); ctx.moveTo(cx, 2); ctx.lineTo(cx - 5, 14); ctx.lineTo(cx + 5, 14); ctx.closePath(); ctx.fill();
+  // Center divider line
+  ctx.strokeStyle = 'rgba(255,170,0,0.4)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx, 14); ctx.lineTo(cx, H - 20); ctx.stroke();
+}
+
+let _cxHeading = 0, _cxLastPos = null;
+
+function _updateCrossLayout(spd) {
+  const rpm  = App.obd2Rpm || 0;
+  const gear = App.obd2Gear;
+
+  // RPM arc
+  const arc = document.getElementById('cir-cx-arc');
+  if (arc) {
+    const pct  = Math.min(rpm / _CX_RPM_MAX, 1);
+    const fill = pct * _CX_ARC;
+    const inRedline = rpm > _CX_RPM_MAX * 0.85;
+    arc.style.stroke = inRedline ? '#ff3322' : '#ffaa00';
+    arc.style.filter = inRedline
+      ? 'drop-shadow(0 0 10px rgba(255,50,30,0.9))'
+      : 'drop-shadow(0 0 8px rgba(255,170,0,0.8))';
+    arc.setAttribute('stroke-dasharray', `${fill.toFixed(1)} ${_CX_CIRC.toFixed(1)}`);
+  }
+
+  // Speed & gear
+  const se = $('cir-cx-spd'); if (se) se.textContent = Math.round(spd) || 0;
+  const ge = $('cir-cx-gear');
+  if (ge) ge.textContent = gear === 'N' ? 'N' : gear ? gear : '—';
+
+  // Stats
+  const te = $('cir-cx-temp');
+  if (te) te.textContent = App.obd2Temp != null ? Math.round(App.obd2Temp)+'°' : '--°';
+  const ve = $('cir-cx-volt');
+  if (ve) ve.textContent = App.obd2Volt != null ? App.obd2Volt.toFixed(1)+'v' : '--v';
+  const re = $('cir-cx-rpm');
+  if (re) re.textContent = rpm > 0 ? (rpm/1000).toFixed(1)+'k' : '--k';
+  const thre = $('cir-cx-thr');
+  if (thre) thre.textContent = App.obd2Throttle != null ? App.obd2Throttle+'%' : '--%';
+
+  // Session timer
+  const se2 = $('cir-cx-sess');
+  if (se2 && App.sessionStart) {
+    const s = Math.floor((Date.now() - App.sessionStart) / 1000);
+    se2.textContent = Math.floor(s/60).toString().padStart(2,'0') + ':' + (s%60).toString().padStart(2,'0');
+  }
+
+  // Lat/Lon
+  const pos = App.position;
+  if (pos) {
+    const lat = $('cir-cx-lat'); if (lat) lat.textContent = pos.lat.toFixed(4)+'°';
+    const lon = $('cir-cx-lon'); if (lon) lon.textContent = pos.lon.toFixed(4)+'°';
+    // Derive heading from GPS movement
+    if (_cxLastPos && spd > 3) {
+      const dLat = pos.lat - _cxLastPos.lat;
+      const dLon = pos.lon - _cxLastPos.lon;
+      if (Math.abs(dLat) > 0.00001 || Math.abs(dLon) > 0.00001) {
+        const h = (Math.atan2(dLon, dLat) * 180 / Math.PI + 360) % 360;
+        _cxHeading = _cxHeading * 0.8 + h * 0.2; // smooth
+      }
+    }
+    _cxLastPos = { lat: pos.lat, lon: pos.lon };
+  }
+
+  // Compass
+  const canvas = document.getElementById('cir-cx-compass');
+  if (canvas) {
+    const heading = pos?.heading ?? _cxHeading;
+    _drawCrossCompass(canvas, heading);
+  }
+}
+
 function _cirLoop() {
   if (!App.circuitMode) return;
   const roll = (App.gyroData.gamma || 0) * (App.rollFlip  ? -1 : 1);
@@ -2369,6 +2514,8 @@ function _cirLoop() {
     _updateE5Layout(roll, spd);
   } else if (_cirBrand === 'sport-ls') {
     _updateLsLayout(roll, spd);
+  } else if (_cirBrand === 'cross') {
+    _updateCrossLayout(spd);
   } else { // sport-pt
     _drawSpeedArc($('cir-arc-cv'), spd);
     _drawMiniMap($('cir-map-cv'));

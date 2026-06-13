@@ -505,6 +505,18 @@
               <div class="st-sub">Mapa · Sin HUD</div>
             </button>
 
+            <button class="style-tile" id="btn-style-7">
+              <div class="st-bar" style="--sc:#ffaa00"></div>
+              <svg class="st-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <circle cx="20" cy="21" r="12"/>
+                <path d="M8.5 21 A11.5 11.5 0 0 1 31.5 21" stroke="#ffaa00" stroke-width="2.5"/>
+                <line x1="20" y1="9" x2="20" y2="6"/>
+                <line x1="20" y1="18" x2="20" y2="24"/>
+              </svg>
+              <div class="st-name">CROSS</div>
+              <div class="st-sub">Arco RPM · GPS</div>
+            </button>
+
           </div>
         </div>
       </div>
@@ -1066,6 +1078,87 @@
           <div class="cir-e5-gdata">
             <div class="cir-e5-gval" id="cir-e5-rpm-v">0.0</div>
             <div class="cir-e5-glbl">RPM ×1k</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CROSS layout (motocross: RPM arc + compass + lat/lon) ── -->
+      <div class="cir-cross-wrap" id="cir-cross">
+        <!-- Compass strip -->
+        <div class="cir-cx-compass-wrap">
+          <canvas id="cir-cx-compass" class="cir-cx-compass" height="36"></canvas>
+          <div class="cir-cx-coords">
+            <span id="cir-cx-lat">--.----°</span>
+            <span class="cir-cx-sep"> / </span>
+            <span id="cir-cx-lon">--.----°</span>
+          </div>
+        </div>
+
+        <!-- RPM arc + central data -->
+        <div class="cir-cx-gauge-wrap">
+          <svg class="cir-cx-svg" id="cir-cx-svg" viewBox="0 0 280 260">
+            <!-- Track faint -->
+            <circle id="cir-cx-track" cx="140" cy="140" r="110"
+              fill="none" stroke="rgba(255,170,0,0.10)" stroke-width="18"
+              stroke-dasharray="518 174" stroke-dashoffset="0"
+              stroke-linecap="round"
+              transform="rotate(135 140 140)"/>
+            <!-- RPM fill -->
+            <circle id="cir-cx-arc" cx="140" cy="140" r="110"
+              fill="none" stroke="#ffaa00" stroke-width="18"
+              stroke-dasharray="0 692"
+              stroke-linecap="round"
+              transform="rotate(135 140 140)"
+              style="filter:drop-shadow(0 0 8px rgba(255,170,0,0.8))"/>
+            <!-- Redline marker at ~85% -->
+            <circle cx="140" cy="140" r="110"
+              fill="none" stroke="rgba(255,40,40,0.5)" stroke-width="3"
+              stroke-dasharray="2 690"
+              stroke-dashoffset="-440"
+              transform="rotate(135 140 140)"/>
+          </svg>
+          <div class="cir-cx-center">
+            <div class="cir-cx-spd" id="cir-cx-spd">0</div>
+            <div class="cir-cx-spdu">KM/H</div>
+            <div class="cir-cx-gear" id="cir-cx-gear">—</div>
+            <div class="cir-cx-gearlbl">GEAR</div>
+          </div>
+        </div>
+
+        <!-- Stats row -->
+        <div class="cir-cx-stats">
+          <div class="cir-cx-stat">
+            <span class="cir-cx-sv" id="cir-cx-temp" style="color:#29d9ff">--°</span>
+            <span class="cir-cx-sl">MOT</span>
+          </div>
+          <div class="cir-cx-stat">
+            <span class="cir-cx-sv" id="cir-cx-volt" style="color:rgba(255,255,255,0.8)">--v</span>
+            <span class="cir-cx-sl">VOLT</span>
+          </div>
+          <div class="cir-cx-stat">
+            <span class="cir-cx-sv" id="cir-cx-rpm" style="color:#ffaa00">--k</span>
+            <span class="cir-cx-sl">RPM</span>
+          </div>
+          <div class="cir-cx-stat">
+            <span class="cir-cx-sv" id="cir-cx-thr" style="color:#00f0a0">--%</span>
+            <span class="cir-cx-sl">ACEL</span>
+          </div>
+          <div class="cir-cx-stat">
+            <span class="cir-cx-sv" id="cir-cx-sess" style="color:rgba(255,255,255,0.6)">--:--</span>
+            <span class="cir-cx-sl">SESIÓN</span>
+          </div>
+        </div>
+
+        <!-- Controls: sol + hue + contrast -->
+        <div class="cir-cx-controls">
+          <button id="btn-cx-sol" class="cir-cx-ctrl-btn" title="Modo Sol">☀</button>
+          <div class="cir-cx-slider-group">
+            <span class="cir-cx-slider-lbl">COLOR</span>
+            <input type="range" id="cir-cx-hue" class="cir-hue-slider" min="0" max="360" value="30" title="Color acento">
+          </div>
+          <div class="cir-cx-slider-group">
+            <span class="cir-cx-slider-lbl">LUZ</span>
+            <input type="range" id="cir-cx-contrast" class="cir-contrast-slider" min="100" max="250" value="100" title="Contraste">
           </div>
         </div>
       </div>
