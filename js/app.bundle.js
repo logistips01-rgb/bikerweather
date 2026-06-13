@@ -3183,12 +3183,9 @@ function initRidingControls() {
     const t = MAP_TILES[_tileIdx];
     localStorage.setItem('bw_tiles', t.id);
     const maps = [App.leafletMap, _e4Map, _e5Map].filter(Boolean);
-    _tileLayers.forEach(l => { try { l.map.removeLayer(l.layer); } catch(e){} });
-    _tileLayers = [];
     maps.forEach(m => {
-      const layer = L.tileLayer(t.url, t.opts).addTo(m);
-      layer.setZIndex(0);
-      _tileLayers.push({ map: m, layer });
+      m.eachLayer(l => { if (l instanceof L.TileLayer) m.removeLayer(l); });
+      L.tileLayer(t.url, t.opts).addTo(m);
     });
     _updateTileBtn();
   }
