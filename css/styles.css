@@ -1905,6 +1905,25 @@ body.circuit-active .location-bar { display: none !important; }
   background: hsl(var(--cir-h), 85%, 55%);
   box-shadow: 0 0 8px hsla(var(--cir-h), 100%, 55%, 0.8);
 }
+/* Contrast slider */
+.cir-contrast-slider {
+  width: 42px; height: 4px;
+  -webkit-appearance: none; appearance: none;
+  border-radius: 2px; cursor: pointer; outline: none;
+  background: linear-gradient(to right, #333 0%, #fff 100%);
+  border: 1px solid rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+.cir-contrast-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid rgba(255,255,255,0.8);
+  box-shadow: 0 0 6px rgba(255,255,255,0.5);
+  cursor: pointer;
+}
+
 .cir-btn-mic {
   font-size: 15px; width: 36px;
   border-color: rgba(180,0,0,0.22); color: rgba(255,60,30,0.42);
@@ -1976,6 +1995,30 @@ body.landscape-mode .cir-lean-panel { width: 110px; overflow: hidden; }
   --sk-bar-lbl:   hsla(var(--cir-h),80%,60%,0.60);
 }
 
+
+/* ── Modo Sol — alto contraste para luz directa ── */
+body.sol-mode #circuit-overlay {
+  --sk-bg:       #000000;
+  --sk-bg-glow:  #000000;
+  --sk-txt:      #ffee00;
+  --sk-txt2:     #ffcc00;
+  --sk-border:   rgba(255,238,0,0.35);
+  --sk-border2:  rgba(255,238,0,0.20);
+  --sk-rpm-c:    #ff8800;
+  --sk-temp-c:   #ff8800;
+  --sk-volt-c:   #ffee00;
+  --sk-gear-c:   #ffee00;
+  --sk-spd-c:    #ffffff;
+  --sk-spdu-c:   rgba(255,238,0,0.60);
+  --sk-gf-c:     #ff8800;
+  --sk-bar-trk:  rgba(255,238,0,0.10);
+  --sk-bar-bdr:  rgba(255,238,0,0.60);
+  --sk-bar-fill: #ffee00;
+  --sk-bar-top:  #ffffff;
+  --sk-bar-ang:  #ffee00;
+  --sk-bar-lbl:  rgba(255,238,0,0.70);
+}
+body.sol-mode #circuit-overlay .cir-bg-overlay { display: none; }
 
 /* Apply skin bg — color vívido en centro, degradado a negro en bordes */
 body.landscape-mode #circuit-overlay {

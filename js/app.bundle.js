@@ -3289,6 +3289,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-cir-stop')?.addEventListener('click', stopCircuitSession);
   $('btn-cir-exit')?.addEventListener('click', closeCircuit);
   $('btn-cir-ls')?.addEventListener('click', () => { toggleLandscapeMode(); $('btn-cir-ls')?.classList.toggle('active', App.landscapeMode); });
+  // Botón Sol: modo alto contraste para luz directa
+  $('btn-cir-sol')?.addEventListener('click', () => {
+    App.solMode = !App.solMode;
+    document.body.classList.toggle('sol-mode', App.solMode);
+    $('btn-cir-sol')?.classList.toggle('active', App.solMode);
+    localStorage.setItem('bw_sol', App.solMode ? '1' : '0');
+    const cs = $('cir-contrast');
+    if (cs) { cs.value = App.solMode ? '160' : '100'; cs.dispatchEvent(new Event('input')); }
+  });
+  if (localStorage.getItem('bw_sol') === '1') {
+    App.solMode = true;
+    document.body.classList.add('sol-mode');
+    $('btn-cir-sol')?.classList.add('active');
+  }
+  // Slider de contraste
+  const contrastSlider = $('cir-contrast');
+  if (contrastSlider) {
+    contrastSlider.addEventListener('input', () => {
+      const v = contrastSlider.value / 100;
+      document.getElementById('circuit-overlay')?.style.setProperty('filter', `contrast(${v})`);
+    });
+  }
   // Botón T: alterna el slider entre modo color (hue) e intensidad (glow)
   let _sliderMode = 'hue';
   $('btn-cir-brand')?.addEventListener('click', () => {
