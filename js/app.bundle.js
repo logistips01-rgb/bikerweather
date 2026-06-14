@@ -1482,21 +1482,22 @@ function initKirkVoice() {
   if (!SR) return;
   _kirkRec = new SR();
   _kirkRec.lang           = 'es-ES';
-  _kirkRec.continuous     = false;
+  _kirkRec.continuous     = true;
   _kirkRec.interimResults = false;
   _kirkRec.onresult = e => {
-    const t = e.results[0][0].transcript.toLowerCase().trim();
+    const t = e.results[e.resultIndex][0].transcript.toLowerCase().trim();
     handleKirkCommand(t);
   };
   _kirkRec.onend = () => {
     _kirkListening = false;
     $('btn-cir-mic')?.classList.remove('active');
     $('btn-hud-mic')?.classList.remove('active');
-    if (_kirkAutoListen && !_kirkSpeaking) setTimeout(_kirkStartListening, 300);
+    // continuous=true: onend solo dispara en error/red — reiniciar si toca
+    if (_kirkAutoListen && !_kirkSpeaking) setTimeout(_kirkStartListening, 1500);
   };
   _kirkRec.onerror = e => {
     _kirkListening = false;
-    if (_kirkAutoListen && !_kirkSpeaking && e.error !== 'not-allowed') setTimeout(_kirkStartListening, 1000);
+    if (_kirkAutoListen && !_kirkSpeaking && e.error !== 'not-allowed') setTimeout(_kirkStartListening, 2000);
   };
 }
 
