@@ -1174,7 +1174,11 @@ function startSession() {
       speed: App.gpsSpeed, roll: App.gyroData.gamma, wc: App.windChill, temp: App.weather?.temp,
       gLong: Math.round(App.gForce.long * 100) / 100,
       gLat:  Math.round(App.gForce.lat  * 100) / 100,
-      volt:  App.obd2Volt ?? null
+      volt:  App.obd2Volt  ?? null,
+      stft:  App.obd2Stft  ?? null,
+      ltft:  App.obd2Ltft  ?? null,
+      map:   App.obd2Map   ?? null,
+      iat:   App.obd2Iat   ?? null,
     });
     // Route mode: update telemetry buffer + run Kirk alerts every 2s
     if (!App.circuitMode) {
@@ -1289,6 +1293,10 @@ function buildReport() {
   const gLongs  = App.sessionSamples.map(s => s.gLong).filter(v => v != null);
   const gLats   = App.sessionSamples.map(s => s.gLat).filter(v => v != null);
   const volts   = App.sessionSamples.map(s => s.volt).filter(v => v != null);
+  const stfts   = App.sessionSamples.map(s => s.stft).filter(v => v != null);
+  const ltfts   = App.sessionSamples.map(s => s.ltft).filter(v => v != null);
+  const maps    = App.sessionSamples.map(s => s.map).filter(v => v != null);
+  const iats    = App.sessionSamples.map(s => s.iat).filter(v => v != null);
   const cL      = App.sessionCurves.filter(c => c.dir === 'L');
   const cR      = App.sessionCurves.filter(c => c.dir === 'R');
   const maxAng  = App.sessionCurves.length ? Math.max(...App.sessionCurves.map(c => c.maxAngle)) : 0;
@@ -1303,7 +1311,18 @@ function buildReport() {
     inclin:   { maxAngle: Math.max(...(rolls.length?rolls.map(Math.abs):[0])), history: rolls },
     curves:   { total: App.sessionCurves.length, left: cL.length, right: cR.length, list: App.sessionCurves, maxAngle: maxAng, avgAngle: avgAng },
     gForces:  { peakBraking: peakBrk, peakAccel: peakAcc, peakLateral: peakLat, historyLong: gLongs, historyLat: gLats },
-    electrical: volts.length ? { min: Math.round(Math.min(...volts)*10)/10, avg: Math.round(volts.reduce((a,b)=>a+b,0)/volts.length*10)/10, history: volts } : null
+    electrical: volts.length ? { min: Math.round(Math.min(...volts)*10)/10, avg: Math.round(volts.reduce((a,b)=>a+b,0)/volts.length*10)/10, history: volts } : null,
+    injection: (stfts.length || ltfts.length) ? {
+      stftAvg:  stfts.length ? Math.round(stfts.reduce((a,b)=>a+b,0)/stfts.length*10)/10 : null,
+      stftMin:  stfts.length ? Math.round(Math.min(...stfts)*10)/10 : null,
+      stftMax:  stfts.length ? Math.round(Math.max(...stfts)*10)/10 : null,
+      ltftAvg:  ltfts.length ? Math.round(ltfts.reduce((a,b)=>a+b,0)/ltfts.length*10)/10 : null,
+      ltftMin:  ltfts.length ? Math.round(Math.min(...ltfts)*10)/10 : null,
+      ltftMax:  ltfts.length ? Math.round(Math.max(...ltfts)*10)/10 : null,
+      mapAvg:   maps.length  ? Math.round(maps.reduce((a,b)=>a+b,0)/maps.length) : null,
+      iatAvg:   iats.length  ? Math.round(iats.reduce((a,b)=>a+b,0)/iats.length) : null,
+      historyStft: stfts, historyLtft: ltfts,
+    } : null
   };
 }
 
@@ -3003,6 +3022,31 @@ function renderReport(r) {
         (r.electrical.min < 13.0 ? '<div class="report-kpi"><div class="kpi-value" style="color:#ff3250;font-size:0.7rem">⚠ BATERÍA</div><div class="kpi-label">REVISAR</div></div>' : '<div class="report-kpi"><div class="kpi-value" style="color:#00f0a0;font-size:0.7rem">✓ OK</div><div class="kpi-label">ELÉCTRICO</div></div>') +
       '</div>' +
       lineChartSVG(r.electrical.history, '#00f0a0', 11, 15.5, 'v') + '</div>' : '') +
+
+    (r.injection ? (() => {
+      const inj = r.injection;
+      const ltftColor = inj.ltftAvg == null ? '#fff'
+        : Math.abs(inj.ltftAvg) > 10 ? '#ff3250'
+        : Math.abs(inj.ltftAvg) > 5  ? '#ffb300' : '#00f0a0';
+      const ltftWarn = inj.ltftAvg != null && Math.abs(inj.ltftAvg) > 10;
+      const ltftNote = inj.ltftAvg == null ? '' :
+        inj.ltftAvg > 10  ? ' — ECU añadiendo mucho combustible (mezcla pobre). Revisar mapa o tune.' :
+        inj.ltftAvg < -10 ? ' — ECU recortando combustible (mezcla rica). Revisar mapa.' :
+        inj.ltftAvg > 5   ? ' — Trim elevado, posible desajuste por escape.' : ' — dentro de rango normal.';
+      return '<div class="report-section"><div class="report-section-title">INYECCIÓN DE COMBUSTIBLE</div>' +
+        '<div class="report-kpis" style="margin-top:6px">' +
+          (inj.stftAvg != null ? '<div class="report-kpi"><div class="kv-sm">' + (inj.stftAvg > 0 ? '+' : '') + inj.stftAvg + '%</div><div class="kpi-label">STFT MEDIA</div></div>' : '') +
+          (inj.stftMax != null ? '<div class="report-kpi"><div class="kv-sm">' + (inj.stftMax > 0 ? '+' : '') + inj.stftMax + '%</div><div class="kpi-label">STFT MÁX</div></div>' : '') +
+          (inj.ltftAvg != null ? '<div class="report-kpi"><div class="kv-sm" style="color:' + ltftColor + '">' + (inj.ltftAvg > 0 ? '+' : '') + inj.ltftAvg + '%</div><div class="kpi-label">LTFT MEDIA</div></div>' : '') +
+          (inj.mapAvg  != null ? '<div class="report-kpi"><div class="kv-sm">' + inj.mapAvg + ' kPa</div><div class="kpi-label">MAP MEDIA</div></div>' : '') +
+          (inj.iatAvg  != null ? '<div class="report-kpi"><div class="kv-sm">' + inj.iatAvg + '°</div><div class="kpi-label">TEMP. ADMISIÓN</div></div>' : '') +
+        '</div>' +
+        (ltftWarn ? '<div style="font-size:0.72rem;color:' + ltftColor + ';padding:6px 0;line-height:1.4">⚠ LTFT ' + (inj.ltftAvg > 0 ? '+' : '') + inj.ltftAvg + '%' + ltftNote + '</div>' : '') +
+        (inj.historyStft?.length > 2 ? lineChartSVG(inj.historyStft, '#ffaa00', -25, 25, '%') : '') +
+        (inj.historyLtft?.length > 2 ? lineChartSVG(inj.historyLtft, '#ff6600', -25, 25, '%') : '') +
+      '</div>';
+    })() : '') +
+
     topCurvesHTML(r.curves.list) +
 
     '<div class="report-section report-rating"><div class="report-section-title">CLASIFICACIÓN DE PILOTO</div>' +
@@ -3813,7 +3857,7 @@ const _OBD = {
   CHR5:   'bef8d6c9-9c21-4c9e-b632-bd58c1009f9f',
   device: null, writeChr: null, buf: '', resolvers: [],
   pollTimer: null, pollIdx: 0, reconnTimer: null, _busy: false, _firstData: false,
-  PIDS: ['010C','010D','0105','0142','0104','0111','015C'],
+  PIDS: ['010C','010D','0105','0142','0104','0111','015C','0106','0107','010B','010F'],
 };
 
 async function connectOBD2() {
@@ -3995,13 +4039,17 @@ function _obdParse(pid, raw) {
   if (!_OBD._firstData) { _OBD._firstData = true; toast('OBD2 datos OK ✓', 'ok'); }
   const A = d[0], B = d[1] ?? 0;
   switch(pid) {
-    case '010C': App.obd2Rpm      = ((A*256+B)/4)|0;           break;
-    case '010D': App.obd2Speed    = A;                         break;
-    case '0105': App.obd2Temp     = A - 40;                    break;
-    case '0142': App.obd2Volt     = (A*256+B)/1000;            break;
-    case '0104': App.obd2Load     = Math.round(A / 2.55);      break;
-    case '0111': App.obd2Throttle = Math.round(A / 2.55);      break;
-    case '015C': App.obd2OilTemp  = A - 40;                    break;
+    case '010C': App.obd2Rpm      = ((A*256+B)/4)|0;                        break;
+    case '010D': App.obd2Speed    = A;                                      break;
+    case '0105': App.obd2Temp     = A - 40;                                 break;
+    case '0142': App.obd2Volt     = (A*256+B)/1000;                         break;
+    case '0104': App.obd2Load     = Math.round(A / 2.55);                   break;
+    case '0111': App.obd2Throttle = Math.round(A / 2.55);                   break;
+    case '015C': App.obd2OilTemp  = A - 40;                                 break;
+    case '0106': App.obd2Stft     = Math.round((A - 128) * 100 / 128 * 10) / 10; break;
+    case '0107': App.obd2Ltft     = Math.round((A - 128) * 100 / 128 * 10) / 10; break;
+    case '010B': App.obd2Map      = A;                                      break;
+    case '010F': App.obd2Iat      = A - 40;                                 break;
   }
   _obdGear();
 }
