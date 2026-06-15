@@ -1293,8 +1293,8 @@ function buildReport() {
   const gLongs  = App.sessionSamples.map(s => s.gLong).filter(v => v != null);
   const gLats   = App.sessionSamples.map(s => s.gLat).filter(v => v != null);
   const volts   = App.sessionSamples.map(s => s.volt).filter(v => v != null);
-  const stfts   = App.sessionSamples.map(s => s.stft).filter(v => v != null);
-  const ltfts   = App.sessionSamples.map(s => s.ltft).filter(v => v != null);
+  const stfts   = App.sessionSamples.map(s => s.stft).filter(v => v != null && Math.abs(v) <= 40);
+  const ltfts   = App.sessionSamples.map(s => s.ltft).filter(v => v != null && Math.abs(v) <= 40);
   const maps    = App.sessionSamples.map(s => s.map).filter(v => v != null);
   const iats    = App.sessionSamples.map(s => s.iat).filter(v => v != null);
   const cL      = App.sessionCurves.filter(c => c.dir === 'L');
@@ -3037,7 +3037,7 @@ function renderReport(r) {
         '<div class="report-kpis" style="margin-top:6px">' +
           (inj.stftAvg != null ? '<div class="report-kpi"><div class="kv-sm">' + (inj.stftAvg > 0 ? '+' : '') + inj.stftAvg + '%</div><div class="kpi-label">STFT MEDIA</div></div>' : '') +
           (inj.stftMax != null ? '<div class="report-kpi"><div class="kv-sm">' + (inj.stftMax > 0 ? '+' : '') + inj.stftMax + '%</div><div class="kpi-label">STFT MÁX</div></div>' : '') +
-          (inj.ltftAvg != null ? '<div class="report-kpi"><div class="kv-sm" style="color:' + ltftColor + '">' + (inj.ltftAvg > 0 ? '+' : '') + inj.ltftAvg + '%</div><div class="kpi-label">LTFT MEDIA</div></div>' : '') +
+          (inj.ltftAvg != null ? '<div class="report-kpi"><div class="kv-sm" style="color:' + ltftColor + '">' + (inj.ltftAvg > 0 ? '+' : '') + inj.ltftAvg + '%</div><div class="kpi-label">LTFT MEDIA</div></div>' : '<div class="report-kpi"><div class="kv-sm" style="color:#888">N/D</div><div class="kpi-label">LTFT MEDIA</div></div>') +
           (inj.mapAvg  != null ? '<div class="report-kpi"><div class="kv-sm">' + inj.mapAvg + ' kPa</div><div class="kpi-label">MAP MEDIA</div></div>' : '') +
           (inj.iatAvg  != null ? '<div class="report-kpi"><div class="kv-sm">' + inj.iatAvg + '°</div><div class="kpi-label">TEMP. ADMISIÓN</div></div>' : '') +
         '</div>' +
@@ -4046,8 +4046,8 @@ function _obdParse(pid, raw) {
     case '0104': App.obd2Load     = Math.round(A / 2.55);                   break;
     case '0111': App.obd2Throttle = Math.round(A / 2.55);                   break;
     case '015C': App.obd2OilTemp  = A - 40;                                 break;
-    case '0106': App.obd2Stft     = Math.round((A - 128) * 100 / 128 * 10) / 10; break;
-    case '0107': App.obd2Ltft     = Math.round((A - 128) * 100 / 128 * 10) / 10; break;
+    case '0106': { const sv = Math.round((A - 128) * 100 / 128 * 10) / 10; App.obd2Stft = Math.abs(sv) <= 40 ? sv : null; break; }
+    case '0107': { const lv = Math.round((A - 128) * 100 / 128 * 10) / 10; App.obd2Ltft = Math.abs(lv) <= 40 ? lv : null; break; }
     case '010B': App.obd2Map      = A;                                      break;
     case '010F': App.obd2Iat      = A - 40;                                 break;
   }
