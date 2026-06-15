@@ -222,8 +222,129 @@ const App = {
   obd2OilTemp:  null,
   obd2Load:     null,
   obd2Throttle: null,
-  _fb:              null
+  _fb:              null,
+  profile:          null,
 };
+
+/* ═══════════════════════════════════════
+   PROFILES
+═══════════════════════════════════════ */
+function _profilesLoad() {
+  try { return JSON.parse(localStorage.getItem('bw_profiles') || '[]'); } catch(e) { return []; }
+}
+function _profilesSave(list) { localStorage.setItem('bw_profiles', JSON.stringify(list)); }
+
+function _profileActive() {
+  const list = _profilesLoad();
+  const id = localStorage.getItem('bw_active_profile_id');
+  return list.find(p => p.id === id) || list[0] || null;
+}
+
+function _profileApply(p) {
+  if (!p) return;
+  App.profile = p;
+  localStorage.setItem('bw_active_profile_id', p.id);
+  if (p.bike) {
+    localStorage.setItem('bw_bike_model', p.bike);
+    const bm = $('bike-model'); if (bm) bm.value = p.bike;
+    const bs = $('bike-status'); if (bs) bs.textContent = '✓ ' + p.bike;
+  }
+  const nd = $('profile-name-display'); if (nd) nd.textContent = p.name || '—';
+  const bd = $('profile-bike-display'); if (bd) bd.textContent = p.bike || '—';
+}
+
+function _profileInit() {
+  let list = _profilesLoad();
+  if (list.length === 0) {
+    const p = {
+      id: 'p_' + Date.now(),
+      name: localStorage.getItem('bw_nickname') || 'Piloto',
+      bike: localStorage.getItem('bw_bike_model') || '',
+      gearR: [100, 70, 53, 42, 35],
+    };
+    list = [p];
+    _profilesSave(list);
+    localStorage.setItem('bw_active_profile_id', p.id);
+  }
+  _profileApply(_profileActive());
+}
+
+function _profileRenderList() {
+  const list = _profilesLoad();
+  const active = App.profile;
+  const el = $('profile-list');
+  if (!el) return;
+  el.innerHTML = list.map(p => `
+    <div style="display:flex;align-items:center;gap:10px;background:${p.id===active?.id?'#1e2a3a':'#1a1b28'};border:1px solid ${p.id===active?.id?'#ff6600':'#333'};border-radius:10px;padding:10px 12px;cursor:pointer" data-pid="${p.id}">
+      <div style="flex:1">
+        <div style="font-family:var(--font-mono);font-size:0.82rem;color:#fff;font-weight:700">${p.name||'Sin nombre'}</div>
+        <div style="font-family:var(--font-mono);font-size:0.62rem;color:#8888aa;margin-top:2px">${p.bike||'Sin moto'}</div>
+      </div>
+      ${p.id===active?.id ? '<span style="color:#ff6600;font-size:0.7rem">● ACTIVO</span>' : ''}
+    </div>
+  `).join('');
+  el.querySelectorAll('[data-pid]').forEach(card => {
+    card.addEventListener('click', () => {
+      const p = list.find(x => x.id === card.dataset.pid);
+      if (p) { _profileApply(p); _profileRenderList(); toast('Perfil "' + p.name + '" activo', 'ok'); }
+    });
+  });
+}
+
+let _peEditingId = null;
+function _profileOpenEdit(id) {
+  const list = _profilesLoad();
+  const p = id ? list.find(x => x.id === id) : null;
+  _peEditingId = id || null;
+  const title = $('profile-edit-title'); if (title) title.textContent = p ? 'Editar perfil' : 'Nuevo perfil';
+  const del = $('btn-pe-delete'); if (del) del.style.display = p && list.length > 1 ? '' : 'none';
+  const [r1,r2,r3,r4,r5] = p?.gearR || [100,70,53,42,35];
+  const set = (id, v) => { const e = $(id); if (e) e.value = v; };
+  set('pe-name', p?.name || '');
+  set('pe-bike', p?.bike || '');
+  set('pe-r1', r1); set('pe-r2', r2); set('pe-r3', r3); set('pe-r4', r4); set('pe-r5', r5);
+  const modal = $('modal-profile-edit'); if (modal) { modal.style.display = 'flex'; }
+}
+
+function _profileSaveEdit() {
+  const get = id => $(id)?.value?.trim();
+  const name = get('pe-name') || 'Piloto';
+  const bike = get('pe-bike') || '';
+  const gearR = [
+    parseInt($('pe-r1')?.value) || 100,
+    parseInt($('pe-r2')?.value) || 70,
+    parseInt($('pe-r3')?.value) || 53,
+    parseInt($('pe-r4')?.value) || 42,
+    parseInt($('pe-r5')?.value) || 35,
+  ];
+  let list = _profilesLoad();
+  if (_peEditingId) {
+    list = list.map(p => p.id === _peEditingId ? { ...p, name, bike, gearR } : p);
+  } else {
+    const newP = { id: 'p_' + Date.now(), name, bike, gearR };
+    list.push(newP);
+    _peEditingId = newP.id;
+    localStorage.setItem('bw_active_profile_id', newP.id);
+  }
+  _profilesSave(list);
+  _profileApply(list.find(p => p.id === _peEditingId));
+  $('modal-profile-edit').style.display = 'none';
+  _profileRenderList();
+  toast('Perfil guardado ✓', 'ok');
+}
+
+function _profileDelete() {
+  if (!_peEditingId) return;
+  let list = _profilesLoad();
+  if (list.length <= 1) { toast('No puedes eliminar el único perfil', 'info'); return; }
+  list = list.filter(p => p.id !== _peEditingId);
+  _profilesSave(list);
+  const active = App.profile?.id === _peEditingId;
+  if (active) _profileApply(list[0]);
+  $('modal-profile-edit').style.display = 'none';
+  _profileRenderList();
+  toast('Perfil eliminado', 'info');
+}
 
 const REFRESH_MS   = 5 * 60 * 1000;
 const CURVE_THRESH = 8;
@@ -3640,6 +3761,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (_kirkListening) _kirkStopListening(); else _kirkStartListening();
   });
 
+  // Profiles init
+  _profileInit();
+
+  // Profile buttons
+  $('btn-profile-switch')?.addEventListener('click', () => {
+    _profileRenderList();
+    const m = $('modal-profiles'); if (m) m.style.display = 'flex';
+  });
+  $('btn-profile-edit')?.addEventListener('click', () => {
+    $('modal-profiles').style.display = 'none';
+    _profileOpenEdit(App.profile?.id);
+  });
+  $('btn-profile-new')?.addEventListener('click', () => {
+    $('modal-profiles').style.display = 'none';
+    _profileOpenEdit(null);
+  });
+  $('btn-profile-add')?.addEventListener('click', () => {
+    $('modal-profiles').style.display = 'none';
+    _profileOpenEdit(null);
+  });
+  $('btn-profile-modal-close')?.addEventListener('click', () => { $('modal-profiles').style.display = 'none'; });
+  $('btn-pe-save')?.addEventListener('click', _profileSaveEdit);
+  $('btn-pe-delete')?.addEventListener('click', _profileDelete);
+  $('btn-pe-cancel')?.addEventListener('click', () => { $('modal-profile-edit').style.display = 'none'; });
+
   // Moto
   const savedBike = localStorage.getItem('bw_bike_model');
   if (savedBike) { const bm=$('bike-model'); if(bm) bm.value=savedBike; const bs=$('bike-status'); if(bs) bs.textContent='✓ '+savedBike; }
@@ -3647,7 +3793,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const model = $('bike-model')?.value?.trim();
     if (!model) { toast('Introduce el modelo de tu moto', 'info'); return; }
     localStorage.setItem('bw_bike_model', model);
+    // Sync to active profile
+    const list = _profilesLoad();
+    const updated = list.map(p => p.id === App.profile?.id ? { ...p, bike: model } : p);
+    _profilesSave(updated);
+    if (App.profile) App.profile.bike = model;
     const bs=$('bike-status'); if(bs) bs.textContent='✓ '+model;
+    const bd=$('profile-bike-display'); if(bd) bd.textContent=model;
     toast('Moto guardada ✓', 'ok');
   });
 
@@ -4059,7 +4211,8 @@ function _obdGear() {
   if (!rpm || rpm < 600) { App.obd2Gear = null; return; }
   if (!spd || spd < 5)   { App.obd2Gear = 'N'; return; }
   const r = rpm / spd;
-  App.obd2Gear = r>100?1 : r>70?2 : r>53?3 : r>42?4 : r>35?5 : 6;
+  const [r1,r2,r3,r4,r5] = App.profile?.gearR || [100,70,53,42,35];
+  App.obd2Gear = r>r1?1 : r>r2?2 : r>r3?3 : r>r4?4 : r>r5?5 : 6;
 }
 
 function disconnectOBD2() {
@@ -4240,8 +4393,8 @@ async function uploadRouteToRanking(report) {
   const { collection, addDoc, serverTimestamp } = App._fb;
   if (report.meta.duration < 30 * 60 * 1000) { toast('Ruta menor de 30 min, no cuenta para el ranking', 'info'); return; }
   try {
-    const nickname  = localStorage.getItem('bw_nickname')   || 'Motorista';
-    const bikeModel = localStorage.getItem('bw_bike_model') || '';
+    const nickname  = App.profile?.name || localStorage.getItem('bw_nickname') || 'Motorista';
+    const bikeModel = App.profile?.bike || localStorage.getItem('bw_bike_model') || '';
     const fullTrack = report.meta.track || [];
     const step      = fullTrack.length > 500 ? Math.ceil(fullTrack.length / 500) : 1;
     const track     = fullTrack.filter((_, i) => i % step === 0);

@@ -773,6 +773,26 @@
         </div>
       </div>
 
+      <!-- Perfiles de usuario -->
+      <div class="sensors-card">
+        <div class="panel-hdr" style="padding:8px 14px 7px">
+          <span class="panel-hdr-lbl">👤 PERFIL ACTIVO</span>
+        </div>
+        <div style="padding:10px 14px 12px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="flex:1">
+              <div id="profile-name-display" style="font-family:var(--font-mono);font-size:0.85rem;color:#fff;font-weight:700">—</div>
+              <div id="profile-bike-display" style="font-family:var(--font-mono);font-size:0.65rem;color:#8888aa;margin-top:2px">—</div>
+            </div>
+            <button id="btn-profile-switch" class="btn btn-primary" style="white-space:nowrap">Cambiar</button>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button id="btn-profile-edit" class="btn btn-secondary" style="flex:1;font-size:0.7rem">Editar perfil</button>
+            <button id="btn-profile-new" class="btn btn-secondary" style="flex:1;font-size:0.7rem">Nuevo perfil</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Modelo de moto -->
       <div class="sensors-card">
         <div class="panel-hdr" style="padding:8px 14px 7px">
@@ -1222,6 +1242,54 @@
 
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Profile switch modal -->
+<div id="modal-profiles" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.75);align-items:flex-end">
+  <div style="background:#12131a;border-radius:18px 18px 0 0;padding:18px 16px 32px;width:100%;max-height:80vh;overflow-y:auto;box-sizing:border-box">
+    <div style="font-family:var(--font-mono);font-size:0.75rem;color:#8888aa;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">Seleccionar perfil</div>
+    <div id="profile-list" style="display:flex;flex-direction:column;gap:8px"></div>
+    <button id="btn-profile-add" class="btn btn-primary" style="width:100%;margin-top:14px">+ Nuevo perfil</button>
+    <button id="btn-profile-modal-close" class="btn btn-secondary" style="width:100%;margin-top:8px">Cerrar</button>
+  </div>
+</div>
+
+<!-- Profile edit modal -->
+<div id="modal-profile-edit" style="display:none;position:fixed;inset:0;z-index:9001;background:rgba(0,0,0,0.75);align-items:flex-end">
+  <div style="background:#12131a;border-radius:18px 18px 0 0;padding:18px 16px 32px;width:100%;max-height:90vh;overflow-y:auto;box-sizing:border-box">
+    <div style="font-family:var(--font-mono);font-size:0.75rem;color:#8888aa;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px" id="profile-edit-title">Editar perfil</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div>
+        <label style="font-family:var(--font-mono);font-size:0.65rem;color:#8888aa;display:block;margin-bottom:4px">NOMBRE DEL PILOTO</label>
+        <input id="pe-name" type="text" placeholder="Ej: Manolo, Jorge…" maxlength="24" autocomplete="off" style="width:100%;box-sizing:border-box;background:#1e1f2e;border:1px solid #333;border-radius:8px;padding:8px 10px;color:#fff;font-family:var(--font-mono);font-size:0.8rem" />
+      </div>
+      <div>
+        <label style="font-family:var(--font-mono);font-size:0.65rem;color:#8888aa;display:block;margin-bottom:4px">MOTO</label>
+        <input id="pe-bike" type="text" placeholder="Ej: Honda CB650F, Suzuki V-Strom…" maxlength="40" autocomplete="off" style="width:100%;box-sizing:border-box;background:#1e1f2e;border:1px solid #333;border-radius:8px;padding:8px 10px;color:#fff;font-family:var(--font-mono);font-size:0.8rem" />
+      </div>
+      <div>
+        <label style="font-family:var(--font-mono);font-size:0.65rem;color:#8888aa;display:block;margin-bottom:4px">UMBRALES DE MARCHA (r = RPM/km/h)</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span style="font-family:var(--font-mono);font-size:0.6rem;color:#8888aa;min-width:14px">1</span>
+          <input id="pe-r1" type="number" min="50" max="200" style="flex:1;background:#1e1f2e;border:1px solid #333;border-radius:8px;padding:6px 8px;color:#fff;font-family:var(--font-mono);font-size:0.8rem;text-align:center" />
+          <span style="font-family:var(--font-mono);font-size:0.6rem;color:#8888aa;min-width:14px">2</span>
+          <input id="pe-r2" type="number" min="40" max="150" style="flex:1;background:#1e1f2e;border:1px solid #333;border-radius:8px;padding:6px 8px;color:#fff;font-family:var(--font-mono);font-size:0.8rem;text-align:center" />
+          <span style="font-family:var(--font-mono);font-size:0.6rem;color:#8888aa;min-width:14px">3</span>
+          <input id="pe-r3" type="number" min="30" max="120" style="flex:1;background:#1e1f2e;border:1px solid #333;border-radius:8px;padding:6px 8px;color:#fff;font-family:var(--font-mono);font-size:0.8rem;text-align:center" />
+          <span style="font-family:var(--font-mono);font-size:0.6rem;color:#8888aa;min-width:14px">4</span>
+          <input id="pe-r4" type="number" min="25" max="100" style="flex:1;background:#1e1f2e;border:1px solid #333;border-radius:8px;padding:6px 8px;color:#fff;font-family:var(--font-mono);font-size:0.8rem;text-align:center" />
+          <span style="font-family:var(--font-mono);font-size:0.6rem;color:#8888aa;min-width:14px">5</span>
+          <input id="pe-r5" type="number" min="20" max="80" style="flex:1;background:#1e1f2e;border:1px solid #333;border-radius:8px;padding:6px 8px;color:#fff;font-family:var(--font-mono);font-size:0.8rem;text-align:center" />
+        </div>
+        <div style="font-family:var(--font-mono);font-size:0.6rem;color:#8888aa;margin-top:4px">CB650F por defecto: 100 / 70 / 53 / 42 / 35</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button id="btn-pe-save" class="btn btn-primary" style="flex:2">Guardar</button>
+      <button id="btn-pe-delete" class="btn btn-secondary" style="flex:1;color:#ff3250">Eliminar</button>
+      <button id="btn-pe-cancel" class="btn btn-secondary" style="flex:1">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <script src="js/app.bundle.js"></script>
 
 </body>
