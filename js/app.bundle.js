@@ -4008,7 +4008,7 @@ const _OBD = {
   SVC5:   'e7810a71-73ae-499d-8c15-faa9aef0c3f2',  // Vgate proprietary (nRF confirmed, write+notify)
   CHR5:   'bef8d6c9-9c21-4c9e-b632-bd58c1009f9f',
   device: null, writeChr: null, buf: '', resolvers: [],
-  pollTimer: null, pollIdx: 0, reconnTimer: null, _busy: false, _firstData: false,
+  pollTimer: null, pollIdx: 0, reconnTimer: null, _busy: false, _firstData: false, _watchdog: null, _lastDataTs: 0,
   PIDS: ['010C','010D','0105','0142','0104','0111','015C','0106','0107','010B','010F'],
 };
 
@@ -4111,10 +4111,19 @@ async function _obdInit() {
   }
 }
 
+function _obdClearValues() {
+  App.obd2Rpm = App.obd2Gear = App.obd2Temp = App.obd2Volt = App.obd2Speed = null;
+  App.obd2OilTemp = App.obd2Load = App.obd2Throttle = null;
+  App.obd2Stft = App.obd2Ltft = App.obd2Map = App.obd2Iat = null;
+}
+
 function _obdOnDisconnect() {
   App.obdConnected = false;
   _OBD._polling = false;
+  _OBD._firstData = false;
   clearTimeout(_OBD.pollTimer);
+  clearTimeout(_OBD._watchdog);
+  _obdClearValues();
   setStatusPill('obd', 'error');
   const _badge = $('obd-diag-status-badge');
   if (_badge) { _badge.textContent = 'DESCONECTADO'; _badge.className = 'obd-badge err'; }
@@ -4168,6 +4177,9 @@ function _obdStartPoll() {
 async function _obdPollLoop() {
   if (!_OBD._polling) return;
   await _obdPoll();
+  if (_OBD._firstData && _OBD._lastDataTs && Date.now() - _OBD._lastDataTs > 6000) {
+    _obdClearValues();
+  }
   if (_OBD._polling) _OBD.pollTimer = setTimeout(_obdPollLoop, 80);
 }
 
@@ -4189,6 +4201,7 @@ function _obdParse(pid, raw) {
   const d = bytes.slice(2);
   if (!d.length) return;
   if (!_OBD._firstData) { _OBD._firstData = true; toast('OBD2 datos OK ✓', 'ok'); }
+  _OBD._lastDataTs = Date.now();
   const A = d[0], B = d[1] ?? 0;
   switch(pid) {
     case '010C': App.obd2Rpm      = ((A*256+B)/4)|0;                        break;
@@ -4217,13 +4230,14 @@ function _obdGear() {
 
 function disconnectOBD2() {
   _OBD._polling = false;
-  clearTimeout(_OBD.pollTimer); clearTimeout(_OBD.reconnTimer);
+  _OBD._firstData = false;
+  _OBD._lastDataTs = 0;
+  clearTimeout(_OBD.pollTimer); clearTimeout(_OBD.reconnTimer); clearTimeout(_OBD._watchdog);
   _OBD.writeChr = null;
   if (_OBD.device?.gatt?.connected) _OBD.device.gatt.disconnect();
   App.obdConnected = false;
-  App.obd2Rpm = App.obd2Gear = App.obd2Temp = App.obd2Volt = App.obd2Speed = null;
-  App.obd2OilTemp = App.obd2Load = App.obd2Throttle = null;
-  _OBD._firstData = false; _OBD._diagLog = [];
+  _obdClearValues();
+  _OBD._diagLog = [];
   setStatusPill('obd', '');
   toast('OBD2 desconectado', 'info');
 }
