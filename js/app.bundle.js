@@ -510,7 +510,14 @@ async function onGPSPosition(pos) {
     accuracy: pos.coords.accuracy, heading: pos.coords.heading, speed: pos.coords.speed
   };
   if (pos.coords.altitude !== null) App.circuitAlt = Math.round(pos.coords.altitude);
+  App._lastGpsFix = Date.now();
   setStatusPill('gps', 'active');
+  const accEl = $('sensor-gps-acc');
+  if (accEl) {
+    const acc = pos.coords.accuracy != null ? Math.round(pos.coords.accuracy) + 'm' : '?m';
+    const vel = pos.coords.speed != null ? Math.round(pos.coords.speed * 3.6) + ' km/h (GPS)' : 'sin vel.GPS';
+    accEl.textContent = acc + ' · ' + vel;
+  }
 
   let rawSpeed = null;
   if (pos.coords.speed !== null && pos.coords.speed >= 0) {
@@ -531,10 +538,10 @@ async function onGPSPosition(pos) {
   if (rawSpeed !== null) {
     const filtered = rawSpeed < 3 ? 0 : rawSpeed;
     App.gpsSpeed   = App.gpsSpeed === null ? filtered : Math.round(App.gpsSpeed * 0.7 + filtered * 0.3);
-    updateGpsSpeedUI(App.gpsSpeed);
     computeWindChill();
     computeGForce(pos.timestamp);
   }
+  updateGpsSpeedUI(App.gpsSpeed);
 
   if (App.mapInitialized) mapUpdatePosition(App.position.lat, App.position.lon);
 
@@ -1855,7 +1862,7 @@ function _updateLsLayout(roll, spd) {
   const lh = $('cir-ls-thr');    if (lh) lh.textContent = App.obd2Throttle != null ? App.obd2Throttle+'%' : '--%';
 
   // Speed
-  const ls = $('cir-ls-spd'); if (ls) ls.textContent = Math.round(spd) || 0;
+  const ls = $('cir-ls-spd'); if (ls) ls.textContent = App.gpsSpeed !== null ? Math.round(spd) : '--';
 
   // Lean bars
   const ar = Math.abs(roll);
@@ -2672,8 +2679,12 @@ function _updateCrossLayout(spd) {
 
 function _cirLoop() {
   if (!App.circuitMode) return;
+  if (App._lastGpsFix && Date.now() - App._lastGpsFix > 8000) {
+    App.gpsSpeed = null;
+    updateGpsSpeedUI(null);
+  }
   const roll = (App.gyroData.gamma || 0) * (App.rollFlip  ? -1 : 1);
-  const spd  = App.gpsSpeed || 0;
+  const spd  = App.gpsSpeed ?? 0;
   if (_cirBrand === 'triumph') {
     _updateTriumphLayout(roll, spd);
   } else if (_cirBrand === 'e4') {
@@ -2872,7 +2883,7 @@ function _updateCirData(roll, spd) {
 
   // Big speed
   const sv = $('cir-spd-val');
-  if (sv) { sv.textContent = Math.round(spd); sv.style.color = cirColor(spd, 120, 160); sv.style.textShadow = spd > 120 ? '0 0 40px rgba(255,80,0,0.7),0 0 80px rgba(255,50,0,0.3)' : '0 0 40px rgba(255,100,0,0.55)'; }
+  if (sv) { sv.textContent = App.gpsSpeed !== null ? Math.round(spd) : '--'; sv.style.color = cirColor(spd, 120, 160); sv.style.textShadow = spd > 120 ? '0 0 40px rgba(255,80,0,0.7),0 0 80px rgba(255,50,0,0.3)' : '0 0 40px rgba(255,100,0,0.55)'; }
 
   // G-forces
   const longG = App.gForce?.long || 0, latG = App.gForce?.lat || 0;
