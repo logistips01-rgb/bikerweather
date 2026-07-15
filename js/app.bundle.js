@@ -4367,15 +4367,22 @@ function radioStop() { if (_Radio.audio && _Radio.playing) _Radio.audio.pause();
 function radioPrev() { radioPlay((_Radio.idx - 1 + RADIO_STATIONS.length) % RADIO_STATIONS.length); }
 function radioNext() { radioPlay((_Radio.idx + 1) % RADIO_STATIONS.length); }
 
+let _radioKirkWasAuto = false;
 function _radioSetPlaying(playing) {
   _Radio.playing = playing;
   _radioUpdateUI();
   document.body.classList.toggle('radio-active', playing);
-  // Suspend Kirk auto-listen while radio plays to avoid mic activation beeps
-  if (playing && _kirkAutoListen) {
-    _kirkStopListening();
-  } else if (!playing && _kirkAutoListen) {
-    setTimeout(_kirkStartListening, 800);
+  if (playing) {
+    _radioKirkWasAuto = _kirkAutoListen;
+    if (_kirkAutoListen) {
+      _kirkAutoListen = false;
+      _kirkStopListening();
+    }
+  } else {
+    if (_radioKirkWasAuto) {
+      _kirkAutoListen = true;
+      setTimeout(_kirkStartListening, 800);
+    }
   }
 }
 
