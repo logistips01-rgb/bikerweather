@@ -1763,6 +1763,60 @@ function handleKirkCommand(text) {
   const w = text.trim().split(/\s+/);
   const has = (...keys) => w.some(word => keys.some(k => word === k || word.startsWith(k)));
   if (has('calibra', 'calibrar', 'calibr')) { doCalibrate(); return; }
+
+  // Radio commands
+  const radioKeyword = has('música', 'musica', 'radio', 'emisora', 'canción', 'cancion', 'song');
+  const stopKeyword  = has('para', 'parar', 'stop', 'silencia', 'silencio', 'corta', 'apaga') && radioKeyword;
+  const nextKeyword  = has('siguiente', 'cambia', 'otra', 'next', 'salta') && (radioKeyword || w.length <= 2);
+  const prevKeyword  = has('anterior', 'atrás', 'atras', 'vuelve') && radioKeyword;
+
+  // Station name matching
+  const stationIdx = (() => {
+    const t = text;
+    if (/los\s*40|cuarenta(?!\s*dance)/i.test(t))      return 0;
+    if (/cadena\s*ser|\bser\b/i.test(t))                return 1;
+    if (/europa/i.test(t))                              return 2;
+    if (/onda\s*cero|\bonda\b/i.test(t))                return 3;
+    if (/kiss/i.test(t))                                return 4;
+    if (/\bm\s*80\b|\bm\s*ochenta\b/i.test(t))         return 5;
+    if (/dance|40\s*dance/i.test(t))                    return 6;
+    if (/dial/i.test(t))                                return 7;
+    if (/radiol[eé]/i.test(t))                          return 8;
+    if (/rne|radio\s*3|radio\s*tres/i.test(t))          return 9;
+    return -1;
+  })();
+
+  if (stationIdx >= 0) {
+    radioPlay(stationIdx);
+    kirkSpeak('Poniendo ' + RADIO_STATIONS[stationIdx].name);
+    return;
+  }
+  if (stopKeyword) {
+    radioStop();
+    kirkSpeak('Radio apagada.');
+    return;
+  }
+  if (nextKeyword) {
+    radioNext();
+    kirkSpeak('Siguiente emisora.');
+    return;
+  }
+  if (prevKeyword) {
+    radioPrev();
+    kirkSpeak('Emisora anterior.');
+    return;
+  }
+  if (radioKeyword && !has('parar','para','stop','silencia','apaga')) {
+    if (_Radio.playing) {
+      radioStop();
+      kirkSpeak('Radio apagada.');
+    } else {
+      radioPlay(_Radio.idx >= 0 ? _Radio.idx : 0);
+      kirkSpeak('Poniendo ' + RADIO_STATIONS[_Radio.idx >= 0 ? _Radio.idx : 0].name);
+    }
+    return;
+  }
+
   if (App.circuitMode) {
     if (has('inicio', 'iniciar', 'start', 'arranca', 'arrancar') && !App.sessionActive) { startCircuitSession(); return; }
     if (has('parar', 'para', 'stop', 'fin', 'finalizar', 'terminar') && App.sessionActive && w.length <= 3) { stopCircuitSession(); return; }
@@ -4308,6 +4362,7 @@ function radioToggle() {
   const audio = _radioGetAudio();
   if (_Radio.playing) audio.pause(); else audio.play();
 }
+function radioStop() { if (_Radio.audio && _Radio.playing) _Radio.audio.pause(); }
 
 function radioPrev() { radioPlay((_Radio.idx - 1 + RADIO_STATIONS.length) % RADIO_STATIONS.length); }
 function radioNext() { radioPlay((_Radio.idx + 1) % RADIO_STATIONS.length); }
