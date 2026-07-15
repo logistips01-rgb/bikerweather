@@ -1278,7 +1278,6 @@ function startSession() {
   App.gForce.peakBrake = 0;
   App.gForce.peakAccel = 0;
   App.gForce.peakLat   = 0;
-  _kirkHistory   = [];
   _telBuffer     = [];
   _telLastTs     = 0;
   _kirkAutoListen = false;
@@ -1668,7 +1667,7 @@ async function askKirk(userText) {
   if (!key) { kirkSpeak('Necesito una API key de Groq. Configúrala en ajustes.'); return; }
   _kirkShowMsg('⏳');
   _kirkHistory.push({ role: 'user', content: userText });
-  if (_kirkHistory.length > 12) _kirkHistory = _kirkHistory.slice(-12);
+  if (_kirkHistory.length > 30) _kirkHistory = _kirkHistory.slice(-30);
   await _updateKirkLocation();
   const spd   = Math.round(App.gpsSpeed || 0);
   const roll  = Math.round(Math.abs(App.gyroData.gamma || 0));
