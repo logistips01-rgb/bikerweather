@@ -1675,23 +1675,25 @@ async function askKirk(userText) {
   const hdg   = Math.round(App.gyroData.alpha || 0);
   const alt   = App.circuitAlt || 0;
   const pos   = App.position;
-  const locLine = _kirkLocation ? `Ubicación: ${_kirkLocation}.` : pos ? `Coords: ${pos.lat.toFixed(4)},${pos.lon.toFixed(4)}.` : '';
+  const locLine = _kirkLocation ? `Ubicación: ${_kirkLocation}.` : pos ? `Coords: ${pos.lat.toFixed(4)},${pos.lon.toFixed(4)}.` : 'Ubicación desconocida.';
+  const destLine = App.rideDestination && App.rideDestination !== 'Sesión BikerWeather' ? `Destino: ${App.rideDestination}.` : '';
   const gLong = App.gForce?.long ? App.gForce.long.toFixed(2) : '0.00';
   const wea   = App.weather;
   const weaLine = wea ? `Temp: ${wea.temp}°C, viento: ${Math.round(wea.windSpeed)}km/h, sensación: ${App.windChill ?? wea.temp}°C.` : '';
-  const telemetry = `${locLine} ${spd}km/h, inclinación ${roll}°, G longitudinal ${gLong}g, rumbo ${hdg}°, altitud ${alt}m. ${weaLine}`;
+  const obdLine = App.obd2Rpm ? `RPM: ${App.obd2Rpm}, marcha: ${App.obd2Gear ?? '?'}, motor: ${App.obd2Temp ?? '?'}°C, voltaje: ${App.obd2Volt ?? '?'}V.` : '';
+  const telemetry = `${locLine} ${destLine} ${spd}km/h, inclinación ${roll}°, G longitudinal ${gLong}g, rumbo ${hdg}°, altitud ${alt}m. ${weaLine} ${obdLine}`.trim();
   let histLine = '';
   if (_telBuffer.length >= 3) {
     const spds  = _telBuffer.map(p => p.spd);
     const rolls = _telBuffer.map(p => p.roll);
     histLine = ` Últimos ${_telBuffer.length*2}s: vel media ${Math.round(spds.reduce((a,b)=>a+b,0)/spds.length)}km/h (pico ${Math.max(...spds)}), incl media ${Math.round(rolls.reduce((a,b)=>a+b,0)/rolls.length)}° (pico ${Math.max(...rolls)}°).`;
   }
-  const system = `Eres Kirk, copiloto IA de BikerWeather para motociclistas. Respondes en español, en 1-2 frases cortas y directas. Profesional, alerta, ocasionalmente irónico como copiloto de rally. Telemetría actual: ${telemetry}${histLine}`;
+  const system = `Eres Kirk, copiloto IA de BikerWeather para motociclistas. Respondes en español, en 1-2 frases cortas y directas. Profesional, alerta, ocasionalmente irónico como copiloto de rally. IMPORTANTE: responde SOLO con información que tengas en la telemetría. Si no tienes el dato (destino, calle, ciudad), di que no lo tienes — nunca inventes. Telemetría actual: ${telemetry}${histLine}`;
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role:'system', content:system }, ..._kirkHistory], max_tokens: 80, temperature: 0.7 })
+      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role:'system', content:system }, ..._kirkHistory], max_tokens: 80, temperature: 0.4 })
     });
     const data = await res.json();
     const reply = data.choices?.[0]?.message?.content?.trim();
