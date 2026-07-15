@@ -3160,3 +3160,30 @@ body.home-active .home-screen { display: flex; }
   font-family: 'JetBrains Mono', monospace;
   font-size: 7px; letter-spacing: 2px; color: rgba(255,255,255,0.35);
 }
+
+/* ══ RADIO ACTIVE — botón mic grande ══════════════════════════════════ */
+body.radio-active #btn-hud-mic {
+  padding: 10px 18px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  border: 2px solid rgba(255, 100, 0, 0.8);
+  color: #ff6600;
+  background: rgba(255, 80, 0, 0.12);
+  box-shadow: 0 0 14px rgba(255, 80, 0, 0.35);
+  animation: micpulse-radio 1.6s ease-in-out infinite;
+  flex: 2 !important;
+}
+body.radio-active .cir-btn-mic {
+  width: 58px !important;
+  height: 58px !important;
+  font-size: 26px !important;
+  border: 2px solid rgba(255, 100, 0, 0.8) !important;
+  color: #ff6600 !important;
+  background: rgba(255, 80, 0, 0.12) !important;
+  box-shadow: 0 0 18px rgba(255, 80, 0, 0.4) !important;
+  animation: micpulse-radio 1.6s ease-in-out infinite;
+}
+@keyframes micpulse-radio {
+  0%, 100% { box-shadow: 0 0 10px rgba(255, 80, 0, 0.3); }
+  50%       { box-shadow: 0 0 22px rgba(255, 80, 0, 0.65); }
+}
