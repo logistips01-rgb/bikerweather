@@ -560,6 +560,8 @@ async function onGPSPosition(pos) {
   } else {
     computeWindChill();
   }
+
+  _checkRadares(App.position.lat, App.position.lon, App.position.heading);
 }
 
 function shouldGeocode(pos) {
@@ -1850,6 +1852,10 @@ function handleKirkCommand(text) {
   } else if (App.sessionActive) {
     if (has('parar', 'para', 'stop', 'fin', 'finalizar', 'terminar') && w.length <= 3) { stopSession(); return; }
   }
+
+  // Gasolineras
+  if (/gasolinera|gasolineras|combustible|echar\s+gasolina|repostar/i.test(text)) { buscarGasolineras(); return; }
+
   askKirk(text);
 }
 
@@ -3910,6 +3916,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Detección de caída
   startFallDetection();
 
+  // Radares DGT
+  _radarInit().catch(e => console.warn('[Radares]', e));
+  (function initRadarToggle() {
+    const btn = $('btn-radar-toggle');
+    if (!btn) return;
+    const update = () => {
+      const on = localStorage.getItem('bw_radar_alerts') !== 'false';
+      btn.textContent = on ? 'ON' : 'OFF';
+      btn.style.color = on ? '#00ff88' : '#8888aa';
+      btn.style.borderColor = on ? '#00ff88' : '#333';
+    };
+    update();
+    btn.addEventListener('click', () => {
+      const on = localStorage.getItem('bw_radar_alerts') !== 'false';
+      localStorage.setItem('bw_radar_alerts', on ? 'false' : 'true');
+      update();
+    });
+  })();
+
   // Radio
   initRadio();
 
@@ -4759,3 +4784,214 @@ function sendFallAlert(phone) {
 const greetStyle=document.createElement('style');
 greetStyle.textContent='@keyframes greetPulse{0%{transform:scale(0.5) rotate(-20deg);opacity:0}60%{transform:scale(1.2) rotate(10deg);opacity:1}100%{transform:scale(1) rotate(0deg);opacity:1}}';
 document.head.appendChild(greetStyle);
+
+/* ═══════════════════════════════════════
+   RADARES DGT — alertas de velocidad
+═══════════════════════════════════════ */
+function _bearingTo(lat1, lon1, lat2, lon2) {
+  const toRad = d => d * Math.PI / 180;
+  const dLon = toRad(lon2 - lon1);
+  const y = Math.sin(dLon) * Math.cos(toRad(lat2));
+  const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+let _radarList = null;
+const _radarAlerted = {}; // index -> last alert timestamp
+
+async function _radarInit() {
+  const TTL = 7 * 24 * 3600 * 1000;
+  const CACHE_KEY = 'bw_radares';
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      const obj = JSON.parse(cached);
+      if (Date.now() - obj.ts < TTL && Array.isArray(obj.data) && obj.data.length > 0) {
+        _radarList = obj.data;
+        return;
+      }
+    }
+  } catch(e) {}
+
+  const urls = [
+    'https://raw.githubusercontent.com/jaumesala/radares-dgt/master/radares.json',
+    'https://raw.githubusercontent.com/jaumesala/radares-dgt/refs/heads/master/radares.json'
+  ];
+
+  for (const url of urls) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) continue;
+      const raw = await r.json();
+      const list = Array.isArray(raw) ? raw : (raw.radares || raw.features || []);
+      const parsed = list.map(s => {
+        // Handle GeoJSON features
+        if (s.type === 'Feature' && s.geometry) {
+          const [lon, lat] = s.geometry.coordinates;
+          return { lat: parseFloat(lat), lon: parseFloat(lon) };
+        }
+        const lat = parseFloat(s.lat ?? s.latitud ?? s.latitude ?? NaN);
+        const lon = parseFloat(s.lng ?? s.lon ?? s.longitud ?? s.longitude ?? NaN);
+        return isNaN(lat) || isNaN(lon) ? null : { lat, lon };
+      }).filter(Boolean);
+      if (parsed.length > 0) {
+        _radarList = parsed;
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: parsed })); } catch(e) {}
+        return;
+      }
+    } catch(e) {}
+  }
+
+  // Hardcoded fallback: well-known fixed radars on major Spanish A-roads
+  _radarList = [
+    { lat: 40.4538, lon: -3.6883 }, // A-2 Madrid salida este
+    { lat: 40.3800, lon: -3.7200 }, // A-4 Madrid sur
+    { lat: 40.5000, lon: -3.6800 }, // A-1 Madrid norte
+    { lat: 41.3851, lon:  2.1904 }, // AP-7 Barcelona
+    { lat: 37.3891, lon: -5.9845 }, // A-4 Sevilla
+    { lat: 39.4699, lon: -0.3763 }, // A-3 Valencia
+    { lat: 36.7213, lon: -4.4214 }, // A-45 Málaga
+    { lat: 41.6561, lon: -4.7285 }, // A-62 Valladolid
+    { lat: 43.3623, lon: -8.4115 }, // AP-9 A Coruña
+    { lat: 38.9942, lon: -1.8585 }, // A-31 Albacete
+  ];
+}
+
+function _checkRadares(lat, lon, heading) {
+  if (!App.sessionActive) return;
+  if (localStorage.getItem('bw_radar_alerts') === 'false') return;
+  if (!_radarList || !lat || !lon) return;
+  const now = Date.now();
+  for (let i = 0; i < _radarList.length; i++) {
+    const r = _radarList[i];
+    const dist = haversineM(lat, lon, r.lat, r.lon);
+    if (dist > 500) continue;
+    const lastAlert = _radarAlerted[i] || 0;
+    if (now - lastAlert < 90000) continue;
+    if (heading != null && !isNaN(heading)) {
+      const bearing = _bearingTo(lat, lon, r.lat, r.lon);
+      let diff = Math.abs(bearing - heading);
+      if (diff > 180) diff = 360 - diff;
+      if (diff > 70) continue; // radar is not ahead
+    }
+    _radarAlerted[i] = now;
+    const m = Math.round(dist);
+    kirkSpeak('Radar a ' + m + ' metros.');
+    toast('📷 Radar a ' + m + 'm', 'warn');
+  }
+}
+
+/* ═══════════════════════════════════════
+   GASOLINERAS MITECO
+═══════════════════════════════════════ */
+const _PROVINCIAS = [
+  [1,'Álava','Araba'],[2,'Albacete'],[3,'Alicante','Alacant'],[4,'Almería'],
+  [5,'Ávila'],[6,'Badajoz'],[7,'Baleares','Illes Balears'],[8,'Barcelona'],
+  [9,'Burgos'],[10,'Cáceres'],[11,'Cádiz'],[12,'Castellón','Castelló'],
+  [13,'Ciudad Real'],[14,'Córdoba'],[15,'A Coruña','La Coruña','Coruña'],
+  [16,'Cuenca'],[17,'Girona','Gerona'],[18,'Granada'],[19,'Guadalajara'],
+  [20,'Gipuzkoa','Guipúzcoa','Guipuzcoa'],[21,'Huelva'],[22,'Huesca'],
+  [23,'Jaén'],[24,'León'],[25,'Lleida','Lérida'],[26,'La Rioja','Rioja'],
+  [27,'Lugo'],[28,'Madrid'],[29,'Málaga','Malaga'],[30,'Murcia'],
+  [31,'Navarra'],[32,'Ourense','Orense'],[33,'Asturias'],[34,'Palencia'],
+  [35,'Las Palmas'],[36,'Pontevedra'],[37,'Salamanca'],
+  [38,'Santa Cruz de Tenerife','Tenerife'],[39,'Cantabria'],[40,'Segovia'],
+  [41,'Sevilla'],[42,'Soria'],[43,'Tarragona'],[44,'Teruel'],[45,'Toledo'],
+  [46,'Valencia','València'],[47,'Valladolid'],[48,'Bizkaia','Vizcaya'],
+  [49,'Zamora'],[50,'Zaragoza'],[51,'Ceuta'],[52,'Melilla']
+];
+
+function _getProvinciaId(addr) {
+  const normalize = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const fields = [addr.province, addr.state, addr.county, addr.city, addr.municipality]
+    .filter(Boolean).map(normalize);
+  for (const [id, ...names] of _PROVINCIAS) {
+    for (const name of names) {
+      const norm = normalize(name);
+      if (fields.some(f => f.includes(norm) || norm.includes(f))) return id;
+    }
+  }
+  return null;
+}
+
+let _gasCache = null, _gasCacheTs = 0, _gasCacheProv = null;
+
+async function buscarGasolineras() {
+  const pos = App.position;
+  if (!pos) { kirkSpeak('Sin posición GPS.'); return; }
+  kirkSpeak('Buscando gasolineras cercanas.');
+  try {
+    const nr = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${pos.lat}&lon=${pos.lon}&format=json&accept-language=es`,
+      { headers: { 'User-Agent': 'BikerWeather/1.0' } }
+    );
+    const nd = await nr.json();
+    const addr = nd.address || {};
+    const provId = _getProvinciaId(addr);
+    if (!provId) { kirkSpeak('No reconozco la provincia.'); return; }
+
+    let lista;
+    if (_gasCache && _gasCacheProv === provId && Date.now() - _gasCacheTs < 3600000) {
+      lista = _gasCache;
+    } else {
+      const gr = await fetch(
+        `https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestresPorProvincia/${provId}`
+      );
+      const gd = await gr.json();
+      lista = gd.ListaEESSPrecio || [];
+      _gasCache = lista; _gasCacheTs = Date.now(); _gasCacheProv = provId;
+    }
+
+    const near = lista.map(s => {
+      const slat = parseFloat((s['Latitud'] || '').replace(',','.'));
+      const slon = parseFloat((s['Longitud (WGS84)'] || '').replace(',','.'));
+      const price = parseFloat((s['Precio Gasolina 95 E5'] || '').replace(',','.'));
+      if (isNaN(slat) || isNaN(slon)) return null;
+      const dist = haversineM(pos.lat, pos.lon, slat, slon);
+      if (dist > 20000) return null;
+      return { name: (s['Rótulo'] || 'Gasolinera').trim(), price, dist };
+    }).filter(s => s && !isNaN(s.price) && s.price > 0);
+
+    if (!near.length) {
+      kirkSpeak('No hay gasolineras con precio de 95 en un radio de 20 kilómetros.');
+      return;
+    }
+
+    near.sort((a, b) => a.price - b.price);
+    const top3 = near.slice(0, 3);
+    const best = top3[0];
+    const kmStr = (best.dist / 1000).toFixed(1).replace('.', ' punto ');
+    const priceStr = best.price.toFixed(3).replace('.', ' punto ');
+    kirkSpeak(`La más barata es ${best.name}, a ${kmStr} kilómetros, con el 95 a ${priceStr} euros.`);
+    _showGasPanel(top3);
+  } catch(e) {
+    console.error('[Gas]', e);
+    kirkSpeak('Error buscando gasolineras.');
+  }
+}
+
+function _showGasPanel(stations) {
+  let panel = $('gas-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'gas-panel';
+    panel.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);width:calc(100% - 20px);max-width:380px;background:#0c0c15;border:1px solid rgba(255,85,0,0.35);border-radius:8px;padding:12px 14px;z-index:400;box-shadow:0 0 20px rgba(255,85,0,0.15);font-family:JetBrains Mono,monospace;';
+    document.body.appendChild(panel);
+  }
+  let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    + '<span style="font-family:Rajdhani,sans-serif;font-weight:700;font-size:0.85rem;color:#ff5500;letter-spacing:0.08em">⛽ GASOLINERAS CERCANAS</span>'
+    + '<button onclick="document.getElementById(\'gas-panel\').remove()" style="background:none;border:none;color:#5a5a7a;cursor:pointer;font-size:1rem;line-height:1">✕</button>'
+    + '</div>';
+  for (const s of stations) {
+    const km = (s.dist / 1000).toFixed(1);
+    const price = isNaN(s.price) ? '—' : s.price.toFixed(3);
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid #1a1a2e">`
+      + `<span style="font-size:0.68rem;color:#c0c0d0;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.name}</span>`
+      + `<span style="font-size:0.65rem;color:#8888aa">${km}km</span>`
+      + `<span style="font-family:Rajdhani,sans-serif;font-weight:700;font-size:0.85rem;color:#00ff88">${price}€</span>`
+      + `</div>`;
+  }
+  panel.innerHTML = html;
+  if (panel._autoRemove) clearTimeout(panel._autoRemove);
+  panel._autoRemove = setTimeout(() => { if (panel.parentNode) panel.remove(); }, 30000);
+}
