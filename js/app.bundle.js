@@ -930,7 +930,15 @@ async function disableWakeLock() {
   updateWakeLockUI(false);
 }
 
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && App.wakeLockEnabled) enableWakeLock(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    if (App.wakeLockEnabled) enableWakeLock();
+    // Android kills SpeechRecognition when screen locks; restart when visible again
+    if (_kirkAutoListen && !_kirkListening && !_kirkSpeaking) {
+      setTimeout(_kirkStartListening, 500);
+    }
+  }
+});
 
 /* ═══════════════════════════════════════
    PLANIFICADOR INTELIGENTE
@@ -1283,7 +1291,9 @@ function startSession() {
   App.gForce.peakLat   = 0;
   _telBuffer     = [];
   _telLastTs     = 0;
-  _kirkAutoListen = false;
+  // Circuit mode: _kirkAutoListen already set to true by openCircuit(); preserve it.
+  // Route mode: enable auto-listen now.
+  if (!App.circuitMode) _kirkAutoListen = true;
   setEl('hud-curves-l', '0');
   setEl('hud-curves-r', '0');
   $('session-timer')?.classList.add('show');
@@ -1318,14 +1328,21 @@ function startSession() {
         _telBuffer.push({ spd: Math.round(App.gpsSpeed||0), roll: Math.round(Math.abs(App.gyroData.gamma||0)), hdg: Math.round(App.gyroData.alpha||0), alt: App.circuitAlt||0 });
         if (_telBuffer.length > 30) _telBuffer.shift();
         kirkCheckAlerts();
-        // Watchdog: desbloquear _kirkSpeaking si onend nunca disparó (bug Android TTS)
-        if (_kirkSpeaking && _kirkSpeakDeadline && Date.now() > _kirkSpeakDeadline) {
+      }
+    }
+    // Kirk watchdog — runs in both route and circuit mode every ~2s
+    {
+      const now = Date.now();
+      if (now - _kirkWatchTs >= 2000) {
+        _kirkWatchTs = now;
+        // Desbloquear _kirkSpeaking si onend nunca disparó (bug Android TTS)
+        if (_kirkSpeaking && _kirkSpeakDeadline && now > _kirkSpeakDeadline) {
           window.speechSynthesis.cancel();
           _kirkSpeaking = false;
           _kirkSpeakDeadline = 0;
           _radioUnduck();
         }
-        // Watchdog: si auto-listen está activo pero el reconocedor se durmió, reiniciarlo
+        // Reiniciar reconocedor si debería escuchar pero no lo está
         if (_kirkAutoListen && !_kirkListening && !_kirkSpeaking) {
           setTimeout(_kirkStartListening, 200);
         }
@@ -1511,6 +1528,7 @@ let _kirkRec       = null;
 let _kirkHistory   = [];
 let _telBuffer     = [];
 let _telLastTs     = 0;
+let _kirkWatchTs   = 0;
 let _kirkLocation  = null;
 let _kirkLocTs     = 0;
 let _kirkVoice     = null;
@@ -3820,8 +3838,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   $('btn-cir-mic')?.addEventListener('click', () => {
     if (!_kirkRec) { toast('Voz no disponible', 'info'); return; }
-    $('btn-cir-mic').classList.add('active');
-    try { _kirkRec.start(); } catch(e) { $('btn-cir-mic').classList.remove('active'); }
+    if (_kirkListening) _kirkStopListening(); else _kirkStartListening();
   });
   $('btn-roll-flip')?.addEventListener('click', () => {
     App.rollFlip = !App.rollFlip;
