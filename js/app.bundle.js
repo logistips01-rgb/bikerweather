@@ -4918,17 +4918,21 @@ let _gasCache = null, _gasCacheTs = 0, _gasCacheProv = null;
 
 async function buscarGasolineras() {
   const pos = App.position;
-  if (!pos) { kirkSpeak('Sin posición GPS.'); return; }
-  kirkSpeak('Buscando gasolineras cercanas.');
+  if (!pos) { toast('Sin posición GPS', 'warn'); return; }
+  toast('⛽ Buscando gasolineras…', 'info');
   try {
-    const nr = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${pos.lat}&lon=${pos.lon}&format=json&accept-language=es`,
-      { headers: { 'User-Agent': 'BikerWeather/1.0' } }
-    );
-    const nd = await nr.json();
-    const addr = nd.address || {};
-    const provId = _getProvinciaId(addr);
-    if (!provId) { kirkSpeak('No reconozco la provincia.'); return; }
+    // Detect province via Nominatim (no User-Agent header — forbidden in browsers)
+    let provId = null;
+    try {
+      const nr = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${pos.lat}&lon=${pos.lon}&format=json&accept-language=es`
+      );
+      const nd = await nr.json();
+      provId = _getProvinciaId(nd.address || {});
+    } catch(e) {
+      console.warn('[Gas] Nominatim error', e);
+    }
+    if (!provId) { toast('⛽ No se detectó provincia', 'warn'); return; }
 
     let lista;
     if (_gasCache && _gasCacheProv === provId && Date.now() - _gasCacheTs < 3600000) {
@@ -4937,6 +4941,7 @@ async function buscarGasolineras() {
       const gr = await fetch(
         `https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestresPorProvincia/${provId}`
       );
+      if (!gr.ok) throw new Error('MITECO HTTP ' + gr.status);
       const gd = await gr.json();
       lista = gd.ListaEESSPrecio || [];
       _gasCache = lista; _gasCacheTs = Date.now(); _gasCacheProv = provId;
@@ -4953,20 +4958,20 @@ async function buscarGasolineras() {
     }).filter(s => s && !isNaN(s.price) && s.price > 0);
 
     if (!near.length) {
-      kirkSpeak('No hay gasolineras con precio de 95 en un radio de 20 kilómetros.');
+      toast('⛽ Sin gasolineras en 20km', 'warn');
       return;
     }
 
     near.sort((a, b) => a.price - b.price);
     const top3 = near.slice(0, 3);
     const best = top3[0];
-    const kmStr = (best.dist / 1000).toFixed(1).replace('.', ' punto ');
-    const priceStr = best.price.toFixed(3).replace('.', ' punto ');
-    kirkSpeak(`La más barata es ${best.name}, a ${kmStr} kilómetros, con el 95 a ${priceStr} euros.`);
+    const kmStr = (best.dist / 1000).toFixed(1);
+    const priceStr = best.price.toFixed(3);
+    kirkSpeak(`La más barata es ${best.name}, a ${kmStr} kilómetros, con el 95 a ${priceStr.replace('.', ' punto ')} euros.`);
     _showGasPanel(top3);
   } catch(e) {
     console.error('[Gas]', e);
-    kirkSpeak('Error buscando gasolineras.');
+    toast('⛽ Error: ' + e.message, 'warn');
   }
 }
 
