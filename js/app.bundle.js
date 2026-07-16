@@ -1318,6 +1318,13 @@ function startSession() {
         _telBuffer.push({ spd: Math.round(App.gpsSpeed||0), roll: Math.round(Math.abs(App.gyroData.gamma||0)), hdg: Math.round(App.gyroData.alpha||0), alt: App.circuitAlt||0 });
         if (_telBuffer.length > 30) _telBuffer.shift();
         kirkCheckAlerts();
+        // Watchdog: desbloquear _kirkSpeaking si onend nunca disparó (bug Android TTS)
+        if (_kirkSpeaking && _kirkSpeakDeadline && Date.now() > _kirkSpeakDeadline) {
+          window.speechSynthesis.cancel();
+          _kirkSpeaking = false;
+          _kirkSpeakDeadline = 0;
+          _radioUnduck();
+        }
         // Watchdog: si auto-listen está activo pero el reconocedor se durmió, reiniciarlo
         if (_kirkAutoListen && !_kirkListening && !_kirkSpeaking) {
           setTimeout(_kirkStartListening, 200);
@@ -1568,6 +1575,8 @@ function _radioUnduck() {
   }
 }
 
+let _kirkSpeakDeadline = 0;
+
 function kirkSpeak(text) {
   if (!text || !window.speechSynthesis || _kirkMuted) return;
   _kirkStopListening();
@@ -1577,13 +1586,16 @@ function kirkSpeak(text) {
   const voice = _pickKirkVoice();
   if (voice) utt.voice = voice;
   _kirkSpeaking = true;
+  // Safety deadline: max ~15s speaking; if onend never fires (Android bug), force-reset
+  _kirkSpeakDeadline = Date.now() + Math.max(15000, text.length * 80);
   _kirkShowMsg(text);
   _radioDuck();
   const _onKirkDone = () => {
+    if (!_kirkSpeaking) return;
     _kirkSpeaking = false;
+    _kirkSpeakDeadline = 0;
     _radioUnduck();
     setTimeout(_kirkHideMsg, 2000);
-    // Vuelve a escuchar tras hablar
     if (_kirkAutoListen) setTimeout(_kirkStartListening, 600);
   };
   utt.onend  = _onKirkDone;
