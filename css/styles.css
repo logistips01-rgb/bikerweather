@@ -1881,11 +1881,14 @@ body.circuit-active .location-bar { display: none !important; }
 /* ── Controls bar ── */
 .cir-ctrl {
   flex-shrink: 0; height: 44px;
-  display: flex; align-items: center; gap: 5px;
+  display: flex; align-items: center; gap: 4px;
   padding: 0 8px;
   background: rgba(4,5,10,0.98);
   border-top: 1px solid rgba(255,255,255,0.04);
+  overflow-x: auto; overflow-y: hidden;
+  scrollbar-width: none;
 }
+.cir-ctrl::-webkit-scrollbar { display: none; }
 .cir-ctrl-gap { flex: 1; }
 .cir-btn {
   background: rgba(4,5,10,0.92);
@@ -1909,7 +1912,7 @@ body.circuit-active .location-bar { display: none !important; }
 
 /* Sliders agrupados */
 .cir-sliders {
-  display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 4px; flex-shrink: 0; min-width: max-content;
 }
 
 /* Hue slider */
