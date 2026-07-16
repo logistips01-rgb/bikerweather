@@ -1318,6 +1318,10 @@ function startSession() {
         _telBuffer.push({ spd: Math.round(App.gpsSpeed||0), roll: Math.round(Math.abs(App.gyroData.gamma||0)), hdg: Math.round(App.gyroData.alpha||0), alt: App.circuitAlt||0 });
         if (_telBuffer.length > 30) _telBuffer.shift();
         kirkCheckAlerts();
+        // Watchdog: si auto-listen está activo pero el reconocedor se durmió, reiniciarlo
+        if (_kirkAutoListen && !_kirkListening && !_kirkSpeaking) {
+          setTimeout(_kirkStartListening, 200);
+        }
       }
     }
   }, 1000);
@@ -1529,7 +1533,22 @@ function _kirkHideMsg() {
 
 function _kirkStartListening() {
   if (!_kirkRec || _kirkListening || _kirkSpeaking) return;
-  try { _kirkRec.start(); _kirkListening = true; $('btn-hud-mic')?.classList.add('active'); } catch(e) {}
+  try {
+    _kirkRec.start();
+    _kirkListening = true;
+    $('btn-hud-mic')?.classList.add('active');
+    $('btn-cir-mic')?.classList.add('active');
+  } catch(e) {
+    // Instance is broken (zombie state, common on Android) — recreate and retry
+    _kirkListening = false;
+    _kirkRec = null;
+    initKirkVoice();
+    setTimeout(() => {
+      if (_kirkRec && !_kirkListening && !_kirkSpeaking) {
+        try { _kirkRec.start(); _kirkListening = true; } catch(e2) {}
+      }
+    }, 300);
+  }
 }
 
 function _kirkStopListening() {
@@ -1657,7 +1676,7 @@ async function _updateKirkLocation() {
   if (now - _kirkLocTs < 30000) return;
   _kirkLocTs = now;
   try {
-    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.lat}&lon=${pos.lon}&format=json&accept-language=es`, { headers: { 'User-Agent': 'BikerWeather/1.0' } });
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.lat}&lon=${pos.lon}&format=json&accept-language=es`);
     const d = await r.json();
     const a = d.address || {};
     _kirkLocation = [a.road || a.pedestrian, a.town || a.city || a.village || a.municipality, a.state].filter(Boolean).join(', ');
