@@ -1114,6 +1114,7 @@ async function calculateRoute(destQuery, speed) {
       const wc      = WindChill.calculate(weather.temp, eff);
       return { ...p, name, weather, windChill: wc, classification: WindChill.classify(wc), loading: false };
     }));
+    App._routeWaypoints = results;
     renderWaypoints(results);
     if (App.mapInitialized) results.forEach(p => mapAddWaypoint(p.lat, p.lon, p.index));
   } catch(err) { toast(err.message, 'error'); }
@@ -1680,7 +1681,11 @@ async function askKirk(userText) {
   const wea   = App.weather;
   const weaLine = wea ? `Temp: ${wea.temp}°C, viento: ${Math.round(wea.windSpeed)}km/h, sensación: ${App.windChill ?? wea.temp}°C.` : '';
   const obdLine = App.obd2Rpm ? `RPM: ${App.obd2Rpm}, marcha: ${App.obd2Gear ?? '?'}, motor: ${App.obd2Temp ?? '?'}°C, voltaje: ${App.obd2Volt ?? '?'}V.` : '';
-  const telemetry = `${locLine} ${destLine} ${spd}km/h, inclinación ${roll}°, G longitudinal ${gLong}g, rumbo ${hdg}°, altitud ${alt}m. ${weaLine} ${obdLine}`.trim();
+  const routeWea = App._routeWaypoints?.length ? App._routeWaypoints.map(p =>
+    `${p.name}: ${p.weather?.temp ?? '?'}°C, ${p.weather?.condition ?? '?'}, viento ${p.weather?.windSpeed ?? '?'}km/h, sensación ${Math.round(p.windChill ?? p.weather?.temp ?? 0)}°C`
+  ).join(' → ') : '';
+  const routeLine = routeWea ? `Clima en ruta: ${routeWea}.` : '';
+  const telemetry = `${locLine} ${destLine} ${spd}km/h, inclinación ${roll}°, G longitudinal ${gLong}g, rumbo ${hdg}°, altitud ${alt}m. ${weaLine} ${obdLine} ${routeLine}`.trim();
   let histLine = '';
   if (_telBuffer.length >= 3) {
     const spds  = _telBuffer.map(p => p.spd);
@@ -1814,6 +1819,28 @@ function handleKirkCommand(text) {
       kirkSpeak('Poniendo ' + RADIO_STATIONS[_Radio.idx >= 0 ? _Radio.idx : 0].name);
     }
     return;
+  }
+
+  // Destination / navigation commands
+  const navMatch = text.match(/(?:llévame|llevame|navega|ir|vamos|pon ruta|ruta)\s+(?:a|hacia|hasta|para)\s+(.+)/i)
+    || text.match(/(?:quiero ir|quiero llegar)\s+(?:a|hasta|hacia)\s+(.+)/i);
+  if (navMatch) {
+    const dest = navMatch[1].trim();
+    if (dest.length > 2) {
+      kirkSpeak('Calculando ruta a ' + dest + '.');
+      App.rideDestination = dest;
+      calculateRoute(dest, App.routeSpeed)
+        .then(() => {
+          const wps = App._routeWaypoints;
+          if (wps?.length) {
+            const last = wps[wps.length - 1];
+            const rain = wps.some(p => /lluvia|rain|drizzle|shower/i.test(p.weather?.condition || ''));
+            kirkSpeak(`Ruta a ${dest} lista. ${rain ? 'Hay lluvia en el camino — prepárate.' : 'Sin lluvia en la ruta.'} Destino: ${last.weather?.temp ?? '?'}°C.`);
+          }
+        })
+        .catch(() => kirkSpeak('No he podido calcular la ruta a ' + dest + '.'));
+      return;
+    }
   }
 
   if (App.circuitMode) {
