@@ -561,6 +561,7 @@ async function onGPSPosition(pos) {
     computeWindChill();
   }
 
+  _radarRefresh(App.position.lat, App.position.lon);
   _checkRadares(App.position.lat, App.position.lon, App.position.heading);
   if (App.sessionActive) {
     _checkUpcomingCurves(App.position.lat, App.position.lon, App.gpsSpeed);
@@ -4868,83 +4869,59 @@ function _bearingTo(lat1, lon1, lat2, lon2) {
   return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
 }
 
-let _radarList = null;
-const _radarAlerted = {}; // index -> last alert timestamp
+let _radarList = [];
+let _radarCachePos = null;
+let _radarCacheTs  = 0;
+let _radarFetching = false;
+const _radarAlerted = {};
 
-async function _radarInit() {
-  const TTL = 7 * 24 * 3600 * 1000;
-  const CACHE_KEY = 'bw_radares';
-  try {
-    const cached = localStorage.getItem(CACHE_KEY);
-    if (cached) {
-      const obj = JSON.parse(cached);
-      if (Date.now() - obj.ts < TTL && Array.isArray(obj.data) && obj.data.length > 0) {
-        _radarList = obj.data;
-        return;
-      }
-    }
-  } catch(e) {}
+function _radarInit() { /* called at startup — actual load happens on first GPS fix */ }
 
-  const urls = [
-    'https://raw.githubusercontent.com/jaumesala/radares-dgt/master/radares.json',
-    'https://raw.githubusercontent.com/jaumesala/radares-dgt/refs/heads/master/radares.json'
-  ];
-
-  for (const url of urls) {
-    try {
-      const r = await fetch(url);
-      if (!r.ok) continue;
-      const raw = await r.json();
-      const list = Array.isArray(raw) ? raw : (raw.radares || raw.features || []);
-      const parsed = list.map(s => {
-        // Handle GeoJSON features
-        if (s.type === 'Feature' && s.geometry) {
-          const [lon, lat] = s.geometry.coordinates;
-          return { lat: parseFloat(lat), lon: parseFloat(lon) };
-        }
-        const lat = parseFloat(s.lat ?? s.latitud ?? s.latitude ?? NaN);
-        const lon = parseFloat(s.lng ?? s.lon ?? s.longitud ?? s.longitude ?? NaN);
-        return isNaN(lat) || isNaN(lon) ? null : { lat, lon };
-      }).filter(Boolean);
-      if (parsed.length > 0) {
-        _radarList = parsed;
-        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: parsed })); } catch(e) {}
-        return;
-      }
-    } catch(e) {}
+async function _radarRefresh(lat, lon) {
+  if (_radarFetching) return;
+  if (_radarCachePos) {
+    const moved = haversineM(lat, lon, _radarCachePos.lat, _radarCachePos.lon);
+    if (moved < 8000 && Date.now() - _radarCacheTs < 1800000) return; // <8km and <30min
   }
-
-  // Hardcoded fallback: well-known fixed radars on major Spanish A-roads
-  _radarList = [
-    { lat: 40.4538, lon: -3.6883 }, // A-2 Madrid salida este
-    { lat: 40.3800, lon: -3.7200 }, // A-4 Madrid sur
-    { lat: 40.5000, lon: -3.6800 }, // A-1 Madrid norte
-    { lat: 41.3851, lon:  2.1904 }, // AP-7 Barcelona
-    { lat: 37.3891, lon: -5.9845 }, // A-4 Sevilla
-    { lat: 39.4699, lon: -0.3763 }, // A-3 Valencia
-    { lat: 36.7213, lon: -4.4214 }, // A-45 Málaga
-    { lat: 41.6561, lon: -4.7285 }, // A-62 Valladolid
-    { lat: 43.3623, lon: -8.4115 }, // AP-9 A Coruña
-    { lat: 38.9942, lon: -1.8585 }, // A-31 Albacete
-  ];
+  _radarFetching = true;
+  try {
+    // OSM Overpass: speed cameras within 10km, also enforcement nodes
+    const q = `[out:json][timeout:10];(node(around:10000,${lat},${lon})[highway=speed_camera];node(around:10000,${lat},${lon})[enforcement=maxspeed];);out body;`;
+    const r = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
+    if (!r.ok) return;
+    const data = await r.json();
+    const list = (data.elements || [])
+      .filter(e => e.type === 'node' && e.lat && e.lon)
+      .map(e => ({ lat: e.lat, lon: e.lon }));
+    if (list.length > 0) {
+      _radarList = list;
+      _radarCachePos = { lat, lon };
+      _radarCacheTs  = Date.now();
+      console.log(`[Radares] ${list.length} radares OSM cargados`);
+    }
+  } catch(e) {
+    console.warn('[Radares OSM]', e);
+  } finally {
+    _radarFetching = false;
+  }
 }
 
 function _checkRadares(lat, lon, heading) {
   if (!App.sessionActive) return;
   if (localStorage.getItem('bw_radar_alerts') === 'false') return;
-  if (!_radarList || !lat || !lon) return;
+  if (!_radarList.length || !lat || !lon) return;
   const now = Date.now();
   for (let i = 0; i < _radarList.length; i++) {
     const r = _radarList[i];
     const dist = haversineM(lat, lon, r.lat, r.lon);
-    if (dist > 500) continue;
+    if (dist > 600 || dist < 20) continue;
     const lastAlert = _radarAlerted[i] || 0;
     if (now - lastAlert < 90000) continue;
     if (heading != null && !isNaN(heading)) {
       const bearing = _bearingTo(lat, lon, r.lat, r.lon);
       let diff = Math.abs(bearing - heading);
       if (diff > 180) diff = 360 - diff;
-      if (diff > 70) continue; // radar is not ahead
+      if (diff > 70) continue;
     }
     _radarAlerted[i] = now;
     const m = Math.round(dist);
