@@ -1594,27 +1594,30 @@ function _radioUnduck() {
 }
 
 let _kirkSpeakDeadline = 0;
+let _kirkSpeakGen = 0;
 
 function kirkSpeak(text) {
   if (!text || !window.speechSynthesis || _kirkMuted) return;
   _kirkStopListening();
+  // Increment generation BEFORE cancel() so the previous utterance's async
+  // onend callback sees a stale gen and returns without corrupting state.
+  const myGen = ++_kirkSpeakGen;
   window.speechSynthesis.cancel();
   const utt = new SpeechSynthesisUtterance(text);
   utt.lang  = 'es-ES';
   const voice = _pickKirkVoice();
   if (voice) utt.voice = voice;
   _kirkSpeaking = true;
-  // Safety deadline: max ~15s speaking; if onend never fires (Android bug), force-reset
   _kirkSpeakDeadline = Date.now() + Math.max(15000, text.length * 80);
   _kirkShowMsg(text);
   _radioDuck();
   const _onKirkDone = () => {
-    if (!_kirkSpeaking) return;
+    if (_kirkSpeakGen !== myGen) return; // stale callback from a cancelled utterance
     _kirkSpeaking = false;
     _kirkSpeakDeadline = 0;
     _radioUnduck();
     setTimeout(_kirkHideMsg, 2000);
-    if (_kirkAutoListen) setTimeout(_kirkStartListening, 600);
+    if (_kirkAutoListen) setTimeout(_kirkStartListening, 250);
   };
   utt.onend  = _onKirkDone;
   utt.onerror = _onKirkDone;
