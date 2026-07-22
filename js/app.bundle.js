@@ -562,6 +562,10 @@ async function onGPSPosition(pos) {
   }
 
   _checkRadares(App.position.lat, App.position.lon, App.position.heading);
+  if (App.sessionActive) {
+    _checkUpcomingCurves(App.position.lat, App.position.lon, App.gpsSpeed);
+    _refreshRoadAhead(App.position.lat, App.position.lon, App.position.heading);
+  }
 }
 
 function shouldGeocode(pos) {
@@ -3986,6 +3990,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   })();
 
+  (function initCurveAheadToggle() {
+    const btn = $('btn-curve-ahead-toggle');
+    if (!btn) return;
+    const update = () => {
+      const on = localStorage.getItem('bw_curve_ahead') !== 'false';
+      btn.textContent = on ? 'ON' : 'OFF';
+      btn.style.color = on ? '#00ff88' : '#8888aa';
+      btn.style.borderColor = on ? '#00ff88' : '#333';
+    };
+    update();
+    btn.addEventListener('click', () => {
+      const on = localStorage.getItem('bw_curve_ahead') !== 'false';
+      localStorage.setItem('bw_curve_ahead', on ? 'false' : 'true');
+      update();
+    });
+  })();
+
   // Radio
   initRadio();
 
@@ -5050,4 +5071,103 @@ function _showGasPanel(stations) {
   panel.innerHTML = html;
   if (panel._autoRemove) clearTimeout(panel._autoRemove);
   panel._autoRemove = setTimeout(() => { if (panel.parentNode) panel.remove(); }, 30000);
+}
+
+/* ═══════════════════════════════════════
+   CURVAS ANTICIPADAS — road geometry ahead via Overpass OSM
+═══════════════════════════════════════ */
+let _roadCachePos  = null;
+let _roadCacheTs   = 0;
+let _upcomingCurves = [];
+let _curveAlerted  = {};
+let _roadFetching  = false;
+
+async function _refreshRoadAhead(lat, lon, heading) {
+  if (_roadFetching) return;
+  const now = Date.now();
+  if (_roadCachePos) {
+    const moved = haversineM(lat, lon, _roadCachePos.lat, _roadCachePos.lon);
+    if (moved < 250 && now - _roadCacheTs < 45000) return;
+  }
+  _roadFetching = true;
+  try {
+    const q = `[out:json][timeout:8];way(around:55,${lat},${lon})[highway~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|road)$"];(._;>;);out body;`;
+    const r = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
+    if (!r.ok) return;
+    const data = await r.json();
+
+    const nodeMap = {};
+    for (const el of data.elements) if (el.type === 'node') nodeMap[el.id] = { lat: el.lat, lon: el.lon };
+
+    const ways = data.elements.filter(e => e.type === 'way' && e.nodes?.length >= 2);
+    if (!ways.length) return;
+
+    // Pick the way whose nodes are closest to current position
+    let bestWay = null, bestDist = Infinity;
+    for (const way of ways) {
+      const pts = way.nodes.map(id => nodeMap[id]).filter(Boolean);
+      const d = Math.min(...pts.map(n => haversineM(lat, lon, n.lat, n.lon)));
+      if (d < bestDist) { bestDist = d; bestWay = way; }
+    }
+    if (!bestWay) return;
+
+    const nodes = bestWay.nodes.map(id => nodeMap[id]).filter(Boolean);
+
+    // Find closest node to our position
+    let ci = 0, cd = Infinity;
+    for (let i = 0; i < nodes.length; i++) {
+      const d = haversineM(lat, lon, nodes[i].lat, nodes[i].lon);
+      if (d < cd) { cd = d; ci = i; }
+    }
+
+    // Choose direction of travel matching GPS heading
+    const fwd = nodes.slice(ci);
+    const bwd = nodes.slice(0, ci + 1).reverse();
+    let travel = fwd;
+    if (fwd.length >= 2 && bwd.length >= 2 && heading != null) {
+      const fb = _bearingTo(fwd[0].lat, fwd[0].lon, fwd[1].lat, fwd[1].lon);
+      const bb = _bearingTo(bwd[0].lat, bwd[0].lon, bwd[1].lat, bwd[1].lon);
+      const fd = Math.abs(((fb - heading + 540) % 360) - 180);
+      const bd = Math.abs(((bb - heading + 540) % 360) - 180);
+      travel = fd <= bd ? fwd : bwd;
+    }
+
+    // Detect sharp turns in travel direction up to 1.2 km ahead
+    const curves = [];
+    let cumDist = 0;
+    for (let i = 1; i < travel.length - 1; i++) {
+      cumDist += haversineM(travel[i-1].lat, travel[i-1].lon, travel[i].lat, travel[i].lon);
+      if (cumDist > 1200) break;
+      const b1 = _bearingTo(travel[i-1].lat, travel[i-1].lon, travel[i].lat, travel[i].lon);
+      const b2 = _bearingTo(travel[i].lat, travel[i].lon, travel[i+1].lat, travel[i+1].lon);
+      let angle = Math.abs(b2 - b1); if (angle > 180) angle = 360 - angle;
+      if (angle > 22) curves.push({ dist: cumDist, angle: Math.round(angle), lat: travel[i].lat, lon: travel[i].lon });
+    }
+
+    _upcomingCurves = curves;
+    _roadCachePos   = { lat, lon };
+    _roadCacheTs    = now;
+    _curveAlerted   = {};
+  } catch(e) {
+    console.warn('[RoadAhead]', e);
+  } finally {
+    _roadFetching = false;
+  }
+}
+
+function _checkUpcomingCurves(lat, lon, speed) {
+  if (!App.sessionActive) return;
+  if (localStorage.getItem('bw_curve_ahead') === 'false') return;
+  if ((speed || 0) < 25) return;
+  const now = Date.now();
+  for (let i = 0; i < _upcomingCurves.length; i++) {
+    const c = _upcomingCurves[i];
+    const d = haversineM(lat, lon, c.lat, c.lon);
+    if (d < 40 || d > (c.angle > 50 ? 450 : 320)) continue;
+    if (now - (_curveAlerted[i] || 0) < 25000) continue;
+    _curveAlerted[i] = now;
+    const tipo = c.angle > 60 ? 'muy pronunciada' : c.angle > 40 ? 'pronunciada' : 'moderada';
+    kirkSpeak(`Curva ${tipo} en ${Math.round(d)} metros.`);
+    toast(`⚠️ Curva ${Math.round(d)}m`, 'warn');
+  }
 }
