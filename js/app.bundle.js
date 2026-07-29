@@ -3973,7 +3973,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   startFallDetection();
 
   // Radares DGT
-  _radarInit().catch(e => console.warn('[Radares]', e));
+  _radarInit();
   (function initRadarToggle() {
     const btn = $('btn-radar-toggle');
     if (!btn) return;
