@@ -1180,6 +1180,19 @@ function startSession() {
       map:   App.obd2Map   ?? null,
       iat:   App.obd2Iat   ?? null,
     });
+    // Kirk watchdog: si _kirkSpeaking lleva más de lo esperado, resetear
+    {
+      const now = Date.now();
+      if (_kirkSpeaking && _kirkSpeakDeadline && now > _kirkSpeakDeadline) {
+        window.speechSynthesis.cancel();
+        _kirkSpeaking = false;
+        _kirkSpeakDeadline = 0;
+        _radioUnduck();
+        if (_kirkAutoListen) setTimeout(_kirkStartListening, 300);
+      } else if (_kirkAutoListen && !_kirkListening && !_kirkSpeaking) {
+        setTimeout(_kirkStartListening, 300);
+      }
+    }
     // Route mode: update telemetry buffer + run Kirk alerts every 2s
     if (!App.circuitMode) {
       const now = Date.now();
@@ -1369,6 +1382,8 @@ let _kirkCooldowns = {};
 let _kirkRec       = null;
 let _kirkHistory   = [];
 let _telBuffer     = [];
+let _kirkSpeakGen  = 0;
+let _kirkSpeakDeadline = 0;
 let _telLastTs     = 0;
 let _kirkLocation  = null;
 let _kirkLocTs     = 0;
@@ -1419,26 +1434,41 @@ function _radioUnduck() {
   }
 }
 
-function kirkSpeak(text) {
+function kirkSpeak(text, _retry) {
   if (!text || !window.speechSynthesis || _kirkMuted) return;
   _kirkStopListening();
+  const myGen = ++_kirkSpeakGen;
   window.speechSynthesis.cancel();
   const utt = new SpeechSynthesisUtterance(text);
   utt.lang  = 'es-ES';
   const voice = _pickKirkVoice();
   if (voice) utt.voice = voice;
   _kirkSpeaking = true;
+  _kirkSpeakDeadline = Date.now() + Math.max(12000, text.length * 75);
   _kirkShowMsg(text);
   _radioDuck();
-  const _onKirkDone = () => {
+  utt.onend = () => {
+    if (_kirkSpeakGen !== myGen) return;
     _kirkSpeaking = false;
+    _kirkSpeakDeadline = 0;
     _radioUnduck();
     setTimeout(_kirkHideMsg, 2000);
-    // Vuelve a escuchar tras hablar
     if (_kirkAutoListen) setTimeout(_kirkStartListening, 600);
   };
-  utt.onend  = _onKirkDone;
-  utt.onerror = _onKirkDone;
+  utt.onerror = (e) => {
+    if (_kirkSpeakGen !== myGen) return;
+    const reason = e?.error || '';
+    // Maps / otra app tomó el foco de audio → reintento una vez tras 4s
+    if (!_retry && (reason === 'interrupted' || reason === 'audio-busy')) {
+      setTimeout(() => { if (_kirkSpeakGen === myGen) kirkSpeak(text, true); }, 4000);
+      return;
+    }
+    _kirkSpeaking = false;
+    _kirkSpeakDeadline = 0;
+    _radioUnduck();
+    setTimeout(_kirkHideMsg, 2000);
+    if (_kirkAutoListen) setTimeout(_kirkStartListening, 600);
+  };
   window.speechSynthesis.speak(utt);
 }
 

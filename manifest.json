@@ -3,7 +3,7 @@
   "short_name": "BikerWeather",
   "description": "Sensación de frío para motoristas en ruta",
   "start_url": "/index.html",
-  "display": "standalone",
+  "display": "fullscreen",
   "orientation": "portrait",
   "background_color": "#0a0a0f",
   "theme_color": "#ff4d00",
